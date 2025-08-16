@@ -1,0 +1,388 @@
+[2025-08-09 11:45:49] INFO: Session-ID: 445a915d-e315-41d3-acd2-7fb00d352deb
+[2025-08-09 11:45:49] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 11:46:43] INFO: 🔁 Neue Session-ID vergeben: 182787db-b2fd-4ad8-9554-2ad4514cea3b
+[2025-08-09 11:46:43] INFO: Session-ID: 182787db-b2fd-4ad8-9554-2ad4514cea3b
+[2025-08-09 11:46:43] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 11:50:19] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 11:50:23] INFO: 🔁 Neue Session-ID vergeben: 602a8bdd-ce60-4dc1-ab23-f36a25c60622
+[2025-08-09 11:50:23] INFO: Session-ID: 602a8bdd-ce60-4dc1-ab23-f36a25c60622
+[2025-08-09 11:50:23] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 11:50:47] INFO: 🧩 combine_medidok 500: No active session
+[2025-08-09 11:51:08] INFO: 🔁 Neue Session-ID vergeben: f5cc32e8-4434-496f-97e0-bd001846ecae
+[2025-08-09 11:51:08] INFO: Session-ID: f5cc32e8-4434-496f-97e0-bd001846ecae
+[2025-08-09 11:51:09] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 11:51:11] INFO: 🔁 Neue Session-ID vergeben: 30af1eb8-290b-4d97-9c76-1ab0445a5f96
+[2025-08-09 11:51:11] INFO: Session-ID: 30af1eb8-290b-4d97-9c76-1ab0445a5f96
+[2025-08-09 11:51:11] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 11:51:13] INFO: 🔁 Neue Session-ID vergeben: d430d27a-1e09-4370-924f-89a26e2165f8
+[2025-08-09 11:51:13] INFO: Session-ID: d430d27a-1e09-4370-924f-89a26e2165f8
+[2025-08-09 11:51:13] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 11:51:15] INFO: 🔁 Neue Session-ID vergeben: 13cd7d45-5bab-436f-a777-0a3c86d365c1
+[2025-08-09 11:51:15] INFO: Session-ID: 13cd7d45-5bab-436f-a777-0a3c86d365c1
+[2025-08-09 11:51:15] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 11:51:31] INFO: 🧩 combine_medidok 500: No active session
+[2025-08-09 11:51:33] INFO: 🚀 Route /copy_and_analyze wurde aufgerufen
+[2025-08-09 11:52:05] INFO: 🔁 Neue Session-ID vergeben: 5799d212-1fad-4779-9813-3d467e018380
+[2025-08-09 11:52:05] INFO: Session-ID: 5799d212-1fad-4779-9813-3d467e018380
+[2025-08-09 11:52:05] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 11:52:14] INFO: 🔁 Neue Session-ID vergeben: 363fbe91-8225-4875-bd79-678414e919fa
+[2025-08-09 11:52:14] INFO: Session-ID: 363fbe91-8225-4875-bd79-678414e919fa
+[2025-08-09 11:52:15] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 11:52:16] INFO: 🔁 Neue Session-ID vergeben: fe0823b2-edac-4c70-a1b0-74f1042d0e66
+[2025-08-09 11:52:16] INFO: Session-ID: fe0823b2-edac-4c70-a1b0-74f1042d0e66
+[2025-08-09 11:52:16] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 11:52:25] INFO: Ollama wird vorgewärmt mit Modell: huggingface.co/unsloth/medgemma-4b-it-GGUF:latest
+[2025-08-09 11:52:27] INFO: Ollama erfolgreich gewärmt.
+[2025-08-09 11:52:32] INFO: Session-ID: fe0823b2-edac-4c70-a1b0-74f1042d0e66
+[2025-08-09 11:52:33] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 11:52:37] INFO: 🔁 Neue Session-ID vergeben: 666d19e7-49ea-4a14-a9fe-2a92c04d280d
+[2025-08-09 11:52:37] INFO: Session-ID: 666d19e7-49ea-4a14-a9fe-2a92c04d280d
+[2025-08-09 11:52:37] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 11:52:39] INFO: 🔁 Neue Session-ID vergeben: b3313a14-0642-4268-b09f-c6477ac61bb1
+[2025-08-09 11:52:39] INFO: Session-ID: b3313a14-0642-4268-b09f-c6477ac61bb1
+[2025-08-09 11:52:40] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 11:52:41] INFO: 🔁 Neue Session-ID vergeben: e654e2d6-ea1b-4654-a429-4aed139bd00b
+[2025-08-09 11:52:41] INFO: Session-ID: e654e2d6-ea1b-4654-a429-4aed139bd00b
+[2025-08-09 11:52:42] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 11:52:44] INFO: ⚙️ Modell in Session gespeichert: phi4:latest
+[2025-08-09 11:53:02] INFO: 🧩 combine_medidok 500: No active session
+[2025-08-09 11:54:28] INFO: 🧩 combine_medidok 500: No active session
+[2025-08-09 12:48:47] INFO: Session-ID: e654e2d6-ea1b-4654-a429-4aed139bd00b
+[2025-08-09 12:48:47] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 12:49:54] INFO: Session-ID: e654e2d6-ea1b-4654-a429-4aed139bd00b
+[2025-08-09 12:49:54] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 12:50:19] INFO: 🧩 Kombiniert (STAGING): 2 Dateien → ./combined_20250809_125018.pdf
+[2025-08-09 12:50:19] INFO: ✅ Hinweis: Originale bleiben unverändert bis zum Commit.
+[2025-08-09 12:50:19] INFO: 🧩 combine_medidok ok: combined_20250809_125018.pdf
+[2025-08-09 12:51:22] INFO: 🧩 Kombiniert (STAGING): 2 Dateien → ./combined_20250809_125121.pdf
+[2025-08-09 12:51:22] INFO: ✅ Hinweis: Originale bleiben unverändert bis zum Commit.
+[2025-08-09 12:51:22] INFO: 🧩 combine_medidok ok: combined_20250809_125121.pdf
+[2025-08-09 14:57:17] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 14:57:22] INFO: Session-ID: e654e2d6-ea1b-4654-a429-4aed139bd00b
+[2025-08-09 14:57:23] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 14:57:59] INFO: 🧩 Kombiniert (STAGING): 2 Dateien → ./combined_20250809_145758.pdf
+[2025-08-09 14:57:59] INFO: ✅ Hinweis: Originale bleiben unverändert bis zum Commit.
+[2025-08-09 14:57:59] INFO: 🧩 combine_medidok ok: combined_20250809_145758.pdf
+[2025-08-09 15:08:10] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 15:08:13] INFO: Session-ID: e654e2d6-ea1b-4654-a429-4aed139bd00b
+[2025-08-09 15:08:14] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 15:08:31] INFO: 🧩 Kombiniert (STAGING): 2 Dateien → ./combined_20250809_150831.pdf
+[2025-08-09 15:08:31] INFO: ✅ Hinweis: Originale bleiben unverändert bis zum Commit.
+[2025-08-09 15:08:31] INFO: 🧩 combine_medidok ok: combined_20250809_150831.pdf
+[2025-08-09 15:12:50] INFO: 🚀 Route /copy_and_analyze wurde aufgerufen
+[2025-08-09 16:07:43] INFO: Session-ID: e654e2d6-ea1b-4654-a429-4aed139bd00b
+[2025-08-09 16:07:44] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 16:07:53] INFO: 🚀 /copy_and_analyze (Medidok) gestartet
+[2025-08-09 16:07:53] INFO: Ollama wird vorgewärmt mit Modell: phi4:latest
+[2025-08-09 16:08:02] INFO: Ollama erfolgreich gewärmt.
+[2025-08-09 16:08:06] WARNING: ❌ /copy_and_analyze Fehler: name 're' is not defined
+[2025-08-09 16:13:10] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 16:13:12] INFO: Session-ID: e654e2d6-ea1b-4654-a429-4aed139bd00b
+[2025-08-09 16:13:13] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 16:13:25] INFO: 🚀 /copy_and_analyze (Medidok) gestartet
+[2025-08-09 16:13:25] INFO: Ollama wird vorgewärmt mit Modell: phi4:latest
+[2025-08-09 16:13:32] INFO: Ollama erfolgreich gewärmt.
+[2025-08-09 16:13:35] WARNING: ❌ /copy_and_analyze Fehler: 'NoneType' object has no attribute 'strip'
+[2025-08-09 16:19:13] INFO: Session-ID: e654e2d6-ea1b-4654-a429-4aed139bd00b
+[2025-08-09 16:19:13] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 16:19:22] INFO: 🚀 /copy_and_analyze (Medidok) gestartet
+[2025-08-09 16:19:22] INFO: Ollama wird vorgewärmt mit Modell: phi4:latest
+[2025-08-09 16:19:31] INFO: Ollama erfolgreich gewärmt.
+[2025-08-09 16:19:35] INFO: [INFO] control.json mit insgesamt 1 Einträgen aktualisiert unter: /app/processed/json/control_e654e2d6-ea1b-4654-a429-4aed139bd00b.json
+[2025-08-09 16:19:36] WARNING: ❌ /copy_and_analyze Fehler: Pfad liegt nicht unter INPUT_ROOT: /app/test2/e654e2d6-ea1b-4654-a429-4aed139bd00b/staging/LOHS_Noehring-Maaberg_Babette_0306_6728_m(1)_ocr.pdf
+[2025-08-09 16:28:34] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 16:28:39] INFO: Session-ID: e654e2d6-ea1b-4654-a429-4aed139bd00b
+[2025-08-09 16:28:39] INFO: [BYPASS] remove outside INPUT_ROOT: /app/processed/json/control_e654e2d6-ea1b-4654-a429-4aed139bd00b.json
+[2025-08-09 16:28:39] INFO: 🗑️ Session-spezifische control.json gelöscht: /app/processed/json/control_e654e2d6-ea1b-4654-a429-4aed139bd00b.json
+[2025-08-09 16:28:40] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 16:28:51] INFO: 🚀 /copy_and_analyze (Medidok) gestartet
+[2025-08-09 16:28:51] INFO: Ollama wird vorgewärmt mit Modell: phi4:latest
+[2025-08-09 16:28:59] INFO: Ollama erfolgreich gewärmt.
+[2025-08-09 16:29:04] INFO: [INFO] control.json mit insgesamt 2 Einträgen aktualisiert unter: /app/processed/json/control_e654e2d6-ea1b-4654-a429-4aed139bd00b.json
+[2025-08-09 16:29:04] INFO: [PLAN] rename LOHS_Noehring-Maaberg_Babette_0306_6728_m(1)_ocr.pdf -> Unbekannt$Unbekannt$Unbekannt$Unbekannt$Kein Arzt erkannt, Keine Beschreibung verfügbar$11.pdf
+[2025-08-09 16:29:07] INFO: [INFO] control.json mit insgesamt 3 Einträgen aktualisiert unter: /app/processed/json/control_e654e2d6-ea1b-4654-a429-4aed139bd00b.json
+[2025-08-09 16:29:08] INFO: [PLAN] rename LOHS_Noehring-Maaberg_Babette_0306_6728_m(2)_ocr.pdf -> Unbekannt$Unbekannt$Unbekannt$Unbekannt$Kein Arzt erkannt, Keine Beschreibung verfügbar$11.pdf
+[2025-08-09 16:29:08] INFO: [INFO] control.json mit insgesamt 5 Einträgen aktualisiert unter: /app/processed/json/control_e654e2d6-ea1b-4654-a429-4aed139bd00b.json
+[2025-08-09 16:29:08] INFO: ✅ /copy_and_analyze ok – 2 Einträge
+[2025-08-09 16:30:59] INFO: Session-ID: e654e2d6-ea1b-4654-a429-4aed139bd00b
+[2025-08-09 16:31:00] INFO: [BYPASS] remove outside INPUT_ROOT: /app/processed/json/control_e654e2d6-ea1b-4654-a429-4aed139bd00b.json
+[2025-08-09 16:31:00] INFO: 🗑️ Session-spezifische control.json gelöscht: /app/processed/json/control_e654e2d6-ea1b-4654-a429-4aed139bd00b.json
+[2025-08-09 16:31:01] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 16:31:25] INFO: 🚀 /copy_and_analyze (Medidok) gestartet
+[2025-08-09 16:31:25] INFO: Ollama wird vorgewärmt mit Modell: phi4:latest
+[2025-08-09 16:31:26] INFO: Ollama erfolgreich gewärmt.
+[2025-08-09 16:31:31] INFO: [INFO] control.json mit insgesamt 6 Einträgen aktualisiert unter: /app/processed/json/control_e654e2d6-ea1b-4654-a429-4aed139bd00b.json
+[2025-08-09 16:31:31] INFO: [PLAN] rename Scan001_ocr.pdf -> Unbekannt$Unbekannt$Unbekannt$Unbekannt$Kein Arzt erkannt, Keine Beschreibung verfügbar$11.pdf
+[2025-08-09 16:31:31] INFO: [INFO] control.json mit insgesamt 7 Einträgen aktualisiert unter: /app/processed/json/control_e654e2d6-ea1b-4654-a429-4aed139bd00b.json
+[2025-08-09 16:31:31] INFO: ✅ /copy_and_analyze ok – 1 Einträge
+[2025-08-09 16:49:08] INFO: Session-ID: e654e2d6-ea1b-4654-a429-4aed139bd00b
+[2025-08-09 16:49:08] INFO: [BYPASS] remove outside INPUT_ROOT: /app/processed/json/control_e654e2d6-ea1b-4654-a429-4aed139bd00b.json
+[2025-08-09 16:49:08] INFO: 🗑️ Session-spezifische control.json gelöscht: /app/processed/json/control_e654e2d6-ea1b-4654-a429-4aed139bd00b.json
+[2025-08-09 16:49:08] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 16:49:27] INFO: 🧩 Kombiniert (STAGING): 1 Dateien → ./combined_20250809_164925.pdf
+[2025-08-09 16:49:27] INFO: ✅ Hinweis: Originale bleiben unverändert bis zum Commit.
+[2025-08-09 16:49:27] INFO: 🧩 combine_medidok ok: ./combined_20250809_164925.pdf
+[2025-08-09 16:50:12] INFO: 🧩 Kombiniert (STAGING): 1 Dateien → ./combined_20250809_165010.pdf
+[2025-08-09 16:50:12] INFO: ✅ Hinweis: Originale bleiben unverändert bis zum Commit.
+[2025-08-09 16:50:12] INFO: 🧩 combine_medidok ok: ./combined_20250809_165010.pdf
+[2025-08-09 16:50:21] INFO: 🚀 /copy_and_analyze (Medidok) gestartet
+[2025-08-09 16:50:21] INFO: Ollama wird vorgewärmt mit Modell: phi4:latest
+[2025-08-09 16:50:25] INFO: Ollama erfolgreich gewärmt.
+[2025-08-09 16:50:35] INFO: [INFO] control.json mit insgesamt 8 Einträgen aktualisiert unter: /app/processed/json/control_e654e2d6-ea1b-4654-a429-4aed139bd00b.json
+[2025-08-09 16:50:38] INFO: [PLAN] rename LOHS_Noehring-Maaberg_Babette_0306_6728_m(1)_ocr.pdf -> Unbekannt$Unbekannt$Unbekannt$Unbekannt$Kein Arzt erkannt, Keine Beschreibung verfügbar$11.pdf
+[2025-08-09 16:50:38] INFO: [INFO] control.json mit insgesamt 9 Einträgen aktualisiert unter: /app/processed/json/control_e654e2d6-ea1b-4654-a429-4aed139bd00b.json
+[2025-08-09 16:50:38] INFO: ✅ /copy_and_analyze ok – 1 Einträge
+[2025-08-09 16:51:10] INFO: Session-ID: e654e2d6-ea1b-4654-a429-4aed139bd00b
+[2025-08-09 16:51:11] INFO: [BYPASS] remove outside INPUT_ROOT: /app/processed/json/control_e654e2d6-ea1b-4654-a429-4aed139bd00b.json
+[2025-08-09 16:51:11] INFO: 🗑️ Session-spezifische control.json gelöscht: /app/processed/json/control_e654e2d6-ea1b-4654-a429-4aed139bd00b.json
+[2025-08-09 16:51:12] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 16:51:28] INFO: 🚀 /copy_and_analyze (Medidok) gestartet
+[2025-08-09 16:51:28] INFO: Ollama wird vorgewärmt mit Modell: phi4:latest
+[2025-08-09 16:51:30] INFO: Ollama erfolgreich gewärmt.
+[2025-08-09 16:51:40] INFO: [INFO] control.json mit insgesamt 10 Einträgen aktualisiert unter: /app/processed/json/control_e654e2d6-ea1b-4654-a429-4aed139bd00b.json
+[2025-08-09 16:51:43] INFO: [PLAN] rename Scan001_ocr.pdf -> Unbekannt$Unbekannt$Unbekannt$Unbekannt$Kein Arzt erkannt, Keine Beschreibung verfügbar$11.pdf
+[2025-08-09 16:51:43] INFO: [INFO] control.json mit insgesamt 11 Einträgen aktualisiert unter: /app/processed/json/control_e654e2d6-ea1b-4654-a429-4aed139bd00b.json
+[2025-08-09 16:51:43] INFO: ✅ /copy_and_analyze ok – 1 Einträge
+[2025-08-09 16:52:44] INFO: Session-ID: e654e2d6-ea1b-4654-a429-4aed139bd00b
+[2025-08-09 16:52:44] INFO: [BYPASS] remove outside INPUT_ROOT: /app/processed/json/control_e654e2d6-ea1b-4654-a429-4aed139bd00b.json
+[2025-08-09 16:52:44] INFO: 🗑️ Session-spezifische control.json gelöscht: /app/processed/json/control_e654e2d6-ea1b-4654-a429-4aed139bd00b.json
+[2025-08-09 16:52:44] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 16:52:58] INFO: 🚀 /copy_and_analyze (Medidok) gestartet
+[2025-08-09 16:52:59] INFO: Ollama wird vorgewärmt mit Modell: phi4:latest
+[2025-08-09 16:53:00] INFO: Ollama erfolgreich gewärmt.
+[2025-08-09 16:53:10] INFO: [INFO] control.json mit insgesamt 12 Einträgen aktualisiert unter: /app/processed/json/control_e654e2d6-ea1b-4654-a429-4aed139bd00b.json
+[2025-08-09 16:53:13] INFO: [PLAN] rename Scan001_ocr.pdf -> Unbekannt$Unbekannt$Unbekannt$Unbekannt$Kein Arzt erkannt, Keine Beschreibung verfügbar$11.pdf
+[2025-08-09 16:53:13] INFO: [INFO] control.json mit insgesamt 13 Einträgen aktualisiert unter: /app/processed/json/control_e654e2d6-ea1b-4654-a429-4aed139bd00b.json
+[2025-08-09 16:53:13] INFO: ✅ /copy_and_analyze ok – 1 Einträge
+[2025-08-09 16:53:24] INFO: Session-ID: e654e2d6-ea1b-4654-a429-4aed139bd00b
+[2025-08-09 16:53:25] INFO: [BYPASS] remove outside INPUT_ROOT: /app/processed/json/control_e654e2d6-ea1b-4654-a429-4aed139bd00b.json
+[2025-08-09 16:53:25] INFO: 🗑️ Session-spezifische control.json gelöscht: /app/processed/json/control_e654e2d6-ea1b-4654-a429-4aed139bd00b.json
+[2025-08-09 16:53:26] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 16:53:28] INFO: Session-ID: e654e2d6-ea1b-4654-a429-4aed139bd00b
+[2025-08-09 16:53:29] INFO: [BYPASS] remove outside INPUT_ROOT: /app/processed/json/control_e654e2d6-ea1b-4654-a429-4aed139bd00b.json
+[2025-08-09 16:53:29] INFO: 🗑️ Session-spezifische control.json gelöscht: /app/processed/json/control_e654e2d6-ea1b-4654-a429-4aed139bd00b.json
+[2025-08-09 16:53:29] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 16:53:32] INFO: 🔁 Neue Session-ID vergeben: 0a4c31b7-3477-4971-a017-1776f8c37288
+[2025-08-09 16:53:32] INFO: Session-ID: 0a4c31b7-3477-4971-a017-1776f8c37288
+[2025-08-09 16:53:32] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 16:53:34] INFO: 🔁 Neue Session-ID vergeben: 3d4ac768-5ddd-4d95-a2c0-49c076618625
+[2025-08-09 16:53:34] INFO: Session-ID: 3d4ac768-5ddd-4d95-a2c0-49c076618625
+[2025-08-09 16:53:34] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 16:53:46] INFO: 🚀 /copy_and_analyze (Medidok) gestartet
+[2025-08-09 16:53:48] INFO: Ollama wird vorgewärmt mit Modell: phi4:latest
+[2025-08-09 16:53:49] INFO: Ollama erfolgreich gewärmt.
+[2025-08-09 16:54:00] INFO: [INFO] control.json mit insgesamt 1 Einträgen aktualisiert unter: /app/processed/json/control_3d4ac768-5ddd-4d95-a2c0-49c076618625.json
+[2025-08-09 16:54:03] INFO: [PLAN] rename Scan001_ocr.pdf -> Unbekannt$Unbekannt$Unbekannt$Unbekannt$Kein Arzt erkannt, Keine Beschreibung verfügbar$11.pdf
+[2025-08-09 16:54:03] INFO: [INFO] control.json mit insgesamt 2 Einträgen aktualisiert unter: /app/processed/json/control_3d4ac768-5ddd-4d95-a2c0-49c076618625.json
+[2025-08-09 16:54:03] INFO: ✅ /copy_and_analyze ok – 1 Einträge
+[2025-08-09 16:54:35] INFO: [PLAN] rename Scan001_ocr.pdf -> Unbekannt$Unbekannt$Unbekannt$Unbekannt$Kein Arzt erkannt, Keine Beschreibung verfügbar$11.pdf
+[2025-08-09 16:55:27] INFO: Session-ID: 3d4ac768-5ddd-4d95-a2c0-49c076618625
+[2025-08-09 16:55:27] INFO: [BYPASS] remove outside INPUT_ROOT: /app/processed/json/control_3d4ac768-5ddd-4d95-a2c0-49c076618625.json
+[2025-08-09 16:55:27] INFO: 🗑️ Session-spezifische control.json gelöscht: /app/processed/json/control_3d4ac768-5ddd-4d95-a2c0-49c076618625.json
+[2025-08-09 16:55:28] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 16:57:30] INFO: Session-ID: 3d4ac768-5ddd-4d95-a2c0-49c076618625
+[2025-08-09 16:57:31] INFO: [BYPASS] remove outside INPUT_ROOT: /app/processed/json/control_3d4ac768-5ddd-4d95-a2c0-49c076618625.json
+[2025-08-09 16:57:31] INFO: 🗑️ Session-spezifische control.json gelöscht: /app/processed/json/control_3d4ac768-5ddd-4d95-a2c0-49c076618625.json
+[2025-08-09 16:57:31] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 16:58:23] INFO: 🔁 Neue Session-ID vergeben: dc577a5a-c546-4d3b-9d0b-b4c268d529c0
+[2025-08-09 16:58:23] INFO: Session-ID: dc577a5a-c546-4d3b-9d0b-b4c268d529c0
+[2025-08-09 16:58:23] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 16:58:25] INFO: 🔁 Neue Session-ID vergeben: 36447fdc-0bce-4ea9-8893-77efc69c0e4a
+[2025-08-09 16:58:25] INFO: Session-ID: 36447fdc-0bce-4ea9-8893-77efc69c0e4a
+[2025-08-09 16:58:25] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 16:58:53] INFO: 🚀 /copy_and_analyze (Medidok) gestartet
+[2025-08-09 16:58:54] INFO: Ollama wird vorgewärmt mit Modell: phi4:latest
+[2025-08-09 16:58:58] INFO: Ollama erfolgreich gewärmt.
+[2025-08-09 16:59:09] INFO: [INFO] control.json mit insgesamt 1 Einträgen aktualisiert unter: /app/processed/json/control_36447fdc-0bce-4ea9-8893-77efc69c0e4a.json
+[2025-08-09 16:59:12] INFO: [PLAN] rename Scan_001(2)_ocr.pdf -> Unbekannt$Unbekannt$Unbekannt$Unbekannt$Kein Arzt erkannt, Keine Beschreibung verfügbar$11.pdf
+[2025-08-09 16:59:12] INFO: [INFO] control.json mit insgesamt 2 Einträgen aktualisiert unter: /app/processed/json/control_36447fdc-0bce-4ea9-8893-77efc69c0e4a.json
+[2025-08-09 16:59:12] INFO: ✅ /copy_and_analyze ok – 1 Einträge
+[2025-08-09 17:24:23] INFO: Session-ID: 36447fdc-0bce-4ea9-8893-77efc69c0e4a
+[2025-08-09 17:24:24] INFO: [BYPASS] remove outside INPUT_ROOT: /app/processed/json/control_36447fdc-0bce-4ea9-8893-77efc69c0e4a.json
+[2025-08-09 17:24:24] INFO: 🗑️ Session-spezifische control.json gelöscht: /app/processed/json/control_36447fdc-0bce-4ea9-8893-77efc69c0e4a.json
+[2025-08-09 17:24:24] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 17:24:28] INFO: 🚀 /copy_and_analyze gestartet
+[2025-08-09 17:24:30] INFO: Ollama wird vorgewärmt mit Modell: phi4:latest
+[2025-08-09 17:24:33] INFO: Ollama erfolgreich gewärmt.
+[2025-08-09 17:24:50] WARNING: ❌ /copy_and_analyze Fehler: name 'control_data' is not defined
+[2025-08-09 17:27:56] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 17:27:59] INFO: Session-ID: 36447fdc-0bce-4ea9-8893-77efc69c0e4a
+[2025-08-09 17:27:59] INFO: [BYPASS] remove outside INPUT_ROOT: /app/processed/json/control_36447fdc-0bce-4ea9-8893-77efc69c0e4a.json
+[2025-08-09 17:27:59] INFO: 🗑️ Session-spezifische control.json gelöscht: /app/processed/json/control_36447fdc-0bce-4ea9-8893-77efc69c0e4a.json
+[2025-08-09 17:28:00] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 17:28:05] INFO: 🚀 /copy_and_analyze (Medidok) gestartet
+[2025-08-09 17:28:07] INFO: Ollama wird vorgewärmt mit Modell: phi4:latest
+[2025-08-09 17:28:09] INFO: Ollama erfolgreich gewärmt.
+[2025-08-09 17:28:28] WARNING: ❌ /copy_and_analyze Fehler: name 'control_data' is not defined
+[2025-08-09 17:34:09] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 17:34:14] INFO: Session-ID: 36447fdc-0bce-4ea9-8893-77efc69c0e4a
+[2025-08-09 17:34:15] INFO: [BYPASS] remove outside INPUT_ROOT: /app/processed/json/control_36447fdc-0bce-4ea9-8893-77efc69c0e4a.json
+[2025-08-09 17:34:15] INFO: 🗑️ Session-spezifische control.json gelöscht: /app/processed/json/control_36447fdc-0bce-4ea9-8893-77efc69c0e4a.json
+[2025-08-09 17:34:15] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 17:34:20] INFO: 🚀 /copy_and_analyze (Medidok) gestartet
+[2025-08-09 17:34:22] INFO: Ollama wird vorgewärmt mit Modell: phi4:latest
+[2025-08-09 17:34:34] INFO: Ollama erfolgreich gewärmt.
+[2025-08-09 17:34:52] INFO: [INFO] control.json mit insgesamt 2 Einträgen aktualisiert unter: /app/processed/json/control_36447fdc-0bce-4ea9-8893-77efc69c0e4a.json
+[2025-08-09 17:34:57] INFO: [PLAN] rename Scan_001(2)_ocr.pdf -> Nöhring-Maaßberg$Babette$01.03.1963$09.11.2009$Dr. med. C. Kartak, C6-Syndrom links$5.pdf
+[2025-08-09 17:34:57] INFO: [INFO] control.json mit insgesamt 3 Einträgen aktualisiert unter: /app/processed/json/control_36447fdc-0bce-4ea9-8893-77efc69c0e4a.json
+[2025-08-09 17:34:57] INFO: ✅ /copy_and_analyze ok – 1 Einträge
+[2025-08-09 17:36:10] INFO: Session-ID: 36447fdc-0bce-4ea9-8893-77efc69c0e4a
+[2025-08-09 17:36:12] INFO: [BYPASS] remove outside INPUT_ROOT: /app/processed/json/control_36447fdc-0bce-4ea9-8893-77efc69c0e4a.json
+[2025-08-09 17:36:12] INFO: 🗑️ Session-spezifische control.json gelöscht: /app/processed/json/control_36447fdc-0bce-4ea9-8893-77efc69c0e4a.json
+[2025-08-09 17:36:12] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 17:45:15] INFO: 🚀 /copy_and_analyze (Medidok) gestartet
+[2025-08-09 17:45:15] INFO: Ollama wird vorgewärmt mit Modell: phi4:latest
+[2025-08-09 17:45:25] INFO: Ollama erfolgreich gewärmt.
+[2025-08-09 17:45:44] INFO: [INFO] control.json mit insgesamt 4 Einträgen aktualisiert unter: /app/processed/json/control_36447fdc-0bce-4ea9-8893-77efc69c0e4a.json
+[2025-08-09 17:45:49] INFO: [PLAN] rename Scan_001(2)_ocr.pdf -> Nöhring-Maaßberg$Babette$01.03.1963$09.11.2009$Dr. med. C. Kartak, C6-Syndrom links$5.pdf
+[2025-08-09 17:45:49] INFO: [INFO] control.json mit insgesamt 5 Einträgen aktualisiert unter: /app/processed/json/control_36447fdc-0bce-4ea9-8893-77efc69c0e4a.json
+[2025-08-09 17:45:49] INFO: ✅ /copy_and_analyze ok – 1 Einträge
+[2025-08-09 17:47:07] INFO: Session-ID: 36447fdc-0bce-4ea9-8893-77efc69c0e4a
+[2025-08-09 17:47:08] INFO: [BYPASS] remove outside INPUT_ROOT: /app/processed/json/control_36447fdc-0bce-4ea9-8893-77efc69c0e4a.json
+[2025-08-09 17:47:08] INFO: 🗑️ Session-spezifische control.json gelöscht: /app/processed/json/control_36447fdc-0bce-4ea9-8893-77efc69c0e4a.json
+[2025-08-09 17:47:08] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 17:47:23] INFO: 🚀 /copy_and_analyze (Medidok) gestartet
+[2025-08-09 17:47:24] INFO: Ollama wird vorgewärmt mit Modell: phi4:latest
+[2025-08-09 17:47:26] INFO: Ollama erfolgreich gewärmt.
+[2025-08-09 17:47:40] INFO: [INFO] control.json mit insgesamt 6 Einträgen aktualisiert unter: /app/processed/json/control_36447fdc-0bce-4ea9-8893-77efc69c0e4a.json
+[2025-08-09 17:47:43] INFO: [PLAN] rename Scan_001(2)_ocr.pdf -> Nöhring-Maaßberg$Babette$01.03.1963$09.11.2009$Orthopädische Gemeinschaftspraxis Dr. med. Cornelia Kartak, C6-Syndrom links$5.pdf
+[2025-08-09 17:47:58] INFO: [INFO] control.json mit insgesamt 7 Einträgen aktualisiert unter: /app/processed/json/control_36447fdc-0bce-4ea9-8893-77efc69c0e4a.json
+[2025-08-09 17:48:01] INFO: [PLAN] rename Scan_001(3)_ocr.pdf -> Nöhring-Maaßberg$Babette$01.03.1963$12.11.2009$MVZ-Rothenburg, V.a. nicht erosive Refluxkrankheit unter PPI-Therapie$5.pdf
+[2025-08-09 17:48:01] INFO: [INFO] control.json mit insgesamt 9 Einträgen aktualisiert unter: /app/processed/json/control_36447fdc-0bce-4ea9-8893-77efc69c0e4a.json
+[2025-08-09 17:48:01] INFO: ✅ /copy_and_analyze ok – 2 Einträge
+[2025-08-09 17:49:06] INFO: Session-ID: 36447fdc-0bce-4ea9-8893-77efc69c0e4a
+[2025-08-09 17:49:07] INFO: [BYPASS] remove outside INPUT_ROOT: /app/processed/json/control_36447fdc-0bce-4ea9-8893-77efc69c0e4a.json
+[2025-08-09 17:49:07] INFO: 🗑️ Session-spezifische control.json gelöscht: /app/processed/json/control_36447fdc-0bce-4ea9-8893-77efc69c0e4a.json
+[2025-08-09 17:49:07] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 17:49:09] INFO: Session-ID: 36447fdc-0bce-4ea9-8893-77efc69c0e4a
+[2025-08-09 17:49:09] INFO: [BYPASS] remove outside INPUT_ROOT: /app/processed/json/control_36447fdc-0bce-4ea9-8893-77efc69c0e4a.json
+[2025-08-09 17:49:09] INFO: 🗑️ Session-spezifische control.json gelöscht: /app/processed/json/control_36447fdc-0bce-4ea9-8893-77efc69c0e4a.json
+[2025-08-09 17:49:10] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 17:49:22] INFO: 🚀 /copy_and_analyze (Medidok) gestartet
+[2025-08-09 17:49:23] INFO: Ollama wird vorgewärmt mit Modell: phi4:latest
+[2025-08-09 17:49:25] INFO: Ollama erfolgreich gewärmt.
+[2025-08-09 17:49:37] INFO: [INFO] control.json mit insgesamt 10 Einträgen aktualisiert unter: /app/processed/json/control_36447fdc-0bce-4ea9-8893-77efc69c0e4a.json
+[2025-08-09 17:49:41] INFO: [PLAN] rename Scan_001(2)_ocr.pdf -> Nöhring-Maaßberg$Babette$01.03.1963$09.11.2009$Dr. med. C. Kartak, C6-Syndrom links$5.pdf
+[2025-08-09 17:49:56] INFO: [INFO] control.json mit insgesamt 11 Einträgen aktualisiert unter: /app/processed/json/control_36447fdc-0bce-4ea9-8893-77efc69c0e4a.json
+[2025-08-09 17:50:00] INFO: [PLAN] rename Scan_001(3)_ocr.pdf -> Nöhring-Maaßberg$Babette$01.03.1963$12.11.2009$MVZ-Rothenburg, V.a. nicht erosive Refluxkrankheit unter PPI-Therapie$5.pdf
+[2025-08-09 17:50:00] INFO: [INFO] control.json mit insgesamt 13 Einträgen aktualisiert unter: /app/processed/json/control_36447fdc-0bce-4ea9-8893-77efc69c0e4a.json
+[2025-08-09 17:50:00] INFO: ✅ /copy_and_analyze ok – 2 Einträge
+[2025-08-09 17:51:34] INFO: Session-ID: 36447fdc-0bce-4ea9-8893-77efc69c0e4a
+[2025-08-09 17:51:35] INFO: [BYPASS] remove outside INPUT_ROOT: /app/processed/json/control_36447fdc-0bce-4ea9-8893-77efc69c0e4a.json
+[2025-08-09 17:51:35] INFO: 🗑️ Session-spezifische control.json gelöscht: /app/processed/json/control_36447fdc-0bce-4ea9-8893-77efc69c0e4a.json
+[2025-08-09 17:51:35] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 17:56:23] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 17:56:30] INFO: Session-ID: 36447fdc-0bce-4ea9-8893-77efc69c0e4a
+[2025-08-09 17:56:30] INFO: [BYPASS] remove outside INPUT_ROOT: /app/processed/json/control_36447fdc-0bce-4ea9-8893-77efc69c0e4a.json
+[2025-08-09 17:56:30] INFO: 🗑️ Session-spezifische control.json gelöscht: /app/processed/json/control_36447fdc-0bce-4ea9-8893-77efc69c0e4a.json
+[2025-08-09 17:56:31] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 17:56:35] INFO: 🚀 /copy_and_analyze (Medidok) gestartet
+[2025-08-09 17:56:36] INFO: Ollama wird vorgewärmt mit Modell: phi4:latest
+[2025-08-09 17:56:45] INFO: Ollama erfolgreich gewärmt.
+[2025-08-09 17:56:58] INFO: [INFO] control.json aktualisiert: /app/processed/json/control_36447fdc-0bce-4ea9-8893-77efc69c0e4a.json (Einträge: 14)
+[2025-08-09 17:57:02] INFO: [PLAN] rename Scan_001(2)_ocr.pdf -> Nöhring-Maaßberg$Babette$01.03.1963$09.11.2009$Orthopädische Gemeinschaftspraxis Dr. med. Cornelia Kartak und Martin Kartak, C6-Syndrom links$5.pdf
+[2025-08-09 17:57:16] INFO: [INFO] control.json aktualisiert: /app/processed/json/control_36447fdc-0bce-4ea9-8893-77efc69c0e4a.json (Einträge: 15)
+[2025-08-09 17:57:20] INFO: [PLAN] rename Scan_001(3)_ocr.pdf -> Nöhring-Maaßberg$Babette$01.03.1963$12.11.2009$MVZ-Rothenburg, V.a. nicht erosive Refluxkrankheit unter PPI-Therapie$5.pdf
+[2025-08-09 17:57:20] INFO: [INFO] control.json aktualisiert: /app/processed/json/control_36447fdc-0bce-4ea9-8893-77efc69c0e4a.json (Einträge: 17)
+[2025-08-09 17:57:20] INFO: ✅ /copy_and_analyze ok – 2 Einträge
+[2025-08-09 17:57:55] INFO: Session-ID: 36447fdc-0bce-4ea9-8893-77efc69c0e4a
+[2025-08-09 17:57:55] INFO: [BYPASS] remove outside INPUT_ROOT: /app/processed/json/control_36447fdc-0bce-4ea9-8893-77efc69c0e4a.json
+[2025-08-09 17:57:55] INFO: 🗑️ Session-spezifische control.json gelöscht: /app/processed/json/control_36447fdc-0bce-4ea9-8893-77efc69c0e4a.json
+[2025-08-09 17:57:55] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 17:58:02] INFO: 🚀 /copy_and_analyze (Medidok) gestartet
+[2025-08-09 17:58:03] INFO: Ollama wird vorgewärmt mit Modell: phi4:latest
+[2025-08-09 17:58:05] INFO: Ollama erfolgreich gewärmt.
+[2025-08-09 17:58:18] INFO: [INFO] control.json aktualisiert: /app/processed/json/control_36447fdc-0bce-4ea9-8893-77efc69c0e4a.json (Einträge: 18)
+[2025-08-09 17:58:21] INFO: [PLAN] rename Scan_001(2)_ocr.pdf -> Nöhring-Maaßberg$Babette$01.03.1963$09.11.2009$Orthopädische Gemeinschaftspraxis Dr. med. Cornelia Kartak, C6-Syndrom links$5.pdf
+[2025-08-09 17:58:36] INFO: [INFO] control.json aktualisiert: /app/processed/json/control_36447fdc-0bce-4ea9-8893-77efc69c0e4a.json (Einträge: 19)
+[2025-08-09 17:58:40] INFO: [PLAN] rename Scan_001(3)_ocr.pdf -> Nöhring-Maaßberg$Babette$01.03.1963$12.11.2009$MVZ Rothenburg, V.a. nicht erosive Refluxkrankheit unter PPI-Therapie, B-Gastritis mit HP-Nachweis$5.pdf
+[2025-08-09 17:58:40] INFO: [INFO] control.json aktualisiert: /app/processed/json/control_36447fdc-0bce-4ea9-8893-77efc69c0e4a.json (Einträge: 21)
+[2025-08-09 17:58:40] INFO: ✅ /copy_and_analyze ok – 2 Einträge
+[2025-08-09 17:59:46] INFO: Session-ID: 36447fdc-0bce-4ea9-8893-77efc69c0e4a
+[2025-08-09 17:59:47] INFO: [BYPASS] remove outside INPUT_ROOT: /app/processed/json/control_36447fdc-0bce-4ea9-8893-77efc69c0e4a.json
+[2025-08-09 17:59:47] INFO: 🗑️ Session-spezifische control.json gelöscht: /app/processed/json/control_36447fdc-0bce-4ea9-8893-77efc69c0e4a.json
+[2025-08-09 17:59:48] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 17:59:55] INFO: 🔁 Neue Session-ID vergeben: 84202c1e-2456-41c3-a282-a412d3068d15
+[2025-08-09 17:59:55] INFO: Session-ID: 84202c1e-2456-41c3-a282-a412d3068d15
+[2025-08-09 17:59:55] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 17:59:58] INFO: 🔁 Neue Session-ID vergeben: a82dc079-1ab2-4627-b9e8-b3f146c8846f
+[2025-08-09 17:59:58] INFO: Session-ID: a82dc079-1ab2-4627-b9e8-b3f146c8846f
+[2025-08-09 17:59:58] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 18:00:01] INFO: 🚀 /copy_and_analyze (Medidok) gestartet
+[2025-08-09 18:00:03] INFO: Ollama wird vorgewärmt mit Modell: phi4:latest
+[2025-08-09 18:00:04] INFO: Ollama erfolgreich gewärmt.
+[2025-08-09 18:00:16] INFO: [INFO] control.json aktualisiert: /app/processed/json/control_a82dc079-1ab2-4627-b9e8-b3f146c8846f.json (Einträge: 1)
+[2025-08-09 18:00:20] INFO: [PLAN] rename Scan_001(2)_ocr.pdf -> Nöhring-Maaßberg$Babette$01.03.1963$09.11.2009$Orthopädische Gemeinschaftspraxis Dr. med. Cornelia Kartak und Dr. med. Martin Kartak, C6-Syndrom links$5.pdf
+[2025-08-09 18:00:20] INFO: [INFO] control.json aktualisiert: /app/processed/json/control_a82dc079-1ab2-4627-b9e8-b3f146c8846f.json (Einträge: 2)
+[2025-08-09 18:00:20] INFO: ✅ /copy_and_analyze ok – 1 Einträge
+[2025-08-09 18:00:39] INFO: [PLAN] rename Scan_001(2)_ocr.pdf -> Nöhring-Maaßberg$Babette$01.03.1963$09.11.2009$Orthopädische Gemeinschaftspraxis Dr. med. Cornelia Kartak und Dr. med. Martin Kartak, C6-Syndrom links$5.pdf
+[2025-08-09 18:01:04] INFO: Session-ID: a82dc079-1ab2-4627-b9e8-b3f146c8846f
+[2025-08-09 18:01:04] INFO: [BYPASS] remove outside INPUT_ROOT: /app/processed/json/control_a82dc079-1ab2-4627-b9e8-b3f146c8846f.json
+[2025-08-09 18:01:04] INFO: 🗑️ Session-spezifische control.json gelöscht: /app/processed/json/control_a82dc079-1ab2-4627-b9e8-b3f146c8846f.json
+[2025-08-09 18:01:05] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 18:12:26] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 18:12:32] INFO: Session-ID: a82dc079-1ab2-4627-b9e8-b3f146c8846f
+[2025-08-09 18:12:32] INFO: [BYPASS] remove outside INPUT_ROOT: /app/processed/json/control_a82dc079-1ab2-4627-b9e8-b3f146c8846f.json
+[2025-08-09 18:12:32] INFO: 🗑️ Session-spezifische control.json gelöscht: /app/processed/json/control_a82dc079-1ab2-4627-b9e8-b3f146c8846f.json
+[2025-08-09 18:12:33] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 18:12:39] INFO: 🚀 /copy_and_analyze (Medidok) gestartet
+[2025-08-09 18:12:41] INFO: Ollama wird vorgewärmt mit Modell: phi4:latest
+[2025-08-09 18:12:50] INFO: Ollama erfolgreich gewärmt.
+[2025-08-09 18:13:04] INFO: [INFO] control.json aktualisiert (2 Einträge): /app/processed/json/control_a82dc079-1ab2-4627-b9e8-b3f146c8846f.json
+[2025-08-09 18:13:07] INFO: [PLAN] rename Scan_001(2)_ocr.pdf -> Nöhring-Maaßberg$Babette$01.03.1963$09.11.2009$Orthopädische Gemeinschaftspraxis, C6-Syndrom links$5.pdf
+[2025-08-09 18:13:22] INFO: [INFO] control.json aktualisiert (3 Einträge): /app/processed/json/control_a82dc079-1ab2-4627-b9e8-b3f146c8846f.json
+[2025-08-09 18:13:25] INFO: [PLAN] rename Scan_001(3)_ocr.pdf -> Babette$Nöhring-Maaßberg$01.03.1963$12.11.2009$MVZ-Rothenburg, V.a. nicht erosive Refluxkrankheit unter PPI-Therapie$5.pdf
+[2025-08-09 18:13:25] INFO: [INFO] control.json aktualisiert (2 Einträge): /app/processed/json/control_a82dc079-1ab2-4627-b9e8-b3f146c8846f.json
+[2025-08-09 18:13:25] INFO: ✅ /copy_and_analyze ok – 2 Einträge
+[2025-08-09 18:13:42] INFO: Session-ID: a82dc079-1ab2-4627-b9e8-b3f146c8846f
+[2025-08-09 18:13:42] INFO: [BYPASS] remove outside INPUT_ROOT: /app/processed/json/control_a82dc079-1ab2-4627-b9e8-b3f146c8846f.json
+[2025-08-09 18:13:42] INFO: 🗑️ Session-spezifische control.json gelöscht: /app/processed/json/control_a82dc079-1ab2-4627-b9e8-b3f146c8846f.json
+[2025-08-09 18:13:42] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-09 18:13:48] INFO: 🚀 /copy_and_analyze (Medidok) gestartet
+[2025-08-09 18:13:49] INFO: Ollama wird vorgewärmt mit Modell: phi4:latest
+[2025-08-09 18:13:50] INFO: Ollama erfolgreich gewärmt.
+[2025-08-09 18:14:03] INFO: [INFO] control.json aktualisiert (2 Einträge): /app/processed/json/control_a82dc079-1ab2-4627-b9e8-b3f146c8846f.json
+[2025-08-09 18:14:06] INFO: [PLAN] rename Scan_001(2)_ocr.pdf -> Nöhring-Maaßberg$Babette$01.03.1963$09.11.2009$Orthopädische Gemeinschaftspraxis Dr. med. Cornelia Kartak und Dr. med. Martin Kartak, C6-Syndrom links$5.pdf
+[2025-08-09 18:14:06] INFO: [INFO] control.json aktualisiert (1 Einträge): /app/processed/json/control_a82dc079-1ab2-4627-b9e8-b3f146c8846f.json
+[2025-08-09 18:14:06] INFO: ✅ /copy_and_analyze ok – 1 Einträge
+[2025-08-09 18:14:18] INFO: [PLAN] rename Scan_001(2)_ocr.pdf -> Nöhring-Maaßberg$Babette$01.03.1963$09.11.2009$Orthopädische Gemeinschaftspraxis Dr. med. Cornelia Kartak und Dr. med. Martin Kartak, C6-Syndrom links$5.pdf
+[2025-08-10 10:57:03] INFO: Session-ID: a82dc079-1ab2-4627-b9e8-b3f146c8846f
+[2025-08-10 10:57:03] INFO: [BYPASS] remove outside INPUT_ROOT: /app/processed/json/control_a82dc079-1ab2-4627-b9e8-b3f146c8846f.json
+[2025-08-10 10:57:03] INFO: 🗑️ Session-spezifische control.json gelöscht: /app/processed/json/control_a82dc079-1ab2-4627-b9e8-b3f146c8846f.json
+[2025-08-10 10:57:04] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-10 10:57:10] INFO: 🚀 /copy_and_analyze (Medidok) gestartet
+[2025-08-10 10:57:12] INFO: Ollama wird vorgewärmt mit Modell: phi4:latest
+[2025-08-10 10:57:21] INFO: Ollama erfolgreich gewärmt.
+[2025-08-10 10:57:40] INFO: [INFO] control.json aktualisiert (1 Einträge): /app/processed/json/control_a82dc079-1ab2-4627-b9e8-b3f146c8846f.json
+[2025-08-10 10:57:45] INFO: [PLAN] rename Scan_001(2)_ocr.pdf -> Nöhring-Maaßberg$Babette$01.03.1963$09.11.2009$Orthopädische Gemeinschaftspraxis Dr. med. Cornelia Kartak und Kollegen, C6-Syndrom links$5.pdf
+[2025-08-10 10:57:45] INFO: [INFO] control.json aktualisiert (1 Einträge): /app/processed/json/control_a82dc079-1ab2-4627-b9e8-b3f146c8846f.json
+[2025-08-10 10:57:45] INFO: ✅ /copy_and_analyze ok – 1 Einträge
+[2025-08-10 11:06:27] INFO: Session-ID: a82dc079-1ab2-4627-b9e8-b3f146c8846f
+[2025-08-10 11:06:29] INFO: [BYPASS] remove outside INPUT_ROOT: /app/processed/json/control_a82dc079-1ab2-4627-b9e8-b3f146c8846f.json
+[2025-08-10 11:06:29] INFO: 🗑️ Session-spezifische control.json gelöscht: /app/processed/json/control_a82dc079-1ab2-4627-b9e8-b3f146c8846f.json
+[2025-08-10 11:06:29] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-10 11:06:34] INFO: ⚙️ Modell in Session gespeichert: llama3.2:1b
+[2025-08-10 11:06:44] INFO: 🚀 /copy_and_analyze (Medidok) gestartet
+[2025-08-10 11:06:44] INFO: Ollama wird vorgewärmt mit Modell: llama3.2:1b
+[2025-08-10 11:06:47] INFO: Ollama erfolgreich gewärmt.
+[2025-08-10 11:07:05] INFO: [INFO] control.json aktualisiert (1 Einträge): /app/processed/json/control_a82dc079-1ab2-4627-b9e8-b3f146c8846f.json
+[2025-08-10 11:07:10] INFO: [PLAN] rename Scan_001(2)_ocr.pdf -> Cornelia Kartak$Martin Kartak$Orthopädische Gemeinschaftspraxis$Ansbacher Str. 15 - 91541 Rothenburg$Tel. 09861/2031, Gemeinschaftspraxis$Dres. med. P. u. H. Lohs.pdf
+[2025-08-10 11:07:10] INFO: [INFO] control.json aktualisiert (1 Einträge): /app/processed/json/control_a82dc079-1ab2-4627-b9e8-b3f146c8846f.json
+[2025-08-10 11:07:10] INFO: ✅ /copy_and_analyze ok – 1 Einträge
+[2025-08-10 11:11:32] INFO: [PLAN] rename Scan_001(2)_ocr.pdf -> Cornelia Kartak$Martin Kartak$Orthopädische Gemeinschaftspraxis$Ansbacher Str. 15 - 91541 Rothenburg$Tel. 09861/2031, Gemeinschaftspraxis$11.pdf
+[2025-08-10 11:29:49] INFO: Session-ID: a82dc079-1ab2-4627-b9e8-b3f146c8846f
+[2025-08-10 11:29:49] INFO: [BYPASS] remove outside INPUT_ROOT: /app/processed/json/control_a82dc079-1ab2-4627-b9e8-b3f146c8846f.json
+[2025-08-10 11:29:49] INFO: 🗑️ Session-spezifische control.json gelöscht: /app/processed/json/control_a82dc079-1ab2-4627-b9e8-b3f146c8846f.json
+[2025-08-10 11:29:49] INFO: 🔄 OCR-Service wurde gestartet.
+[2025-08-10 11:29:53] INFO: 🚀 /copy_and_analyze (Medidok) gestartet
+[2025-08-10 11:29:55] INFO: Ollama wird vorgewärmt mit Modell: llama3.2:1b
+[2025-08-10 11:29:57] INFO: Ollama erfolgreich gewärmt.
+[2025-08-10 11:30:15] INFO: [INFO] control.json aktualisiert (1 Einträge): /app/processed/json/control_a82dc079-1ab2-4627-b9e8-b3f146c8846f.json
+[2025-08-10 11:30:20] INFO: [PLAN] rename Scan_001(2)_ocr.pdf -> Cornelia Kartak$Martin Kartak$Orthopädische Gemeinschaftspraxis$Ansbacher Str 15 - 91541 Rothenburg$Dres. med. Kartak, Ansbacher Str, 15, 91541 Rothenburg$Gemeinschaftspraxis.pdf
+[2025-08-10 11:30:20] INFO: [INFO] control.json aktualisiert (1 Einträge): /app/processed/json/control_a82dc079-1ab2-4627-b9e8-b3f146c8846f.json
+[2025-08-10 11:30:20] INFO: ✅ /copy_and_analyze ok – 1 Einträge
+[2025-08-10 11:30:44] INFO: [BYPASS] rename outside INPUT_ROOT: /app/medidok/staging/Cornelia Kartak$Martin Kartak$Orthopädische Gemeinschaftspraxis$Ansbacher Str 15 - 91541 Rothenburg$Dres. med. Kartak, Ansbacher Str, 15, 91541 Rothenburg$11.pdf -> /app/medidok/import/Cornelia Kartak$Martin Kartak$Orthopädische Gemeinschaftspraxis$Ansbacher Str 15 - 91541 Rothenburg$Dres. med. Kartak, Ansbacher Str, 15, 91541 Rothenburg$11.pdf
+[2025-08-10 11:31:25] INFO: Session-ID: a82dc079-1ab2-4627-b9e8-b3f146c8846f
+[2025-08-10 11:31:25] INFO: [BYPASS] remove outside INPUT_ROOT: /app/processed/json/control_a82dc079-1ab2-4627-b9e8-b3f146c8846f.json
+[2025-08-10 11:31:25] INFO: 🗑️ Session-spezifische control.json gelöscht: /app/processed/json/control_a82dc079-1ab2-4627-b9e8-b3f146c8846f.json
+[2025-08-10 11:31:25] INFO: 🔄 OCR-Service wurde gestartet.

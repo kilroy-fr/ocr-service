@@ -1,0 +1,14 @@
+
+
+services:
+  ocr-web:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./processed:/app/processed
+      - ./data:/app/data
+      - /mnt/m:/app/medidok
+    environment:
+      - TZ=Europe/Berlin

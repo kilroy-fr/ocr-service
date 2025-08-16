@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>OCR KI Service</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <h1>OCR KI Service</h1>
+<div id="mainWrapper">
+  <h4>
+    <label for="modelSelect">Modell wählen:</label>
+    <select id="modelSelect" class="btn"></select>
+  </h4>
+	<div>
+	  <button class="btn" onclick="location.reload()">🔄 Aktualisieren</button>
+	</div>  
+<div id="mainContent">
+  <!-- Tab Navigation -->
+  <div class="tabs">
+    <button class="tab-button active" data-tab="medidok">Medidok-Verarbeitung</button>
+    <button class="tab-button" data-tab="einzel">Einzel-Verarbeitung</button>
+    <button class="tab-button" data-tab="batch">Batch-Verarbeitung</button>
+  </div>
+
+  <!-- Medidok -->
+  <div class="tab-content active" id="medidok">
+    <div class="section">
+      <h2>📁 Medidok-Ordner analysieren</h2>
+      <form id="medidokForm" onsubmit="return false;">
+        <div style="display: flex; gap: 20px;">
+          <div style="flex: 1;">
+            <p>Verzeichnis: <code>{{ med_src }}</code></p>
+            <div id="fileList">
+              {% for file in medidok_files %}
+              <div>
+                <input type="checkbox" name="selected_files" value="{{ file }}" class="file-checkbox">
+                <label class="file-label" data-file="{{ file }}">{{ file }}</label>
+              </div>
+              {% endfor %}
+              {% if not medidok_files %}
+              <p style="color: red;">⚠️ Keine Dateien im Verzeichnis {{ med_src }} gefunden.</p>
+              {% endif %}
+            </div>
+			<input type="submit" class="btn" value="📂 Ausgewählte Dateien verarbeiten" id="medidokSubmit">
+			<button type="button" class="btn" id="mediCombine">🧩 Dateien zusammenfassen</button>
+          </div>
+          <div style="flex: 2;">
+            <div id="preview" style="border: 1px solid #ccc; padding: 10px; background: #fff; min-height: 400px;">
+              <p style="color: #666;">Keine Vorschau verfügbar</p>
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Einzel -->
+  <div class="tab-content" id="einzel">
+    <div class="section">
+      <h2>Einzel-Verarbeitung (Dateiupload)</h2>
+      <form id="uploadForm" method="post" action="/upload" enctype="multipart/form-data">
+        <p>Erlaubte Formate: PDF, JPG, JPEG, PNG, TIFF</p>
+        <label for="fileInput" class="btn">📂 Dateien auswählen</label>
+        <input type="file" name="files" id="fileInput" multiple accept=".pdf,image/*" style="display: none;">
+        <span id="selectedFiles">Keine Datei ausgewählt</span>
+        <br>
+        <input type="submit" class="btn" value="⬆️ Upload & OCR starten">
+      </form>
+    </div>
+  </div>
+
+  <!-- Batch -->
+  <div class="tab-content" id="batch">
+    <div class="section">
+      <h2>📁 Ordner-Verarbeitung</h2>
+      <form id="folderUploadForm" method="post" action="/upload_folder" enctype="multipart/form-data">
+        <label for="folderInput" class="btn">📂 Verzeichnisse auswählen</label>
+        <input type="file" id="folderInput" name="files" webkitdirectory directory multiple accept=".pdf,image/*" style="display: none;">
+        <br><br>
+        <input type="submit" class="btn" value="🔍 Ordner hochladen & analysieren">
+      </form>
+    </div>
+  </div>
+</div>
+  <!-- Spinner -->
+  <div id="spinnerOverlay">
+    <div class="spinner"></div>
+  </div>
+</div>
+  <!-- Logging -->
+  <div class="section">
+    <h2>Logging</h2>
+    <pre id="output" style="background:#eee; padding:10px; height:300px; width:800px; overflow:auto; border-radius:5px;"></pre>
+  </div>
+
+  <!-- Scripts -->
+<script>
+  function showSpinner(on = true) {
+    const el = document.getElementById("spinnerOverlay");
+    if (el) el.style.display = on ? "flex" : "none";
+  }
+
+  window.addEventListener("DOMContentLoaded", () => {
+    // ===== Elemente =====
+    const folderInput = document.getElementById("folderInput");
+    const fileInput   = document.getElementById("fileInput");
+    const uploadForm  = document.getElementById("uploadForm");
+    const selectedFilesSpan = document.getElementById("selectedFiles");
+    const outputEl    = document.getElementById("output");
+    const checkboxes  = document.querySelectorAll('input[name="selected_files"]');
+    const submitBtn   = document.getElementById("medidokSubmit");
+    const tabButtons  = document.querySelectorAll('.tab-button');
+    const tabContents = document.querySelectorAll('.tab-content');
+    const fileLabels  = document.querySelectorAll(".file-label");
+    const preview     = document.getElementById("preview");
+
+    // ===== Logging via SSE =====
+    try {
+      const es = new EventSource("/stream");
+      es.onmessage = e => { outputEl.textContent += e.data + "\n"; outputEl.scrollTop = outputEl.scrollHeight; };
+      es.onerror = () => { outputEl.textContent += "\n[Verbindung zum Server unterbrochen]\n"; };
+    } catch {}
+
+    // ===== Vorschau =====
+    const getExtension = f => (f.split(".").pop() || "").toLowerCase();
+    let currentActiveLabel = null;
+    fileLabels.forEach(label => {
+      label.addEventListener("click", () => {
+        const filename = label.getAttribute("data-file");
+        const ext = getExtension(filename);
+        let content = "";
+        if (["jpg","jpeg","png"].includes(ext)) {
+          content = `<img src="/preview/${filename}" alt="Bildvorschau">`;
+        } else if (ext === "pdf") {
+          content = `<iframe src="/preview/${filename}#page=1&zoom=fit" scrolling="no"></iframe>`;
+        } else {
+          content = "<p>Dateiformat wird nicht unterstützt.</p>";
+        }
+        preview.innerHTML = content;
+        if (currentActiveLabel) currentActiveLabel.classList.remove("active");
+        label.classList.add("active");
+        currentActiveLabel = label;
+      });
+    });
+    document.querySelector(".file-label")?.click();
+
+    // ===== Tabs mit Session-Reset =====
+    function switchTab(tabName) {
+      tabButtons.forEach(btn => btn.classList.remove("active"));
+      tabContents.forEach(content => content.classList.remove("active"));
+      document.querySelector(`.tab-button[data-tab="${tabName}"]`)?.classList.add("active");
+      document.getElementById(tabName)?.classList.add("active");
+    }
+    const restoredTab = localStorage.getItem("activeTabAfterReset");
+    if (restoredTab) { switchTab(restoredTab); localStorage.removeItem("activeTabAfterReset"); }
+    tabButtons.forEach(button => {
+      button.addEventListener("click", () => {
+        const targetTab = button.getAttribute("data-tab");
+        const currentTab = document.querySelector(".tab-button.active")?.getAttribute("data-tab");
+        if (targetTab && targetTab !== currentTab) {
+          localStorage.setItem("activeTabAfterReset", targetTab);
+          window.location.href = "/reset_session";
+        }
+      });
+    });
+
+    // ===== Upload (Einzel) =====
+    fileInput?.addEventListener("change", function () {
+      const files = Array.from(this.files || []).map(f => f.name).join(', ');
+      if (selectedFilesSpan) selectedFilesSpan.textContent = files || 'Keine Datei ausgewählt';
+    });
+    uploadForm?.addEventListener("submit", (e) => {
+      if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+        e.preventDefault();
+        alert('Bitte wählen Sie mindestens eine Datei aus.');
+        return;
+      }
+      showSpinner(true);
+    });
+
+    // ===== Upload (Ordner) =====
+    folderInput?.addEventListener("change", (event) => {
+      const files = Array.from(event.target.files || []);
+      alert(`${files.length} Datei(en) aus dem Ordner ausgewählt.`);
+    });
+    document.getElementById("folderUploadForm")?.addEventListener("submit", (e) => {
+      if (!folderInput || !folderInput.files || folderInput.files.length === 0) {
+        e.preventDefault(); alert("Bitte Ordner wählen."); return;
+      }
+      showSpinner(true);
+    });
+
+    // ===== Checkboxen / Button-State =====
+    function updateSubmitState() {
+      const anyChecked = Array.from(checkboxes).some(cb => cb.checked);
+      if (submitBtn) submitBtn.disabled = !anyChecked;
+    }
+    checkboxes.forEach(cb => cb.addEventListener('change', updateSubmitState));
+    updateSubmitState();
+
+    // ===== Medidok: Analysieren =====
+    let analyzing = false;
+    submitBtn?.addEventListener("click", async (e) => {
+      e.preventDefault();
+      if (analyzing) return;
+      const selected = Array.from(document.querySelectorAll('input[name="selected_files"]:checked'))
+        .map(cb => cb.value);
+      if (selected.length === 0) { alert("Bitte mindestens eine Datei auswählen."); return; }
+
+      analyzing = true;
+      submitBtn.disabled = true;
+      showSpinner(true);
+      try {
+        const res = await fetch("/copy_and_analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ files: selected })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+          alert("Fehler beim Analysieren: " + (data.message || `HTTP ${res.status}`));
+          return;
+        }
+        window.location.href = "/control?index=0";
+      } catch (err) {
+        console.error("[medidok submit] Fehler:", err);
+        alert("Netzwerk-/JS-Fehler: " + err);
+      } finally {
+        showSpinner(false);
+        analyzing = false;
+        submitBtn.disabled = false;
+      }
+    });
+
+    // ===== Medidok: Kombinieren =====
+    const mediCombineBtn = document.getElementById("mediCombine");
+    mediCombineBtn?.addEventListener("click", async () => {
+      const selected = Array.from(document.querySelectorAll('input[name="selected_files"]:checked'))
+        .map(cb => cb.value);
+      if (selected.length === 0) { alert("Bitte mindestens eine Datei auswählen."); return; }
+
+      showSpinner(true);
+      try {
+        const res = await fetch("/combine_medidok", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ files: selected })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+          alert("Fehler beim Zusammenfassen: " + (data.message || `HTTP ${res.status}`));
+          return;
+        }
+        alert("Kombinierte Vorschau erstellt (Staging): " + data.combined);
+        const iframe = `<iframe src="/processed/${encodeURI(data.combined)}#page=1&zoom=fit" scrolling="no"></iframe>`;
+        preview.innerHTML = iframe;
+      } catch (err) {
+        console.error("[mediCombine] Fehler:", err);
+        alert("Netzwerk-/JS-Fehler: " + err);
+      } finally {
+        showSpinner(false);
+      }
+    });
+
+    // ===== Modelle laden =====
+    function getCookie(name) {
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      return parts.length === 2 ? parts.pop().split(';').shift() : null;
+    }
+    (async function loadModels(){
+      try {
+        const res = await fetch("/available_models");
+        const data = await res.json();
+        if (res.ok && data.success && Array.isArray(data.models)) {
+          const select = document.getElementById("modelSelect");
+          const savedModel = getCookie("selected_model");
+          data.models.forEach(model => {
+            const opt = document.createElement("option");
+            opt.value = model;
+            opt.textContent = model;
+            if (model === savedModel) opt.selected = true;
+            select.appendChild(opt);
+          });
+        }
+      } catch (e) {
+        console.warn("available_models error:", e);
+      }
+    })();
+
+    document.getElementById("modelSelect")?.addEventListener("change", (e) => {
+      const selectedModel = e.target.value;
+      fetch("/set_model", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model: selectedModel })
+      }).then(r => r.json()).then(j => {
+        if (!j.success) alert("⚠️ Fehler beim Setzen des Modells: " + (j.message || "unbekannt"));
+      });
+      document.cookie = `selected_model=${selectedModel}; path=/; max-age=31536000`;
+    });
+  });
+</script>
+</body>
+</html>
