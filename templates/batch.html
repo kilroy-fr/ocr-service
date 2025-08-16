@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Batch OCR (staging-sicher)</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    /* Minimal extra styles for standalone page */
+    .container { max-width: 980px; margin: 20px auto; }
+    #spinnerOverlay {
+      position: fixed; inset: 0; background: rgba(255,255,255,0.7);
+      display: none; align-items: center; justify-content: center; z-index: 9999;
+    }
+    .spinner {
+      width: 56px; height: 56px; border: 6px solid #ddd; border-top-color: #333;
+      border-radius: 50%; animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .hint { color:#555; font-size: 0.95em; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Batch‑Verarbeitung (Staging)</h1>
+    <p class="hint">
+      Die ausgewählten Dateien werden für die Analyse in einen <b>Staging‑Bereich</b> hochgeladen und verarbeitet.
+      <b>Originale werden nicht verändert</b>, bis Sie später in der Kontrolle explizit „Übernehmen“ wählen.
+    </p>
+
+    <form id="folderUploadForm" method="post" action="/upload_folder" enctype="multipart/form-data">
+      <label for="folderInput" class="btn">📂 Verzeichnisse auswählen</label>
+      <input type="file" id="folderInput" name="files" webkitdirectory directory multiple
+             accept=".pdf,image/*" style="display:none;">
+      <span id="folderInfo">Kein Ordner ausgewählt</span>
+      <br><br>
+      <input type="submit" class="btn" value="🔍 Ordner hochladen & analysieren">
+    </form>
+
+    <div id="spinnerOverlay"><div class="spinner"></div></div>
+
+    <div class="section" style="margin-top:24px;">
+      <h2>Logging</h2>
+      <pre id="output" style="background:#eee; padding:10px; height:300px; width:100%; overflow:auto; border-radius:5px;"></pre>
+    </div>
+
+    <p style="margin-top:16px;">
+      <a class="btn" href="/">⬅ Zurück zur Startseite</a>
+    </p>
+  </div>
+
+  <script>
+    const folderInput = document.getElementById("folderInput");
+    const folderInfo  = document.getElementById("folderInfo");
+    const form        = document.getElementById("folderUploadForm");
+    const outputEl    = document.getElementById("output");
+
+    function showSpinner(on) {
+      document.getElementById("spinnerOverlay").style.display = on ? "flex" : "none";
+    }
+
+    // Anzeige der Auswahl
+    folderInput.addEventListener("change", (e) => {
+      const files = Array.from(e.target.files || []);
+      if (!files.length) {
+        folderInfo.textContent = "Kein Ordner ausgewählt";
+        return;
+      }
+      // Ein bisschen Feedback: Count und erste(n) Pfad(e)
+      const sample = files.slice(0, 3).map(f => f.webkitRelativePath || f.name).join(", ");
+      folderInfo.textContent = `${files.length} Datei(en) ausgewählt — z.B. ${sample}`;
+    });
+
+    // Submit -> /upload_folder (liefert result.html zurück)
+    form.addEventListener("submit", (e) => {
+      if (!folderInput.files || folderInput.files.length === 0) {
+        e.preventDefault();
+        alert("Bitte wählen Sie mindestens einen Ordner (Dateien) aus.");
+        return;
+      }
+      showSpinner(true);
+    });
+
+    // Live-Log via SSE
+    const es = new EventSource("/stream");
+    es.onmessage = (evt) => {
+      outputEl.textContent += evt.data + "\n";
+      outputEl.scrollTop = outputEl.scrollHeight;
+    };
+    es.onerror = () => {
+      outputEl.textContent += "\n[Verbindung zum Server unterbrochen]\n";
+    };
+  </script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+[
+  {
+    "file": "Scan_001(3)_ocr.pdf",
+    "filename": "Scan_001(3)_ocr.pdf",
+    "name": "<think>",
+    "vorname": "Hmm, ich muss den Benutzer bei dieser medizinischen Dokumentenanalyse unterstützen. Die Anfrage ist auf Deutsch und erfordert die Extraktion von sieben spezifischen Informationen aus dem dokumentierten Text eines medizinischen Briefes.",
+    "geburtsdatum": "Unbekannt",
+    "datum": "Ich sehe einen Patientennamen in der Signatur des Briefes: Babette Nöhring-Maaßberg. Das Geburtsdatum wird weiter unten erwähnt als 01.03.1963. Der Brief ist datiert auf Rothenburg, den 12.11.2009 - also TT.MM.JJJJ.",
+    "beschreibung1": "Kein Arzt erkannt",
+    "beschreibung2": "Der Absender ist ein MVZ-Rothenburg mit Adresse Ansbacher Straße 13 in Rothenburg ob der Tauber. Da es sich um einen MVZ handelt und nicht um eine Praxis oder Krankenhaus, sollte die Zeile leer bleiben oder den Namen des Unternehmens angeben.",
+    "categoryID": "11",
+    "selected": true
+  }
+]

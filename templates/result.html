@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>OCR KI Service - Ergebnis</title>
+</head>
+<body>
+    <h1>OCR KI Service - Ergebnis</h1>
+	<h4>Verwendetes LLM: <code>{{ llm }}</code></h4>
+    <div class="section">
+        <h2>Verarbeitete PDFs</h2>
+        <div>
+            <table class="styled-table">
+                <thead>
+                    <tr>
+                        <th>Dateiname</th>
+                        <th>Name</th>
+                        <th>Vorname</th>
+                        <th>Geburtsdatum</th>
+                        <th>Dokumentdatum</th>
+                        <th>Absender</th>
+                        <th>Beschreibung</th>
+                        <th class="no-print">Aktion</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for summary in summaries %}
+                    <tr>
+                        <td><a href="{{ url_for('download_file', filename=summary['file']) }}">{{ summary['filename'] }}</a></td>
+                        <td>{{ summary['name'] }}</td>
+                        <td>{{ summary['vorname'] }}</td>
+                        <td>{{ summary['geburtsdatum'] }}</td>
+                        <td>{{ summary['datum'] }}</td>
+                        <td>{{ summary['beschreibung1'] }}</td>
+                        <td>{{ summary['beschreibung2'] }}</td>
+                        <td class="no-print"><button class="copy-btn" onclick="copyToClipboard(this)">📋 Kopieren</button></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+	<div class="btn no-print" style="margin: 20px 0;">
+		<button onclick="copyAndAnalyze()" class="btn no-print">
+			🔁 Nach Medidok kopieren & analysieren (Originale bleiben)
+		</button>
+	</div>
+    <a href="/" class="btn no-print">⬅ Zurück zur Startseite</a>
+
+    <div class="section">
+        <h2>Logging</h2>
+        <pre id="output" style="background:#eee; padding:10px; height:300px; width:800px; overflow:auto; border-radius:5px;">{{ log_text | e }}</pre>
+    </div>
+
+<script>
+    const summaries = {{ summaries | tojson }};
+
+    function copyToClipboard(button) {
+        const row = button.closest('tr');
+        const text = Array.from(row.cells)
+            .slice(1, 7) // alle relevanten Felder ohne Dateiname
+            .map(td => td.innerText.trim())
+            .join(" ");
+        navigator.clipboard.writeText(text).then(() => {
+            button.innerText = "✅ Kopiert!";
+            setTimeout(() => button.innerText = "📋 Kopieren", 1500);
+        }).catch(err => alert("Fehler beim Kopieren: " + err));
+    }
+
+    function copyAndAnalyze() {
+        const files = summaries.map(s => ({ file: s.file }));
+        fetch("/copy_and_analyze", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ files })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                window.location.href = "/control?index=0";
+            } else {
+                alert("Fehler: " + data.message);
+            }
+        })
+        .catch(err => alert("Fehler beim Senden: " + err));
+    }
+</script>
+</body>
+</html>
