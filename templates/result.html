@@ -6,12 +6,14 @@
     <title>OCR KI Service - Ergebnis</title>
 </head>
 <body>
-    <h1>OCR KI Service - Ergebnis</h1>
-	<h4>Verwendetes LLM: <code>{{ llm }}</code></h4>
-    <div class="section">
+    <header>
+        <h1>OCR KI Service - Ergebnis</h1>
+        <h4>Verwendetes LLM: <code>{{ llm }}</code></h4>
+    </header>
+    <main class="container">
+      <section class="section">
         <h2>Verarbeitete PDFs</h2>
-        <div>
-            <table class="styled-table">
+        <table class="styled-table">
                 <thead>
                     <tr>
                         <th>Dateiname</th>
@@ -34,24 +36,25 @@
                         <td>{{ summary['datum'] }}</td>
                         <td>{{ summary['beschreibung1'] }}</td>
                         <td>{{ summary['beschreibung2'] }}</td>
-                        <td class="no-print"><button class="copy-btn" onclick="copyToClipboard(this)">📋 Kopieren</button></td>
+                        <td class="no-print"><button class="btn copy-btn" onclick="copyToClipboard(this)">📋 Kopieren</button></td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
-        </div>
-    </div>
-	<div class="btn no-print" style="margin: 20px 0;">
-		<button onclick="copyAndAnalyze()" class="btn no-print">
-			🔁 Nach Medidok kopieren & analysieren (Originale bleiben)
-		</button>
-	</div>
-    <a href="/" class="btn no-print">⬅ Zurück zur Startseite</a>
+        <button onclick="copyAndAnalyze()" class="btn no-print">
+            🔁 Nach Medidok kopieren & analysieren (Originale bleiben)
+        </button>
+      </section>
 
-    <div class="section">
+      <section class="section">
         <h2>Logging</h2>
-        <pre id="output" style="background:#eee; padding:10px; height:300px; width:800px; overflow:auto; border-radius:5px;">{{ log_text | e }}</pre>
-    </div>
+        <pre id="output">{{ log_text | e }}</pre>
+      </section>
+
+      <section class="section no-print">
+        <a href="/" class="btn">⬅ Zurück zur Startseite</a>
+      </section>
+    </main>
 
 <script>
     const summaries = {{ summaries | tojson }};

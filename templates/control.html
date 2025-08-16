@@ -6,10 +6,12 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-  <h2>OCR KI Service - Kontrolle</h2>
+  <header>
+    <h1>OCR KI Service - Kontrolle</h1>
+  </header>
 
-  <div class="container">
-    <div class="left">
+  <main class="container">
+    <section class="left section">
       <form id="dataForm">
         <!-- Master-Option -->
         <div class="session-apply">
@@ -20,10 +22,6 @@
         </div>
 
         <table class="form-table">
-          <colgroup>
-            <col style="width: 70%;">
-            <col style="width: 30%;">
-          </colgroup>
           <thead>
             <tr>
               <th>Feld &amp; Eingabe</th>
@@ -96,7 +94,7 @@
             <tr>
               <td>
                 <div>
-                  <label style="font-weight: bold;">In Medidok übernehmen</label>
+                  <label>In Medidok übernehmen</label>
                   <label><input type="radio" name="includeOption" value="true"> ja</label>
                   <label><input type="radio" name="includeOption" value="false"> nein</label>
                 </div>
@@ -107,7 +105,7 @@
             <tr>
               <td>
                 <div class="save-section">
-                  <button type="button" id="saveBtn">Speichern</button>
+                  <button type="button" id="saveBtn" class="btn">Speichern</button>
                 </div>
               </td>
               <td></td>
@@ -115,29 +113,29 @@
           </tbody>
         </table>
       </form>
-    </div>
+    </section>
 
-    <div class="right">
-      <div id="preview" style="border:1px solid #ccc; padding:10px; background:#fff; min-height:400px;">
-        <p style="color:#666;">Keine Vorschau verfügbar</p>
+    <section class="right section">
+      <div id="preview" class="preview">
+        <p>Keine Vorschau verfügbar</p>
       </div>
-    </div>
-  </div>
+    </section>
+  </main>
 
-  <div class="filename-section">
+  <section class="section filename-section">
     <p id="originalFilename">Original: ...</p>
     <p id="newFilename">Neu: ...</p>
     <div class="nav-buttons">
-      <button id="prevBtn">⬅️ Zurück</button>
-      <button id="nextBtn">➡️ Weiter</button>
+      <button id="prevBtn" class="btn">⬅️ Zurück</button>
+      <button id="nextBtn" class="btn">➡️ Weiter</button>
     </div>
-  </div>
+  </section>
 
-  <div style="display:flex; gap:10px; align-items:center; margin-top:10px;">
-    <button id="finalizeBtn" disabled>Analyse abschließen</button>
-    <button id="abortBtn" class="btn-secondary" type="button">Änderungen verwerfen</button>
-    <a href="/" class="btn no-print">⬅ Zurück zur Startseite</a>
-  </div>
+  <section class="section flex-row no-print">
+    <button id="finalizeBtn" class="btn" disabled>Analyse abschließen</button>
+    <button id="abortBtn" class="btn" type="button">Änderungen verwerfen</button>
+    <a href="/" class="btn">⬅ Zurück zur Startseite</a>
+  </section>
 
   <script>
     const files = {{ files | tojson }};
@@ -201,7 +199,7 @@
       } else if (ext === "pdf") {
         previewContent = `<iframe src="/processed/${file.file}#page=1&zoom=fit"></iframe>`;
       } else {
-        previewContent = `<p style="color:#666;">Keine Vorschau verfügbar</p>`;
+        previewContent = `<p>Keine Vorschau verfügbar</p>`;
       }
       document.getElementById("preview").innerHTML = previewContent;
 
@@ -328,7 +326,7 @@
     // Init
     window.addEventListener("DOMContentLoaded", () => {
       if (!files || files.length === 0) {
-        document.getElementById("preview").innerHTML = `<p style="color:red;">Keine Dateien vorhanden.</p>`;
+        document.getElementById("preview").innerHTML = `<p>Keine Dateien vorhanden.</p>`;
       } else {
         updateUI();
       }
