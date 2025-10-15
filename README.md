@@ -13,8 +13,8 @@ Flask-basierter Dokumenten-Import-Service mit OCR und KI-gestützter Metadaten-E
 ## Installation
 ```bash
 # Repository klonen
-git clone https://github.com/DEIN-USERNAME/medical-ocr-service.git
-cd medical-ocr-service
+git clone https://github.com/kilroy-fr/ocr-service.git
+cd ocr-service
 
 # .env-Datei erstellen
 cp .env.example .env
