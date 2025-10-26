@@ -12,30 +12,41 @@
 
   <main class="container">
     <section class="left section">
-      <form id="dataForm">
-        <!-- Master-Option -->
-        <div class="session-apply">
-          <label>
-            <input type="checkbox" id="sessionToggle" checked>
-            Für die gesamte Sitzung übernehmen
-          </label>
-        </div>
+      <!-- Info-Box für Session-Funktion -->
+      <div class="session-info">
+        <h4>
+          <span class="locked-icon">🔒</span>
+          Session-übergreifende Felder
+        </h4>
+        <p>
+          <strong>Name, Vorname, Geburtsdatum:</strong><br>
+          Aktivieren Sie die Checkbox, um dieses Feld für alle Dokumente 
+          dieser Sitzung zu übernehmen. Deaktivieren Sie sie wieder, um 
+          individuelle Werte pro Dokument zu verwenden.
+        </p>
+      </div>
 
+      <form id="dataForm">
         <table class="form-table">
           <thead>
             <tr>
               <th>Feld &amp; Eingabe</th>
-              <th>Übernehmen</th>
+              <th>Für alle sperren</th>
             </tr>
           </thead>
           <tbody>
+            <!-- Felder MIT Session-Option -->
             <tr>
               <td>
                 <label for="name">Name</label>
                 <input type="text" id="name" name="name">
               </td>
-              <td class="center">
-                <input type="checkbox" id="name-session" class="field-session" data-field="name">
+              <td class="session-checkbox-cell">
+                <input type="checkbox" 
+                       id="name-session" 
+                       class="field-session" 
+                       data-field="name"
+                       title="Für alle Dokumente dieser Sitzung übernehmen">
               </td>
             </tr>
             <tr>
@@ -43,8 +54,12 @@
                 <label for="vorname">Vorname</label>
                 <input type="text" id="vorname" name="vorname">
               </td>
-              <td class="center">
-                <input type="checkbox" id="vorname-session" class="field-session" data-field="vorname">
+              <td class="session-checkbox-cell">
+                <input type="checkbox" 
+                       id="vorname-session" 
+                       class="field-session" 
+                       data-field="vorname"
+                       title="Für alle Dokumente dieser Sitzung übernehmen">
               </td>
             </tr>
             <tr>
@@ -52,12 +67,16 @@
                 <label for="geburtsdatum">Geburtsdatum</label>
                 <input type="text" id="geburtsdatum" name="geburtsdatum">
               </td>
-              <td class="center">
-                <input type="checkbox" id="geburtsdatum-session" class="field-session" data-field="geburtsdatum">
+              <td class="session-checkbox-cell">
+                <input type="checkbox" 
+                       id="geburtsdatum-session" 
+                       class="field-session" 
+                       data-field="geburtsdatum"
+                       title="Für alle Dokumente dieser Sitzung übernehmen">
               </td>
             </tr>
 
-            <!-- Felder ohne Sitzungs-Checkbox -->
+            <!-- Felder OHNE Session-Option -->
             <tr>
               <td>
                 <label for="datum">Dokumentdatum</label>
@@ -94,18 +113,9 @@
             <tr>
               <td>
                 <div>
-                  <label>In Medidok übernehmen</label>
-                  <label><input type="radio" name="includeOption" value="true"> ja</label>
-                  <label><input type="radio" name="includeOption" value="false"> nein</label>
-                </div>
-              </td>
-              <td></td>
-            </tr>
-
-            <tr>
-              <td>
-                <div class="save-section">
-                  <button type="button" id="saveBtn" class="btn">Speichern</button>
+                  <label style="color: #d32f2f; font-weight: bold;">⚠️ In Medidok übernehmen</label>
+                  <label><input type="radio" name="includeOption" value="true"> ✅ ja</label>
+                  <label><input type="radio" name="includeOption" value="false"> ❌ nein</label>
                 </div>
               </td>
               <td></td>
@@ -116,6 +126,12 @@
     </section>
 
     <section class="right section">
+      <!-- Action Buttons -->
+      <div class="control-actions">
+        <button id="abortBtn" class="btn btn-abort" type="button">⬅ Abbrechen und zur Startseite</button>
+        <button id="finalizeBtn" class="btn" disabled>Analyse abschließen</button>
+      </div>
+      
       <div id="preview" class="preview">
         <p>Keine Vorschau verfügbar</p>
       </div>
@@ -125,270 +141,28 @@
   <section class="section filename-section">
     <p id="originalFilename">Original: ...</p>
     <p id="newFilename">Neu: ...</p>
+    
+    <!-- Fortschrittsanzeige -->
+    <div class="progress-container">
+      <div class="progress-info">
+        <span id="progressText">Datei 1 von X</span>
+        <span id="progressPercent">0%</span>
+      </div>
+      <div class="progress-bar-wrapper">
+        <div class="progress-bar" id="progressBar"></div>
+      </div>
+    </div>
+    
     <div class="nav-buttons">
       <button id="prevBtn" class="btn">⬅️ Zurück</button>
       <button id="nextBtn" class="btn">➡️ Weiter</button>
     </div>
   </section>
 
-  <section class="section flex-row no-print">
-    <button id="finalizeBtn" class="btn" disabled>Analyse abschließen</button>
-    <button id="abortBtn" class="btn" type="button">Änderungen verwerfen</button>
-    <a href="/" class="btn">⬅ Zurück zur Startseite</a>
-  </section>
-
   <script>
+    // Files-Variable wird vom Server generiert
     const files = {{ files | tojson }};
-    let currentIndex = 0;
-    const visited = new Set();
-    const GLOBAL_FIELDS = ["name", "vorname", "geburtsdatum"];
-
-    function sanitizeBase(name) {
-      return (name || "").replace(/[\\\/:*?"<>|]+/g, " ").replace(/\s+/g, " ").trim();
-    }
-	function buildNewName(f) {
-	  const p = [
-		f.name || "Unbekannt",          // feld1
-		f.vorname || "Unbekannt",       // feld2
-		f.geburtsdatum || "Unbekannt",  // feld3
-		f.datum || "Unbekannt",         // feld4
-		f.beschreibung1 || "Kein Arzt erkannt",            // feld5
-		f.beschreibung2 || "Keine Beschreibung verfügbar", // feld6
-		f.categoryID || "11"            // feld7
-	  ].map(sanitizeBase);
-
-	  // exakt wie serverseitig:
-	  return `${p[0]}µ${p[1]}µ${p[2]}µ${p[3]}µ${p[4]}, ${p[5]}µ${p[6]}.pdf`;
-	}
-    function extOf(p) {
-      const s = (p || "").toLowerCase();
-      const i = s.lastIndexOf(".");
-      return i >= 0 ? s.slice(i + 1) : "";
-    }
-
-    function updateUI() {
-      const file = files[currentIndex];
-      if (!file) return;
-
-      const catID = parseInt(file.categoryID || "11", 10);
-      file.categoryID = (catID === 5 || catID === 6) ? String(catID) : "11";
-      file.originalFilename = file.originalFilename || file.filename;
-
-      document.getElementById("name").value = file.name || "";
-      document.getElementById("vorname").value = file.vorname || "";
-      document.getElementById("geburtsdatum").value = file.geburtsdatum || "";
-      document.getElementById("datum").value = file.datum || "";
-      document.getElementById("beschreibung1").value = file.beschreibung1 || "";
-      document.getElementById("beschreibung2").value = file.beschreibung2 || "";
-      document.getElementById("categoryID").value = file.categoryID || "11";
-
-      document.querySelectorAll('input[name="includeOption"]').forEach(r => r.checked = false);
-      if (file.include === true || file.include === false) {
-        const radio = document.querySelector(`input[name="includeOption"][value="${file.include}"]`);
-        if (radio) radio.checked = true;
-      }
-
-      const newName = buildNewName(file);
-      document.getElementById("newFilename").textContent = "Neu: " + newName;
-      document.getElementById("originalFilename").textContent = "Original: " + (file.filename || "");
-
-      const ext = extOf(file.file);
-      let previewContent = "";
-      if (["jpg","jpeg","png"].includes(ext)) {
-        previewContent = `<img src="/processed/${file.file}" alt="Bildvorschau">`;
-      } else if (ext === "pdf") {
-        previewContent = `<iframe src="/processed/${file.file}#page=1&zoom=fit"></iframe>`;
-      } else {
-        previewContent = `<p>Keine Vorschau verfügbar</p>`;
-      }
-      document.getElementById("preview").innerHTML = previewContent;
-
-      visited.add(currentIndex);
-      checkFinalizeReady();
-    }
-
-    async function saveData() {
-      const f = files[currentIndex];
-      if (!f) return;
-
-      const prevFileRel = f.file;
-
-      // Formular -> Objekt
-      f.name = document.getElementById("name").value;
-      f.vorname = document.getElementById("vorname").value;
-      f.geburtsdatum = document.getElementById("geburtsdatum").value;
-      f.datum = document.getElementById("datum").value;
-      f.beschreibung1 = document.getElementById("beschreibung1").value;
-      f.beschreibung2 = document.getElementById("beschreibung2").value;
-      f.categoryID = document.getElementById("categoryID").value;
-
-      const selected = document.querySelector('input[name="includeOption"]:checked');
-      f.include = selected ? selected.value === "true" : undefined;
-
-      const newName = buildNewName(f);
-
-      // 1) Metadaten in control_*.json sichern
-      await fetch("/save_control_data", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          index: currentIndex,
-          name: f.name,
-          vorname: f.vorname,
-          geburtsdatum: f.geburtsdatum,
-          datum: f.datum,
-          beschreibung1: f.beschreibung1,
-          beschreibung2: f.beschreibung2,
-          categoryID: f.categoryID,
-          selected: f.include === true
-        })
-      }).catch(() => {});
-
-      // 2) Umbenennung planen (und Staging-Datei umhängen)
-      const relDir = prevFileRel.split("/").slice(0, -1).join("/");
-      const newRel = relDir ? `${relDir}/${newName}` : newName;
-
-      const res = await fetch("/rename_file", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          old_filename: prevFileRel,
-          new_filename: newRel
-        })
-      });
-
-      if (!res.ok) {
-        alert("Fehler beim Umbenennen (Plan).");
-      } else {
-        // ✅ Fix B: den vom Server zurückgegebenen (evtl. sanitizten) Namen übernehmen
-        const j = await res.json().catch(() => ({}));
-        const effectiveRel = j && j.new_filename ? j.new_filename : newRel;
-        f.file = effectiveRel;       // aktueller relativer Pfad für Vorschau + finalize_import
-        f.new_filename = newName;    // nur zur Anzeige
-        document.getElementById("newFilename").textContent = "Neu: " + newName;
-        updateUI(); // Vorschau mit neuem Pfad
-      }
-
-      visited.add(currentIndex);
-      checkFinalizeReady();
-    }
-
-    function checkFinalizeReady() {
-      const allDecided = files.every(f => f && (f.include === true || f.include === false));
-      document.getElementById("finalizeBtn").disabled = !allDecided;
-    }
-
-    function prevFile() {
-      if (currentIndex > 0) { currentIndex--; updateUI(); }
-    }
-    function nextFile() {
-      if (currentIndex < files.length - 1) { currentIndex++; updateUI(); }
-    }
-
-    async function finalizeAnalysis() {
-      const allDecided = files.every(f => f && (f.include === true || f.include === false));
-      if (!allDecided) {
-        alert("Bitte wählen Sie für jede Datei 'Ja' oder 'Nein'.");
-        return;
-      }
-
-      const payload = files.map(f => ({
-        file: f.file,                                          // 👈 aktueller Name!
-        originalFilename: f.originalFilename || f.filename,
-        include: !!f.include
-      }));
-
-      const res = await fetch("/finalize_import", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ files: payload })
-      });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok && data.success) {
-        alert("Analyse abgeschlossen.");
-        window.location.href = "/";
-      } else {
-        alert("Fehler: " + (data.message || `HTTP ${res.status}`));
-      }
-    }
-
-    async function abortAll() {
-      if (!confirm("Alle Änderungen verwerfen und zum Ausgangszustand zurückkehren?")) return;
-      const res = await fetch("/abort", { method: "POST" });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok && data.success) {
-        window.location.href = "/";
-      } else {
-        alert("Fehler beim Verwerfen: " + (data.message || `HTTP ${res.status}`));
-      }
-    }
-
-    // Init
-    window.addEventListener("DOMContentLoaded", () => {
-      if (!files || files.length === 0) {
-        document.getElementById("preview").innerHTML = `<p>Keine Dateien vorhanden.</p>`;
-      } else {
-        updateUI();
-      }
-
-      document.getElementById("saveBtn").addEventListener("click", saveData);
-      document.getElementById("prevBtn").addEventListener("click", prevFile);
-      document.getElementById("nextBtn").addEventListener("click", nextFile);
-      document.getElementById("finalizeBtn").addEventListener("click", finalizeAnalysis);
-      document.getElementById("abortBtn").addEventListener("click", abortAll);
-
-      // Session-weite Felder
-      const sessionToggle = document.getElementById("sessionToggle");
-      function setReadonly(field, on) {
-        const el = document.getElementById(field);
-        if (el) el.readOnly = !!on;
-      }
-      function propagateFieldToAll(field, value) {
-        if (!Array.isArray(files)) return;
-        files.forEach(f => { if (f) f[field] = value; });
-      }
-      function bindGlobalField(field) {
-        const cb = document.getElementById(`${field}-session`);
-        const input = document.getElementById(field);
-        if (!cb || !input) return;
-
-        cb.addEventListener("change", () => {
-          const active = cb.checked && sessionToggle.checked;
-          setReadonly(field, active);
-          if (active) propagateFieldToAll(field, input.value);
-        });
-
-        input.addEventListener("input", (e) => {
-          const active = cb.checked && sessionToggle.checked;
-          if (active) propagateFieldToAll(field, e.target.value);
-        });
-      }
-      GLOBAL_FIELDS.forEach(bindGlobalField);
-
-      sessionToggle.addEventListener("change", () => {
-        const masterOn = sessionToggle.checked;
-        GLOBAL_FIELDS.forEach(field => {
-          const cb = document.getElementById(`${field}-session`);
-          if (!cb) return;
-          cb.disabled = !masterOn;
-          if (!masterOn) {
-            setReadonly(field, false);
-          } else if (cb.checked) {
-            const val = document.getElementById(field)?.value ?? "";
-            setReadonly(field, true);
-            propagateFieldToAll(field, val);
-          }
-        });
-      });
-
-      (function initGlobalApplyUI(){
-        const masterOn = document.getElementById("sessionToggle").checked;
-        GLOBAL_FIELDS.forEach(field => {
-          const cb = document.getElementById(`${field}-session`);
-          if (cb) cb.disabled = !masterOn;
-        });
-      })();
-    });
   </script>
+  <script src="{{ url_for('static', filename='control.js') }}"></script>
 </body>
 </html>
