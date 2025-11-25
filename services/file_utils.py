@@ -3,7 +3,7 @@ from PIL import Image
 from pathlib import Path
 from datetime import datetime, timedelta
 from services.logger import log_queue, log
-from typing import List, Tuple, Optional
+from typing import Set, List, Tuple, Optional
 from config import INPUT_ROOT, WORK_ROOT, OUTPUT_ROOT
 from dataclasses import dataclass, asdict
 
@@ -19,163 +19,9 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def sanitize_filename(name):
-    # Entfernt oder ersetzt ungültige Zeichen für Dateinamen.
-    name = re.sub(r'[\\/:"*?<>|]', '_', name)  # Windows-/Unix-kritische Zeichen
-    # name = name.replace(',', '').replace('$', '_')
-    return name.strip()
-    
-def safe_line(lines, index, fallback):
-    try:
-        line = lines[index]
-    except IndexError:
-        return fallback
-    if line is None:
-        return fallback
-    line = str(line).strip()
-    return line if line else fallback
-
-def merge_images_to_pdf(image_paths, output_path):
-    images = []
-    for img_path in sorted(image_paths):
-        img = Image.open(img_path)
-
-        # Alle Seiten bei mehrseitigen TIFFs extrahieren
-        if img_path.lower().endswith(('.tif', '.tiff')) and getattr(img, "n_frames", 1) > 1:
-            for i in range(img.n_frames):
-                img.seek(i)
-                images.append(img.convert("RGB").copy())
-        else:
-            images.append(img.convert("RGB"))
-
-    if not images:
-        raise ValueError("Keine gültigen Bilder zum Zusammenfassen gefunden.")
-
-    # Erstes Bild als Start, Rest anhängen
-    images[0].save(output_path, save_all=True, append_images=images[1:])
-
-def timestamped_pdf_name(prefix="merged_images"):
-    return f"{prefix}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-    
-def safe_filename_from_summary(summary: str, ext=".pdf") -> str:
-    name = summary.replace("§", "_").replace(" ", "_").replace("/", "-").strip()
-    name = "".join(c for c in name if c.isalnum() or c in "._-")
-    return name[:260] + ext  # sicherstellen, dass Pfadlänge nicht zu lang wird
-
-def copy_to_target(source_path, target_dir, new_filename):
-    """
-    DEPRECATED im Preview-Modus.
-    Belässt die Datei unangetastet und loggt nur.
-    Die tatsächliche Verschiebung/Umbenennung geschieht bei fs.commit().
-    """
-    log(f"[SKIP COPY] {source_path} -> {os.path.join(target_dir, new_filename)} (wird erst beim Commit finalisiert)")
-    # absichtlich kein copy; gib lediglich einen erwarteten Ziel-Pfad zurück:
-    return os.path.join(target_dir, new_filename)
-
-    
-def handle_successful_processing(summary_data, original_path, target_dir):
-    """
-    Statt sofort zu kopieren + Original zu löschen:
-    -> Wir planen NUR eine Umbenennung (im selben Ordner unter INPUT_ROOT).
-    'target_dir' wird ignoriert, bis ein expliziter Commit stattfindet.
-    """
-    feld1 = summary_data.get("name", "Unbekannt")
-    feld2 = summary_data.get("vorname", "Unbekannt")
-    feld3 = summary_data.get("geburtsdatum", "Unbekannt")
-    feld4 = summary_data.get("datum", "Unbekannt")
-    feld5 = summary_data.get("beschreibung1", "Unbekannt")
-    feld6 = summary_data.get("beschreibung2", "Unbekannt")
-    feld7 = summary_data.get("categoryID", "11")
-
-    new_filename = f"{feld1}µ{feld2}µ{feld3}µ{feld4}µ{feld5}, {feld6}µ{feld7}.pdf"
-
-    # REL- oder ABS-Pfad in REL unter INPUT_ROOT auflösen
-    rel_src = to_rel_under_input(original_path)
-    if not rel_src:
-        raise ValueError(f"Pfad liegt nicht unter INPUT_ROOT: {original_path}")
-
-    rel_dir = os.path.dirname(rel_src)
-    rel_dst = os.path.join(rel_dir, new_filename)
-
-    # Nur planen – keine echte Mutation
-    fs.plan_rename(rel_src, rel_dst)
-    log(f"[PLAN] rename {rel_src} -> {rel_dst}")
-
-    return {
-        "original": os.path.basename(original_path),
-        "renamed": new_filename,
-        "summary": summary_data
-    }
-
-def cleanup_old_json_files(folder, days_old=1):
-    cutoff = datetime.now() - timedelta(days=days_old)
-
-    for filename in os.listdir(folder):
-        if filename.endswith(".json"):
-            file_path = os.path.join(folder, filename)
-            try:
-                modified_time = datetime.fromtimestamp(os.path.getmtime(file_path))
-                if modified_time < cutoff:
-                    os.remove(file_path)
-                    print(f"🧹 Alte JSON gelöscht: {filename}")
-            except Exception as e:
-                print(f"⚠️ Fehler beim Löschen von {filename}: {e}")
-
-def clear_folder(folder_path):
-    for filename in os.listdir(folder_path):
-        file_path = os.path.join(folder_path, filename)
-        try:
-            if os.path.isfile(file_path) or os.path.islink(file_path):
-                os.unlink(file_path)  # Datei oder Symlink löschen
-            elif os.path.isdir(file_path):
-                shutil.rmtree(file_path)  # Unterordner rekursiv löschen
-        except Exception as e:
-            log(f'Fehler beim Löschen von {file_path}: {e}')
-
-def _image_to_temp_pdf(img_path: str, tmp_dir: str) -> str:
-    """Bild zu temporärer PDF konvertieren und Pfad zurückgeben."""
-    out = os.path.join(tmp_dir, Path(img_path).stem + "_tmp.pdf")
-    with open(out, "wb") as f:
-        f.write(img2pdf.convert([img_path]))
-    return out
-
-def combine_and_delete(source_dir: str, selected_filenames: list[str]) -> str:
-    """
-    NEU: Kombiniert die ausgewählten Dateien zu EINER PDF **im STAGING**.
-    - plant zusätzlich den Merge fürs Commit
-    - löscht KEINE Originale mehr
-    - gibt den Dateinamen der neuen PDF zurück
-    """
-    if not selected_filenames:
-        raise ValueError("Keine Dateien ausgewählt.")
-
-    # relative Pfade der Inputs unter INPUT_ROOT ermitteln
-    rel_inputs = []
-    for name in selected_filenames:
-        abs_p = os.path.join(source_dir, name)
-        if not os.path.exists(abs_p):
-            raise FileNotFoundError(f"Datei nicht gefunden: {name}")
-        rel = to_rel_under_input(abs_p)
-        if not rel:
-            raise ValueError(f"Pfad liegt nicht unter INPUT_ROOT: {abs_p}")
-        rel_inputs.append(rel)
-
-    rel_dir = _to_rel_dir_under_input(source_dir)
-    if not rel_dir:
-        raise ValueError(f"Quellordner liegt nicht unter INPUT_ROOT: {source_dir}")
-
-    out_name = f"combined_{time.strftime('%Y%m%d_%H%M%S')}.pdf"
-    out_rel  = os.path.join(rel_dir, out_name)
-
-    # Merge wird geplant und sofort fürs Preview im Staging erzeugt
-    fs.plan_merge(rel_inputs, out_rel)
-    fs.merge_in_staging(rel_inputs, out_rel)
-
-    log(f"🧩 Kombiniert (STAGING): {len(rel_inputs)} Dateien → {out_rel}")
-    log("✅ Hinweis: Originale bleiben unverändert bis zum Commit.")
-    return out_rel  # relativer Pfad, inkl. Unterordner
-
-
+# ============================================================================
+# DATACLASSES
+# ============================================================================
 @dataclass
 class RenameOp:
     src_rel: str
@@ -193,6 +39,378 @@ class MergeOp:
     output_rel: str
     kind: str = "merge"
 
+# ============================================================================
+# SESSION REGISTRY
+# ============================================================================
+class SessionRegistry:
+    """Verwaltet aktive Sessions und deren Zeitstempel."""
+    
+    def __init__(self, registry_path: Path):
+        self.registry_path = registry_path
+        self.registry_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    def _load(self) -> dict:
+        if not self.registry_path.exists():
+            return {}
+        try:
+            with open(self.registry_path, 'r') as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    
+    def _save(self, data: dict):
+        with open(self.registry_path, 'w') as f:
+            json.dump(data, f, indent=2)
+    
+    def register(self, session_id: str):
+        registry = self._load()
+        registry[session_id] = {
+            'started': time.time(),
+            'last_activity': time.time()
+        }
+        self._save(registry)
+        logger.info(f"Session registriert: {session_id}")
+    
+    def update_activity(self, session_id: str):
+        registry = self._load()
+        if session_id in registry:
+            registry[session_id]['last_activity'] = time.time()
+            self._save(registry)
+    
+    def unregister(self, session_id: str):
+        registry = self._load()
+        if session_id in registry:
+            del registry[session_id]
+            self._save(registry)
+            logger.info(f"Session unregistriert: {session_id}")
+    
+    def get_active_sessions(self, timeout_minutes: int = 30) -> Set[str]:
+        registry = self._load()
+        cutoff = time.time() - (timeout_minutes * 60)
+        active = set()
+        
+        for session_id, data in registry.items():
+            if data.get('last_activity', 0) > cutoff:
+                active.add(session_id)
+        
+        return active
+    
+    def cleanup_stale_sessions(self, timeout_minutes: int = 30) -> Set[str]:
+        registry = self._load()
+        cutoff = time.time() - (timeout_minutes * 60)
+        stale = set()
+        
+        for session_id, data in list(registry.items()):
+            if data.get('last_activity', 0) <= cutoff:
+                stale.add(session_id)
+                del registry[session_id]
+        
+        if stale:
+            self._save(registry)
+            logger.info(f"Abgelaufene Sessions entfernt: {len(stale)}")
+        
+        return stale
+
+# ============================================================================
+# CLEANUP FUNCTIONS
+# ============================================================================
+def cleanup_orphaned_files(work_root: Path, output_root: Path, 
+                           active_sessions: Set[str]) -> dict:
+    """
+    Bereinigt verwaiste Dateien aus Work- und Output-Verzeichnissen.
+    
+    Args:
+        work_root: Pfad zum Work-Root (z.B. /app/medidok/work)
+        output_root: Pfad zum Output-Root (z.B. /app/medidok/staging)
+        active_sessions: Set mit aktiven Session-IDs
+    
+    Returns:
+        Dict mit Statistiken über gelöschte Dateien
+    """
+    stats = {
+        'work_dirs_removed': 0,
+        'work_files_removed': 0,
+        'staging_files_removed': 0,
+        'errors': []
+    }
+    
+    # Sicherstellen, dass work_root und output_root Path-Objekte sind
+    work_root = Path(work_root)
+    output_root = Path(output_root)
+    
+    log(f"🔍 Cleanup: work_root={work_root}, output_root={output_root}")
+    log(f"🔍 Cleanup: {len(active_sessions)} aktive Sessions: {active_sessions}")
+    
+    # 1. Work-Verzeichnisse aufräumen
+    if work_root.exists():
+        log(f"📂 Prüfe Work-Verzeichnis: {work_root}")
+        try:
+            # Alle Session-Verzeichnisse auflisten
+            session_dirs = [d for d in work_root.iterdir() if d.is_dir()]
+            log(f"   Gefundene Session-Verzeichnisse: {len(session_dirs)}")
+            
+            for session_dir in session_dirs:
+                session_id = session_dir.name
+                
+                # Wenn Session nicht aktiv -> löschen
+                if session_id not in active_sessions:
+                    try:
+                        # Dateien zählen
+                        file_count = sum(1 for _ in session_dir.rglob('*') if _.is_file())
+                        
+                        log(f"   🗑️ Lösche Session-Verzeichnis: {session_id} ({file_count} Dateien)")
+                        shutil.rmtree(session_dir)
+                        
+                        stats['work_dirs_removed'] += 1
+                        stats['work_files_removed'] += file_count
+                    except Exception as e:
+                        error_msg = f"Work-Dir {session_id}: {e}"
+                        stats['errors'].append(error_msg)
+                        log(f"   ❌ {error_msg}", level="warning")
+                else:
+                    log(f"   ✅ Behalte aktive Session: {session_id}")
+        except Exception as e:
+            error_msg = f"Fehler beim Scannen von work_root: {e}"
+            stats['errors'].append(error_msg)
+            log(f"❌ {error_msg}", level="error")
+    else:
+        log(f"⚠️ Work-Root existiert nicht: {work_root}")
+    
+    # 2. Output/Staging-Dateien aufräumen (nur wenn KEINE aktiven Sessions)
+    if output_root.exists() and not active_sessions:
+        log(f"📂 Prüfe Output-Verzeichnis: {output_root}")
+        cutoff = datetime.now() - timedelta(hours=24)
+        
+        try:
+            # Alle Dateien im Output-Verzeichnis
+            all_files = [f for f in output_root.rglob('*') if f.is_file()]
+            log(f"   Gefundene Dateien: {len(all_files)}")
+            
+            for item in all_files:
+                try:
+                    mtime = datetime.fromtimestamp(item.stat().st_mtime)
+                    
+                    # Nur alte Dateien löschen
+                    if mtime < cutoff:
+                        log(f"   🗑️ Lösche alte Staging-Datei: {item.name} (von {mtime.strftime('%Y-%m-%d %H:%M')})")
+                        item.unlink()
+                        stats['staging_files_removed'] += 1
+                    else:
+                        log(f"   ⏳ Behalte neuere Datei: {item.name}")
+                except Exception as e:
+                    error_msg = f"Staging {item.name}: {e}"
+                    stats['errors'].append(error_msg)
+                    log(f"   ❌ {error_msg}", level="warning")
+        except Exception as e:
+            error_msg = f"Fehler beim Scannen von output_root: {e}"
+            stats['errors'].append(error_msg)
+            log(f"❌ {error_msg}", level="error")
+    elif active_sessions:
+        log(f"⏭️ Überspringe Output-Cleanup: {len(active_sessions)} aktive Sessions")
+    else:
+        log(f"⚠️ Output-Root existiert nicht: {output_root}")
+    
+    return stats
+
+# ============================================================================
+# UTILITY FUNCTIONS
+# ============================================================================
+def sanitize_filename(name):
+    name = re.sub(r'[\\/:"*?<>|]', '_', name)
+    return name.strip()
+    
+def safe_line(lines, index, fallback):
+    try:
+        line = lines[index]
+    except IndexError:
+        return fallback
+    if line is None:
+        return fallback
+    line = str(line).strip()
+    return line if line else fallback
+
+def merge_images_to_pdf(image_paths, output_path):
+    images = []
+    for img_path in sorted(image_paths):
+        img = Image.open(img_path)
+        if img_path.lower().endswith(('.tif', '.tiff')) and getattr(img, "n_frames", 1) > 1:
+            for i in range(img.n_frames):
+                img.seek(i)
+                images.append(img.convert("RGB").copy())
+        else:
+            images.append(img.convert("RGB"))
+
+    if not images:
+        raise ValueError("Keine gültigen Bilder zum Zusammenfassen gefunden.")
+    
+    images[0].save(output_path, save_all=True, append_images=images[1:])
+
+def timestamped_pdf_name(prefix="merged_images"):
+    return f"{prefix}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+    
+def safe_filename_from_summary(summary: str, ext=".pdf") -> str:
+    name = summary.replace("§", "_").replace(" ", "_").replace("/", "-").strip()
+    name = "".join(c for c in name if c.isalnum() or c in "._-")
+    return name[:260] + ext
+
+def copy_to_target(source_path, target_dir, new_filename):
+    log(f"[SKIP COPY] {source_path} -> {os.path.join(target_dir, new_filename)} (wird erst beim Commit finalisiert)")
+    return os.path.join(target_dir, new_filename)
+    
+def handle_successful_processing(summary_data, original_path, target_dir):
+    feld1 = sanitize_filename(summary_data.get("name", "Unbekannt"))
+    feld2 = sanitize_filename(summary_data.get("vorname", "Unbekannt"))
+    feld3 = sanitize_filename(summary_data.get("geburtsdatum", "Unbekannt"))
+    feld4 = sanitize_filename(summary_data.get("datum", "Unbekannt"))
+    feld5 = sanitize_filename(summary_data.get("beschreibung1", "Unbekannt"))[:30]
+    feld6 = sanitize_filename(summary_data.get("beschreibung2", "Unbekannt"))[:120]
+    feld7 = sanitize_filename(summary_data.get("categoryID", "11"))
+
+    new_filename = f"{feld1}_{feld2}_{feld3}_{feld4}_{feld5}, {feld6}_{feld7}.pdf"
+
+    if os.path.isabs(original_path):
+        rel_src = to_rel_under_input(original_path)
+        if not rel_src:
+            rel_src = summary_data.get("file", os.path.basename(original_path))
+    else:
+        rel_src = original_path
+
+    rel_dir = os.path.dirname(rel_src) if "/" in rel_src else ""
+    rel_dst = os.path.join(rel_dir, new_filename) if rel_dir else new_filename
+
+    fs.plan_rename(rel_src, rel_dst)
+
+    return {
+        "original": os.path.basename(original_path),
+        "renamed": new_filename,
+        "summary": summary_data
+    }
+
+def cleanup_old_json_files(folder, days_old=1):
+    """Löscht alte JSON-Dateien und gibt Statistik zurück."""
+    if not os.path.exists(folder):
+        log(f"⚠️ JSON-Ordner existiert nicht: {folder}")
+        return 0
+    
+    cutoff = datetime.now() - timedelta(days=days_old)
+    deleted_count = 0
+    
+    for filename in os.listdir(folder):
+        if filename.endswith(".json"):
+            file_path = os.path.join(folder, filename)
+            try:
+                modified_time = datetime.fromtimestamp(os.path.getmtime(file_path))
+                if modified_time < cutoff:
+                    os.remove(file_path)
+                    deleted_count += 1
+                    log(f"🗑️ Alte control.json gelöscht: {filename}")
+            except Exception as e:
+                log(f"⚠️ Fehler beim Löschen von {filename}: {e}", level="warning")
+    
+    if deleted_count > 0:
+        log(f"✅ {deleted_count} alte control.json-Dateien aufgeräumt")
+    else:
+        log(f"ℹ️ Keine alten JSON-Dateien zum Löschen gefunden")
+    
+    return deleted_count
+
+def clear_folder(folder_path):
+    for filename in os.listdir(folder_path):
+        file_path = os.path.join(folder_path, filename)
+        try:
+            if os.path.isfile(file_path) or os.path.islink(file_path):
+                os.unlink(file_path)
+            elif os.path.isdir(file_path):
+                shutil.rmtree(file_path)
+        except Exception as e:
+            log(f'Fehler beim Löschen von {file_path}: {e}')
+
+def _image_to_temp_pdf(img_path: str, tmp_dir: str) -> str:
+    out = os.path.join(tmp_dir, Path(img_path).stem + "_tmp.pdf")
+    with open(out, "wb") as f:
+        f.write(img2pdf.convert([img_path]))
+    return out
+
+def combine_and_delete(source_dir: str, selected_filenames: list[str]) -> str:
+    if not selected_filenames:
+        raise ValueError("Keine Dateien ausgewählt.")
+
+    rel_inputs = []
+    for name in selected_filenames:
+        abs_p = os.path.join(source_dir, name)
+        if not os.path.exists(abs_p):
+            raise FileNotFoundError(f"Datei nicht gefunden: {name}")
+        
+        rel = to_rel_under_input(abs_p)
+        if not rel:
+            raise ValueError(f"Pfad liegt nicht unter INPUT_ROOT: {abs_p}")
+        rel_inputs.append(rel)
+
+    rel_dir = _to_rel_dir_under_input(source_dir)
+    if not rel_dir:
+        raise ValueError(f"Quellordner liegt nicht unter INPUT_ROOT: {source_dir}")
+
+    out_name = f"combined_{time.strftime('%Y%m%d_%H%M%S')}.pdf"
+    out_rel  = os.path.join(rel_dir, out_name) if rel_dir else out_name
+
+    fs.plan_merge(rel_inputs, out_rel)
+    fs.merge_in_staging(rel_inputs, out_rel)
+
+    log(f"✅ Merge abgeschlossen: {out_rel}")
+    return out_rel
+
+def split_pdf_to_pages(source_dir: str, filename: str) -> list[str]:
+    """Zerlegt eine PDF in einzelne Seiten im STAGING."""
+    abs_path = os.path.join(source_dir, filename)
+    if not os.path.exists(abs_path):
+        raise FileNotFoundError(f"PDF nicht gefunden: {filename}")
+    
+    if not filename.lower().endswith('.pdf'):
+        raise ValueError(f"Keine PDF-Datei: {filename}")
+    
+    rel_input = to_rel_under_input(abs_path)
+    if not rel_input:
+        raise ValueError(f"Pfad liegt nicht unter INPUT_ROOT: {abs_path}")
+    
+    rel_dir = os.path.dirname(rel_input)
+    base_name = Path(filename).stem
+    
+    try:
+        doc = fitz.open(abs_path)
+    except Exception as e:
+        raise ValueError(f"Fehler beim Öffnen der PDF: {e}")
+    
+    num_pages = len(doc)
+    if num_pages <= 1:
+        doc.close()
+        raise ValueError(f"PDF hat nur {num_pages} Seite(n). Mindestens 2 Seiten erforderlich.")
+    
+    created_files = []
+    staging_dir = fs.work_dir / rel_dir if rel_dir else fs.work_dir
+    staging_dir.mkdir(parents=True, exist_ok=True)
+    
+    for page_num in range(num_pages):
+        new_name = f"{base_name}_Seite_{page_num + 1}.pdf"
+        new_rel = os.path.join(rel_dir, new_name) if rel_dir else new_name
+        
+        staged_path = fs.work_dir / new_rel
+        staged_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        new_doc = fitz.open()
+        new_doc.insert_pdf(doc, from_page=page_num, to_page=page_num)
+        new_doc.save(str(staged_path))
+        new_doc.close()
+        
+        created_files.append(new_rel)
+    
+    doc.close()
+    log(f"✅ PDF in {num_pages} Einzelseiten zerlegt: {filename}")
+    
+    return created_files
+
+# ============================================================================
+# STAGING SESSION
+# ============================================================================
 class StagingSession:
     def __init__(self):
         self.input_root  = Path(INPUT_ROOT)
@@ -201,7 +419,6 @@ class StagingSession:
         self.session_id: str | None = None
         self.ops: list[dict] = []
 
-    # ---- intern ----
     @property
     def work_dir(self) -> Path:
         if not self.session_id:
@@ -219,7 +436,6 @@ class StagingSession:
         with open(self.meta_file, "w", encoding="utf-8") as f:
             json.dump({"ops": self.ops}, f, ensure_ascii=False, indent=2)
 
-    # ---- Session-API ----
     def start(self, session_id: str):
         self.session_id = session_id
         self.ops = []
@@ -232,102 +448,92 @@ class StagingSession:
             return
         shutil.rmtree(self.work_dir, ignore_errors=True)
         self.meta_file.unlink(missing_ok=True)
-        logger.info("Staging session %s aborted (staging cleaned)", self.session_id)
+        logger.info("Staging session %s aborted", self.session_id)
         self.session_id = None
         self.ops = []
 
     def commit(self):
-        """
-        Wendet alle geplanten Operationen an:
-        - rename: Quelle kann im STAGING (alter ODER bereits neuer Name) oder im INPUT liegen.
-                  Ziel:
-                    * STAGING-Quelle -> OUTPUT_ROOT/<dst_rel>
-                    * INPUT-Quelle   -> INPUT_ROOT/<dst_rel>
-        - delete: nur im INPUT löschen
-        - merge : STAGING-Output -> OUTPUT_ROOT
-        """
-        # --- Renames ---
         for op in self.ops:
             if op.get("kind") != "rename":
                 continue
             src_rel = op["src_rel"]
             dst_rel = op["dst_rel"]
 
-            staged_src_old = self.work_dir / src_rel
-            staged_src_new = self.work_dir / dst_rel  # falls im Staging schon umbenannt (für Preview)
-            input_src      = self.input_root / src_rel
-
-            # Ziel im finalen Output (für Staging-Quellen)
+            staged_src = self.work_dir / src_rel
             final_dst = self.output_root / dst_rel
             final_dst.parent.mkdir(parents=True, exist_ok=True)
 
-            if staged_src_old.exists():
-                os.replace(staged_src_old, final_dst)
-            elif staged_src_new.exists():
-                os.replace(staged_src_new, final_dst)
-            elif input_src.exists():
-                # echte Originale innerhalb INPUT_ROOT umbenennen
-                input_dst = self.input_root / dst_rel
-                input_dst.parent.mkdir(parents=True, exist_ok=True)
-                os.replace(input_src, input_dst)
+            if staged_src.exists():
+                os.replace(staged_src, final_dst)
             else:
-                # Quelle nirgends gefunden – nicht fatal, nur loggen
-                logger.warning("Commit rename: Quelle nicht gefunden (weder Staging noch Input): %s", src_rel)
+                logger.warning(f"Commit rename: Quelle nicht gefunden: {src_rel}")
 
-        # --- Deletes (nur Originale im INPUT_ROOT anfassen) ---
         for op in self.ops:
             if op.get("kind") == "delete":
                 target = self.input_root / op["target_rel"]
                 if target.exists():
                     target.unlink()
 
-        # --- Merges aus dem Staging finalisieren -> OUTPUT_ROOT ---
         for op in self.ops:
             if op.get("kind") == "merge":
                 staged_out = self.work_dir / op["output_rel"]
-                final_out  = self.output_root / op["output_rel"]
+                final_out = self.output_root / op["output_rel"]
                 final_out.parent.mkdir(parents=True, exist_ok=True)
                 if staged_out.exists():
                     os.replace(staged_out, final_out)
-                else:
-                    logger.warning("Commit merge: Staging-Output fehlt: %s", op["output_rel"])
 
-        # --- Cleanup Staging ---
         shutil.rmtree(self.work_dir, ignore_errors=True)
         self.meta_file.unlink(missing_ok=True)
-        logger.info("Staging session %s committed", self.session_id)
+        logger.info(f"Staging session {self.session_id} committed")
         self.session_id = None
         self.ops = []
 
-    # ---- Plan-Only (nichts an Originals anfassen) ----
     def plan_rename(self, src_rel: str, dst_rel: str):
-        self.ops.append(asdict(RenameOp(src_rel, dst_rel))); self._save()
+        self.ops.append(asdict(RenameOp(src_rel, dst_rel)))
+        self._save()
 
     def plan_delete(self, rel_path: str):
-        self.ops.append(asdict(DeleteOp(rel_path))); self._save()
+        self.ops.append(asdict(DeleteOp(rel_path)))
+        self._save()
 
     def plan_merge(self, inputs_rel: list[str], output_rel: str):
-        self.ops.append(asdict(MergeOp(inputs_rel, output_rel))); self._save()
+        self.ops.append(asdict(MergeOp(inputs_rel, output_rel)))
+        self._save()
 
-    # ---- Staging-Helfer ----
     def link_or_copy_to_staging(self, rel_path: str):
         src = self.input_root / rel_path
         dst = self.work_dir / rel_path
         dst.parent.mkdir(parents=True, exist_ok=True)
         try:
-            os.link(src, dst)  # Hardlink spart Platz/zeit
+            os.link(src, dst)
         except Exception:
             shutil.copy2(src, dst)
 
     def merge_in_staging(self, inputs_rel: list[str], output_rel: str):
-        out = self.work_dir / output_rel
-        out.parent.mkdir(parents=True, exist_ok=True)
-        with open(out, "wb") as w:
-            for rel in inputs_rel:
-                with open(self.input_root / rel, "rb") as r:
-                    shutil.copyfileobj(r, w)
+        """Merged PDFs mit Ghostscript"""
+        import subprocess
+        
+        if not self.session_id:
+            raise RuntimeError("Keine aktive Session")
+        
+        source_paths = [str(self.input_root / r) for r in inputs_rel]
+        out_path = self.work_dir / output_rel
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        cmd = ['gs', '-dBATCH', '-dNOPAUSE', '-q', '-sDEVICE=pdfwrite', 
+               '-dPDFSETTINGS=/prepress', f'-sOutputFile={out_path}'] + source_paths
+        
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+        
+        if result.returncode == 0 and out_path.exists():
+            test = fitz.open(str(out_path))
+            page_count = test.page_count
+            test.close()
+            log(f"✅ Merge erfolgreich: {page_count} Seiten")
+        else:
+            log(f"❌ Ghostscript Fehler: {result.stderr}", level="error")
+            raise RuntimeError(f"PDF Merge fehlgeschlagen: {result.stderr}")
 
-    # ---- Vorschauzustand berechnen ----
     def preview_listing(self) -> list[str]:
         existing = {
             p.relative_to(self.input_root).as_posix()
@@ -342,51 +548,55 @@ class StagingSession:
             elif op["kind"] == "merge":
                 existing.add(op["output_rel"])
         return sorted(existing)
+    
+    def list_staged_files(self) -> list[str]:
+        """Gibt Liste aller Dateien im aktuellen Staging zurück."""
+        if not self.session_id or not self.work_dir.exists():
+            return []
+        
+        files = []
+        for item in self.work_dir.rglob('*'):
+            if item.is_file():
+                rel_path = item.relative_to(self.work_dir).as_posix()
+                files.append(rel_path)
+        
+        return sorted(files)
 
-# Globale Instanz:
+# Globale Instanz
 fs = StagingSession()
 
-# Utility: echte Pfade -> relative Pfade unter INPUT_ROOT mappen
+# ============================================================================
+# PATH UTILITIES
+# ============================================================================
 def to_rel_under_input(path: str | Path) -> str | None:
-    """Gibt einen REL-Pfad zurück, wenn `path` unter INPUT_ROOT ODER unter fs.work_dir liegt.
-       REL-Pfade bleiben unverändert. Andernfalls None.
-    """
-    from services.file_utils import fs  # lazy import, falls nötig
-
-    # Relativ? -> direkt normalisieren
     if not os.path.isabs(path):
         return Path(path).as_posix()
 
     p = Path(path).resolve()
     in_root = Path(INPUT_ROOT).resolve()
 
-    # 1) unter INPUT_ROOT?
     try:
         return p.relative_to(in_root).as_posix()
     except Exception:
         pass
 
-    # 2) unter aktuellem STAGING?
     if fs.session_id:
         try:
             return p.relative_to(fs.work_dir.resolve()).as_posix()
         except Exception:
             pass
 
-    return None  # liegt weder unter INPUT_ROOT noch im Staging
+    return None
 
-# Neu: kleines Hilfsding, falls noch nicht vorhanden
 def _to_rel_dir_under_input(abs_dir: str | Path) -> Optional[str]:
-    """Wie to_rel_under_input, aber für Verzeichnisse."""
     p = Path(abs_dir).resolve()
     root = Path(INPUT_ROOT).resolve()
     try:
         return p.relative_to(root).as_posix()
     except ValueError:
-        logger.warning("Dir %s not under INPUT_ROOT %s; skipping", p, root)
+        logger.warning("Dir %s not under INPUT_ROOT %s", p, root)
         return None
 
 def _resolve_rel_for_read(rel: str) -> Path:
     cand = fs.work_dir / rel
     return cand if cand.exists() else (fs.input_root / rel)
-

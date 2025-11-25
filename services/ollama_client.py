@@ -5,7 +5,14 @@ from .logger import log
 
 def warmup_ollama():
     dummy_prompt = "Dies ist ein Dummy-Text zur Initialisierung. Bitte ignoriere diesen Text."
-    selected_model = session.get("selected_model", MODEL_LLM1)
+    
+    # Versuche Modell aus Session zu holen, sonst Fallback
+    try:
+        selected_model = session.get("selected_model", MODEL_LLM1)
+    except RuntimeError:
+        # Außerhalb Request-Context
+        selected_model = MODEL_LLM1
+    
     log(f"Ollama wird vorgewärmt mit Modell: {selected_model}")
     try:
         response = requests.post(
@@ -17,13 +24,19 @@ def warmup_ollama():
     except Exception as e:
         log(f"Ollama nicht erreichbar: {e}")
 
-def send_to_ollama(prompt, mnr, model=None):
-    # Modell-Priorität:
-    # 1) explizit übergebenes `model`
-    # 2) Session-Auswahl
-    # 3) Default MODEL_LLM1
-    if model is None:
-        model = session.get("selected_model", MODEL_LLM1)
+
+def send_to_ollama(prompt, mnr, model):
+    """
+    Sendet einen Prompt an Ollama.
+    
+    Args:
+        prompt: Der zu verarbeitende Text-Prompt
+        mnr: Referenz-Nummer für Logging (wird derzeit nicht verwendet)
+        model: LLM-Modell (z.B. "mistral-nemo:latest") - PFLICHTPARAMETER
+        
+    Returns:
+        str: Response vom LLM oder None bei Fehler
+    """
     try:
         response = requests.post(
             OLLAMA_URL,

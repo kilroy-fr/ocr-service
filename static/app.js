@@ -806,6 +806,288 @@ async function handleBatchSplit() {
   }
 }
 
+// ===== MEDIDOK TAB - OCR ONLY =====
+
+async function handleMediOcrOnly() {
+  const selected = Array.from(document.querySelectorAll('input[name="selected_files"]:checked:not(:disabled)'))
+    .map(cb => cb.value);
+  
+  if (selected.length === 0) { 
+    alert("Bitte mindestens eine Datei auswählen."); 
+    return; 
+  }
+
+  if (!confirm(`📄 ${selected.length} Datei(en) nur mit OCR verarbeiten (ohne KI-Analyse)?\n\nDie Dateien werden direkt zum Download bereitgestellt.`)) {
+    return;
+  }
+
+  showSpinner(true);
+  
+  try {
+    const res = await fetch("/ocr_only", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ files: selected })
+    });
+    
+    const data = await res.json().catch(() => ({}));
+    
+    if (!res.ok || !data.success) {
+      alert("Fehler beim OCR: " + (data.message || `HTTP ${res.status}`));
+      return;
+    }
+    
+    // Erfolgreiche Dateien anzeigen
+    const successful = data.results.filter(r => r.success);
+    const failed = data.results.filter(r => !r.success);
+    
+    let message = `✅ OCR abgeschlossen!\n\n`;
+    message += `Erfolgreich: ${successful.length}\n`;
+    
+    if (failed.length > 0) {
+      message += `Fehlgeschlagen: ${failed.length}\n\n`;
+      message += `Fehler:\n`;
+      failed.forEach(f => {
+        message += `- ${f.original}: ${f.error}\n`;
+      });
+    }
+    
+    if (successful.length > 0) {
+      message += `\n📥 Die OCR-Dateien sind im Staging-Bereich verfügbar und können heruntergeladen werden.`;
+    }
+    
+    alert(message);
+    
+    // Staging-Liste aktualisieren
+    await loadStagedFiles('medidok');
+    
+    // Erste erfolgreiche Datei in Vorschau anzeigen
+    if (successful.length > 0) {
+      const firstOcrFile = successful[0].ocr_file;
+      const preview = document.getElementById("preview");
+      const iframe = `<iframe src="/processed/${encodeURIComponent(firstOcrFile)}#page=1&zoom=fit" scrolling="no"></iframe>`;
+      preview.innerHTML = iframe;
+    }
+    
+  } catch (err) {
+    console.error("[medidok ocr only] Fehler:", err);
+    alert("Netzwerk-/JS-Fehler: " + err);
+  } finally {
+    showSpinner(false);
+  }
+}
+
+// ===== EINZEL TAB - OCR ONLY =====
+
+async function handleEinzelOcrOnly() {
+  const selected = Array.from(document.querySelectorAll('#einzelStagedFiles input[type="checkbox"]:checked:not(:disabled)'))
+    .map(cb => cb.value);
+  
+  if (selected.length === 0) {
+    alert('Bitte mindestens eine Datei auswählen.');
+    return;
+  }
+
+  if (!confirm(`📄 ${selected.length} Datei(en) nur mit OCR verarbeiten (ohne KI-Analyse)?\n\nDie Dateien werden direkt zum Download bereitgestellt.`)) {
+    return;
+  }
+
+  showSpinner(true);
+  
+  try {
+    const res = await fetch('/ocr_only', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ files: selected })
+    });
+    
+    const data = await res.json();
+    
+    if (!res.ok || !data.success) {
+      alert('Fehler beim OCR: ' + (data.message || `HTTP ${res.status}`));
+      return;
+    }
+    
+    // Erfolgreiche Dateien anzeigen
+    const successful = data.results.filter(r => r.success);
+    const failed = data.results.filter(r => !r.success);
+    
+    let message = `✅ OCR abgeschlossen!\n\n`;
+    message += `Erfolgreich: ${successful.length}\n`;
+    
+    if (failed.length > 0) {
+      message += `Fehlgeschlagen: ${failed.length}\n\n`;
+      message += `Fehler:\n`;
+      failed.forEach(f => {
+        message += `- ${f.original}: ${f.error}\n`;
+      });
+    }
+    
+    if (successful.length > 0) {
+      message += `\n📥 Die OCR-Dateien sind im Staging-Bereich verfügbar und können heruntergeladen werden.`;
+    }
+    
+    alert(message);
+    
+    // Staging-Liste aktualisieren
+    await loadStagedFiles('einzel');
+    
+    // Erste erfolgreiche Datei in Vorschau anzeigen
+    if (successful.length > 0) {
+      const firstOcrFile = successful[0].ocr_file;
+      const preview = document.getElementById('einzelPreview');
+      const iframe = `<iframe src="/processed/${encodeURIComponent(firstOcrFile)}#page=1&zoom=fit" scrolling="no"></iframe>`;
+      preview.innerHTML = iframe;
+    }
+    
+  } catch (err) {
+    console.error('[einzel ocr only] Fehler:', err);
+    alert('Fehler: ' + err);
+  } finally {
+    showSpinner(false);
+  }
+}
+
+// ===== BATCH TAB - OCR ONLY =====
+
+async function handleBatchOcrOnly() {
+  const selected = Array.from(document.querySelectorAll('#batchStagedFiles input[type="checkbox"]:checked:not(:disabled)'))
+    .map(cb => cb.value);
+  
+  if (selected.length === 0) {
+    alert('Bitte mindestens eine Datei auswählen.');
+    return;
+  }
+
+  if (!confirm(`📄 ${selected.length} Datei(en) nur mit OCR verarbeiten (ohne KI-Analyse)?\n\nDie Dateien werden direkt zum Download bereitgestellt.`)) {
+    return;
+  }
+
+  showSpinner(true);
+  
+  try {
+    const res = await fetch('/ocr_only', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ files: selected })
+    });
+    
+    const data = await res.json();
+    
+    if (!res.ok || !data.success) {
+      alert('Fehler beim OCR: ' + (data.message || `HTTP ${res.status}`));
+      return;
+    }
+    
+    // Erfolgreiche Dateien anzeigen
+    const successful = data.results.filter(r => r.success);
+    const failed = data.results.filter(r => !r.success);
+    
+    let message = `✅ OCR abgeschlossen!\n\n`;
+    message += `Erfolgreich: ${successful.length}\n`;
+    
+    if (failed.length > 0) {
+      message += `Fehlgeschlagen: ${failed.length}\n\n`;
+      message += `Fehler:\n`;
+      failed.forEach(f => {
+        message += `- ${f.original}: ${f.error}\n`;
+      });
+    }
+    
+    if (successful.length > 0) {
+      message += `\n📥 Die OCR-Dateien sind im Staging-Bereich verfügbar und können heruntergeladen werden.`;
+    }
+    
+    alert(message);
+    
+    // Staging-Liste aktualisieren
+    await loadStagedFiles('batch');
+    
+    // Erste erfolgreiche Datei in Vorschau anzeigen
+    if (successful.length > 0) {
+      const firstOcrFile = successful[0].ocr_file;
+      const preview = document.getElementById('batchPreview');
+      const iframe = `<iframe src="/processed/${encodeURIComponent(firstOcrFile)}#page=1&zoom=fit" scrolling="no"></iframe>`;
+      preview.innerHTML = iframe;
+    }
+    
+  } catch (err) {
+    console.error('[batch ocr only] Fehler:', err);
+    alert('Fehler: ' + err);
+  } finally {
+    showSpinner(false);
+  }
+}
+
+// ========================================
+// BUTTON-STATUS UPDATE ERWEITERN
+// Ergänze die bestehende updateButtonStates Funktion
+// ========================================
+
+// In der bestehenden updateButtonStates() Funktion ergänzen:
+function updateButtonStates(tab = currentTab) {
+  const prefix = tab === 'medidok' ? 'medi' :
+                 tab === 'einzel' ? 'einzel' :
+                 'batch';
+  
+  const selector = tab === 'medidok' ? 
+    'input[name="selected_files"]:not(:disabled)' :
+    `#${tab === 'einzel' ? 'einzelStagedFiles' : 'batchStagedFiles'} input[type="checkbox"]:not(:disabled)`;
+  
+  const checkboxes = document.querySelectorAll(selector);
+  const submitBtn = document.getElementById(prefix === 'medi' ? 'medidokSubmit' : `${prefix}Analyze`);
+  const combineBtn = document.getElementById(`${prefix}Combine`);
+  const splitBtn = document.getElementById(`${prefix}Split`);
+  const ocrOnlyBtn = document.getElementById(`${prefix}OcrOnly`); // NEU
+  
+  const selected = Array.from(checkboxes).filter(cb => cb.checked);
+  const count = selected.length;
+  
+  if (submitBtn) submitBtn.disabled = count === 0;
+  if (combineBtn) combineBtn.disabled = count < 2;
+  
+  if (splitBtn) {
+    const onePdfSelected = count === 1 && selected[0].value.toLowerCase().endsWith('.pdf');
+    splitBtn.disabled = !onePdfSelected;
+  }
+  
+  // NEU: OCR-Only Button aktivieren wenn mind. 1 Datei ausgewählt
+  if (ocrOnlyBtn) {
+    ocrOnlyBtn.disabled = count === 0;
+  }
+  
+  // Master-Checkbox aktualisieren
+  if (tab === 'medidok') {
+    updateMasterCheckbox('medidok');
+  } else if (tab === 'batch') {
+    updateMasterCheckbox('batch');
+  }
+}
+
+// ========================================
+// EVENT LISTENER REGISTRIERUNG
+// Füge diese Zeilen in die DOMContentLoaded Initialisierung ein
+// ========================================
+
+// In der window.addEventListener("DOMContentLoaded", ...) Funktion ergänzen:
+
+// ===== MEDIDOK TAB - OCR ONLY =====
+const mediOcrOnly = document.getElementById("mediOcrOnly");
+if (mediOcrOnly) {
+  mediOcrOnly.addEventListener("click", handleMediOcrOnly);
+}
+
+// ===== EINZEL TAB - OCR ONLY =====
+const einzelOcrOnly = document.getElementById("einzelOcrOnly");
+if (einzelOcrOnly) {
+  einzelOcrOnly.addEventListener("click", handleEinzelOcrOnly);
+}
+
+// ===== BATCH TAB - OCR ONLY =====
+const batchOcrOnly = document.getElementById("batchOcrOnly");
+if (batchOcrOnly) {
+  batchOcrOnly.addEventListener("click", handleBatchOcrOnly);
+}
 // ========================================
 // INITIALISIERUNG
 // ========================================
@@ -829,6 +1111,14 @@ window.addEventListener("DOMContentLoaded", async () => {
       updateButtonStates(currentTab);
     }
   });
+
+  // Reload-Button Event-Listener
+  const reloadBtn = document.getElementById('reloadBtn');
+  if (reloadBtn) {
+    reloadBtn.addEventListener('click', () => {
+      location.reload();
+    });
+  }
 
   // Logging via SSE
   try {

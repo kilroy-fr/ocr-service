@@ -1,0 +1,35 @@
+localhost {
+    # Eigene Zertifikate verwenden (von makecert erstellt)
+    tls /certs/localhost.pem /certs/localhost-key.pem
+
+    # Reverse Proxy zu Flask-App
+    reverse_proxy ocr-web:5000
+
+    # Logging
+    log {
+        output file /var/log/caddy/access.log
+        format json
+    }
+
+    # Header für Sicherheit
+    header {
+        # Sicherheits-Header
+        Strict-Transport-Security "max-age=31536000;"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "SAMEORIGIN"
+        Referrer-Policy "strict-origin-when-cross-origin"
+
+        # Server-Header entfernen
+        -Server
+    }
+
+    # Client-Upload-Größe erhöhen (für große PDF-Dateien)
+    request_body {
+        max_size 100MB
+    }
+}
+
+# HTTP zu HTTPS Redirect
+http://localhost {
+    redir https://localhost{uri} permanent
+}

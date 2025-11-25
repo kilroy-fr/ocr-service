@@ -119,47 +119,87 @@ def convert_images_to_pdf_with_ocr(input_dir, output_dir_unused):
 def process_medidok_files(file_paths, target_dir_unused):
     """
     Verarbeitet Medidok-Dateien staging-sicher:
+    - Unterstützt Dateien aus INPUT_ROOT UND Staging
     - Bilddateien -> temp PDF im Staging -> OCR im Staging
     - KEIN Verschieben nach FAIL_DIR, KEIN Löschen der Originale
     - Rückgabe: Liste Ergebnis-Metadaten für UI
     """
     results = []
 
-    for original_file_path in file_paths:
-        filename = os.path.basename(original_file_path)
+    for file_identifier in file_paths:
+        # file_identifier kann sein:
+        # - Nur Dateiname (z.B. "test.pdf")
+        # - Relativer Pfad (z.B. "combined_20250114_123456.pdf")
+        # - Absoluter Pfad (sollte nicht vorkommen)
+        
+        filename = os.path.basename(file_identifier)
+        
         if not filename.lower().endswith(('.pdf', '.jpg', '.jpeg', '.png')):
+            log(f"⏭️ Überspringe Datei (kein unterstütztes Format): {filename}")
             continue
 
-        original_file_path = os.path.join(SOURCE_DIR_MEDIDOK, filename)
-        working_input = original_file_path
+        # ✅ WICHTIG: Original-Dateinamen JETZT speichern (ohne _ocr.pdf)
+        true_original_filename = filename
+        
+        # Pfadauflösung: Staging ZUERST, dann Original
+        working_input = None
+        is_from_staging = False
+        
+        # 1. Versuch: Im Staging suchen
+        if fs.session_id:
+            staged_path = fs.work_dir / file_identifier
+            if staged_path.exists():
+                working_input = str(staged_path)
+                is_from_staging = True
+                log(f"📂 Staging-Datei gefunden: {filename}")
+        
+        # 2. Versuch: Im INPUT_ROOT suchen
+        if not working_input:
+            original_path = os.path.join(SOURCE_DIR_MEDIDOK, filename)
+            if os.path.exists(original_path):
+                working_input = original_path
+                log(f"📂 Original-Datei gefunden: {filename}")
+        
+        # 3. Nicht gefunden
+        if not working_input:
+            log(f"❌ Datei nicht gefunden (weder Staging noch Input): {filename}", level="error")
+            continue
 
         # Falls Bild: erst staging-Temp-PDF erzeugen
         if filename.lower().endswith(('.jpg', '.jpeg', '.png')):
-            rel_dir = to_rel_under_input(SOURCE_DIR_MEDIDOK) or ""
-            temp_rel = os.path.join(rel_dir, os.path.splitext(filename)[0] + "_converted.pdf")
-            temp_pdf = os.path.join(fs.work_dir, temp_rel)
-            os.makedirs(os.path.dirname(temp_pdf), exist_ok=True)
+            temp_rel = f"{os.path.splitext(filename)[0]}_converted.pdf"
+            temp_pdf = fs.work_dir / temp_rel
+            temp_pdf.parent.mkdir(parents=True, exist_ok=True)
+            
             with open(temp_pdf, "wb") as f:
-                f.write(img2pdf.convert([original_file_path]))
-            working_input = temp_pdf
+                f.write(img2pdf.convert([working_input]))
+            
+            working_input = str(temp_pdf)
+            log(f"🖼️ Bild zu PDF konvertiert: {temp_rel}")
 
         # OCR im Staging
-        src_rel = to_rel_under_input(original_file_path) or ""
-        base_no_ext = os.path.splitext(os.path.basename(original_file_path))[0]
-        out_rel = os.path.join(os.path.dirname(src_rel), f"{base_no_ext}_ocr.pdf")
+        base_no_ext = os.path.splitext(filename)[0]
+        
+        # ✅ WICHTIG: out_rel sollte FLACH sein (kein Unterverzeichnis)
+        out_rel = f"{base_no_ext}_ocr.pdf"
+        
         staged_out = ocr_to_staging(working_input, out_rel)
 
         if not staged_out:
-            log(f"❌ Fehler bei Verarbeitung – Original bleibt unverändert: {original_file_path}")
+            log(f"❌ Fehler bei Verarbeitung – Datei bleibt unverändert: {filename}")
             continue
+
+        log(f"✅ OCR erstellt im Staging: {staged_out}")
 
         # Summary + Umbenennungsplan (handle_successful_processing plant nur!)
         summary = summarize_pdf(staged_out)
         text = (summary or "").strip()
         lines = [(s or "").strip() for s in text.split("\n")]
+        
         summary_data = {
-            "file": out_rel,
+            "file": out_rel,  # ✅ Relativer Pfad für Frontend
             "filename": os.path.basename(staged_out),
+            "originalFilename": true_original_filename,  # ✅ HIER: Echtes Original verwenden!
             "name": safe_line(lines, 0, "Unbekannt"),
             "vorname": safe_line(lines, 1, "Unbekannt"),
             "geburtsdatum": safe_line(lines, 2, "Unbekannt"),
@@ -168,13 +208,117 @@ def process_medidok_files(file_paths, target_dir_unused):
             "beschreibung2": safe_line(lines, 5, "Keine Beschreibung verfügbar"),
             "categoryID": safe_line(lines, 6, "11"),
         }
+        
         create_control_json_from_summaries([summary_data])
 
         result = handle_successful_processing(
             summary_data=summary_data,
-            original_path=staged_out,  # hier: die STAGING-Datei
+            original_path=staged_out,  # hier: die STAGING-Datei (absoluter Pfad)
             target_dir=os.path.dirname(staged_out)
         )
+        
+        log(f"📋 Result: {result}")
+        results.append(result)
+
+    return results
+
+def process_medidok_files_with_model(file_paths, target_dir_unused, model, session_id):
+    """
+    Thread-sichere Variante von process_medidok_files für Background-Threads.
+    Benötigt explizites Modell und Session-ID (kein Flask Request-Context).
+    
+    Args:
+        file_paths: Liste von Dateipfaden
+        target_dir_unused: Wird nicht verwendet (Kompatibilität)
+        model: LLM-Modell explizit (z.B. "mistral-nemo:latest")
+        session_id: Flask Session-ID explizit
+        
+    Returns:
+        list: Liste von Result-Dictionaries mit 'summary' Key
+    """
+    from .summarizer import summarize_pdf
+    
+    results = []
+
+    for file_identifier in file_paths:
+        filename = os.path.basename(file_identifier)
+        
+        if not filename.lower().endswith(('.pdf', '.jpg', '.jpeg', '.png')):
+            log(f"⏭️ Überspringe Datei (kein unterstütztes Format): {filename}")
+            continue
+
+        true_original_filename = filename
+        
+        # Pfadauflösung: Staging ZUERST, dann Original
+        working_input = None
+        is_from_staging = False
+        
+        if fs.session_id:
+            staged_path = fs.work_dir / file_identifier
+            if staged_path.exists():
+                working_input = str(staged_path)
+                is_from_staging = True
+                log(f"📂 Staging-Datei gefunden: {filename}")
+        
+        if not working_input:
+            original_path = os.path.join(SOURCE_DIR_MEDIDOK, filename)
+            if os.path.exists(original_path):
+                working_input = original_path
+                log(f"📂 Original-Datei gefunden: {filename}")
+        
+        if not working_input:
+            log(f"❌ Datei nicht gefunden: {filename}", level="error")
+            continue
+
+        # Falls Bild: erst staging-Temp-PDF erzeugen
+        if filename.lower().endswith(('.jpg', '.jpeg', '.png')):
+            temp_rel = f"{os.path.splitext(filename)[0]}_converted.pdf"
+            temp_pdf = fs.work_dir / temp_rel
+            temp_pdf.parent.mkdir(parents=True, exist_ok=True)
+            
+            with open(temp_pdf, "wb") as f:
+                f.write(img2pdf.convert([working_input]))
+            
+            working_input = str(temp_pdf)
+            log(f"🖼️ Bild zu PDF konvertiert: {temp_rel}")
+
+        # OCR im Staging
+        base_no_ext = os.path.splitext(filename)[0]
+        out_rel = f"{base_no_ext}_ocr.pdf"
+        
+        staged_out = ocr_to_staging(working_input, out_rel)
+
+        if not staged_out:
+            log(f"❌ Fehler bei Verarbeitung: {filename}")
+            continue
+
+        log(f"✅ OCR erstellt im Staging: {staged_out}")
+
+        # ✅ Summary mit explizitem Modell (thread-sicher)
+        summary = summarize_pdf(staged_out, model=model)
+        text = (summary or "").strip()
+        lines = [(s or "").strip() for s in text.split("\n")]
+        
+        summary_data = {
+            "file": out_rel,
+            "filename": os.path.basename(staged_out),
+            "originalFilename": true_original_filename,
+            "name": safe_line(lines, 0, "Unbekannt"),
+            "vorname": safe_line(lines, 1, "Unbekannt"),
+            "geburtsdatum": safe_line(lines, 2, "Unbekannt"),
+            "datum": safe_line(lines, 3, "Unbekannt"),
+            "beschreibung1": safe_line(lines, 4, "Kein Arzt erkannt"),
+            "beschreibung2": safe_line(lines, 5, "Keine Beschreibung verfügbar"),
+            "categoryID": safe_line(lines, 6, "11"),
+        }
+
+        result = handle_successful_processing(
+            summary_data=summary_data,
+            original_path=staged_out,
+            target_dir=os.path.dirname(staged_out)
+        )
+        
+        log(f"📋 Result: {result}")
         results.append(result)
 
     return results
@@ -233,18 +377,14 @@ def create_control_json_from_summaries(summaries, *, overwrite=False, dedupe=Tru
     log(f"[INFO] control.json aktualisiert ({len(control_data)} Einträge): {path}")
 
 def ocr_to_staging(input_pdf_path: str, output_rel: str):
-    """
-    Führt OCR aus und schreibt die Ausgabe NUR ins Staging unter output_rel.
-    - input_pdf_path: kann im Input oder im Staging liegen
-    - output_rel: relativer Pfad unter INPUT_ROOT, wo die Datei VIRTUELL liegen würde
-    """
-    # absoluter Staging-Zielpfad
-    staged_out = os.path.join(fs.work_dir, output_rel)
+    output_basename = os.path.basename(output_rel)
+    staged_out = os.path.join(fs.work_dir, output_basename)
+    
     os.makedirs(os.path.dirname(staged_out), exist_ok=True)
 
     try:
         result = subprocess.run(
-            ['ocrmypdf', '-l', 'deu', '--skip-text', input_pdf_path, staged_out],
+            ['ocrmypdf', '-l', 'deu', '--skip-text', '--invalidate-digital-signatures', input_pdf_path, staged_out],
             check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
         )
     except subprocess.CalledProcessError as e:

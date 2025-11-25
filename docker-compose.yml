@@ -1,14 +1,33 @@
-
-
 services:
   ocr-web:
+    container_name: ocr-web
     build: .
+    expose:
+      - "5000"
     ports:
-      - "5000:5000"
+      - "127.0.0.1:5000:5000"  # Direkter Zugriff für Entwicklung
     volumes:
       - ./uploads:/app/uploads
       - ./processed:/app/processed
       - ./data:/app/data
-      - /mnt/m:/app/medidok
+      - medidok_share:/app/medidok
     environment:
       - TZ=Europe/Berlin
+    stdin_open: true
+    tty: true
+    networks:
+      - caddy-proxy-network
+
+networks:
+  caddy-proxy-network:
+    external: true
+    name: caddy-proxy-network
+
+volumes:
+  medidok_share:
+    driver: local
+    driver_opts:
+      type: cifs
+      device: "//server/Medidok"
+      # WICHTIG: iocharset=utf8 für korrekte Umlaute!
+      o: "username=${SMB_USERNAME},password=${SMB_PASSWORD},vers=3.0,iocharset=utf8,uid=1000,gid=1000,file_mode=0777,dir_mode=0777"
