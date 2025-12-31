@@ -360,6 +360,10 @@ input[type="submit"]:hover,
   position: relative;
   border-radius: var(--border-radius);
   padding: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
 }
 
 .preview iframe,
@@ -567,6 +571,11 @@ input[readonly] {
   transition: background 0.2s, opacity 0.2s;
   position: relative;
   display: block;
+  cursor: grab;
+}
+
+.file-item:active:not(.processed) {
+  cursor: grabbing;
 }
 
 .file-item:hover:not(.processed) {
@@ -696,6 +705,17 @@ input[readonly] {
   overflow-y: auto;
 }
 
+/* Batch- und Einzel-Upload Dateilisten mit begrenzter Höhe */
+#einzelStagedFiles,
+#batchStagedFiles {
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid #374151;
+  border-radius: 8px;
+  padding: 12px;
+  background: #0d1117;
+}
+
 #stagedFileList {
   margin-top: 20px;
   padding-top: 15px;
@@ -703,25 +723,33 @@ input[readonly] {
 }
 
 #fileList::-webkit-scrollbar,
-#stagedFiles::-webkit-scrollbar {
+#stagedFiles::-webkit-scrollbar,
+#einzelStagedFiles::-webkit-scrollbar,
+#batchStagedFiles::-webkit-scrollbar {
   width: 8px;
 }
 
 #fileList::-webkit-scrollbar-track,
-#stagedFiles::-webkit-scrollbar-track {
-  background: #f1f1f1;
+#stagedFiles::-webkit-scrollbar-track,
+#einzelStagedFiles::-webkit-scrollbar-track,
+#batchStagedFiles::-webkit-scrollbar-track {
+  background: #1f2937;
   border-radius: 4px;
 }
 
 #fileList::-webkit-scrollbar-thumb,
-#stagedFiles::-webkit-scrollbar-thumb {
-  background: #888;
+#stagedFiles::-webkit-scrollbar-thumb,
+#einzelStagedFiles::-webkit-scrollbar-thumb,
+#batchStagedFiles::-webkit-scrollbar-thumb {
+  background: #4b5563;
   border-radius: 4px;
 }
 
 #fileList::-webkit-scrollbar-thumb:hover,
-#stagedFiles::-webkit-scrollbar-thumb:hover {
-  background: #555;
+#stagedFiles::-webkit-scrollbar-thumb:hover,
+#einzelStagedFiles::-webkit-scrollbar-thumb:hover,
+#batchStagedFiles::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
 }
 
 /* ============================================ */
@@ -842,4 +870,68 @@ input[readonly] {
 .session-checkbox-cell {
   text-align: center;
   vertical-align: middle;
+}
+
+/* ============================================ */
+/* DRAG & DROP SORTIERUNG */
+/* ============================================ */
+.file-item.dragging {
+  opacity: 0.5;
+  background-color: #4b5563;
+  border: 2px dashed var(--primary);
+}
+
+.file-item.drag-over {
+  border-top: 3px solid var(--primary);
+  padding-top: 8px;
+}
+
+/* ============================================ */
+/* SORTIER-PFEILE */
+/* ============================================ */
+.sort-arrows {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: none;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 10;
+}
+
+.file-item:hover:not(.processed) .sort-arrows {
+  display: flex;
+}
+
+.sort-arrow {
+  background: var(--primary);
+  border: none;
+  color: white;
+  width: 24px;
+  height: 20px;
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  transition: background 0.2s;
+  padding: 0;
+}
+
+.sort-arrow:hover {
+  background: var(--primary-hover);
+}
+
+.sort-arrow:disabled {
+  background: var(--secondary);
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.sort-arrow svg {
+  width: 12px;
+  height: 12px;
+  fill: currentColor;
 }
