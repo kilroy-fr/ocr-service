@@ -1,0 +1,168 @@
+jan@Ryzen:/mnt/c/Users/Jan.DOMAIN/ocr-service$ docker compose up --build
+[+] Building 4.2s (14/14) FINISHED
+ => [internal] load local bake definitions                                                                         0.0s
+ => => reading from stdin 535B                                                                                     0.0s
+ => [internal] load build definition from Dockerfile                                                               0.1s
+ => => transferring dockerfile: 1.01kB                                                                             0.0s
+ => [internal] load metadata for docker.io/library/python:3.10-slim                                                1.1s
+ => [auth] library/python:pull token for registry-1.docker.io                                                      0.0s
+ => [internal] load .dockerignore                                                                                  0.1s
+ => => transferring context: 2B                                                                                    0.0s
+ => [1/6] FROM docker.io/library/python:3.10-slim@sha256:c299e10e0070171113f9a1f109dd05e7e634fa94589b056e0e87bb22  0.0s
+ => => resolve docker.io/library/python:3.10-slim@sha256:c299e10e0070171113f9a1f109dd05e7e634fa94589b056e0e87bb22  0.0s
+ => [internal] load build context                                                                                  1.0s
+ => => transferring context: 19.36kB                                                                               1.0s
+ => CACHED [2/6] RUN apt-get update &&     apt-get install -y         ocrmypdf         tesseract-ocr         tess  0.0s
+ => CACHED [3/6] WORKDIR /app                                                                                      0.0s
+ => CACHED [4/6] COPY requirements.txt .                                                                           0.0s
+ => CACHED [5/6] RUN pip install --upgrade pip &&     pip install --no-cache-dir -r requirements.txt               0.0s
+ => [6/6] COPY . .                                                                                                 0.3s
+ => exporting to image                                                                                             1.1s
+ => => exporting layers                                                                                            0.7s
+ => => exporting manifest sha256:3b6030a12f971baf176b10c9f62ad695ad6d4f59e1c82c899eab5a93c914a23b                  0.0s
+ => => exporting config sha256:888d4152f5575b103aaab2d67a17b1623dc5bff290141d84b2dcbf0eab167dc8                    0.0s
+ => => exporting attestation manifest sha256:3da026d7c6042efb9b8b2fce59d0db79345b7e5bfd382070bba81f36c044e01a      0.0s
+ => => exporting manifest list sha256:47bbaf67434f67943f23be7628e2794ed7481c69ea54f12416d728816a4c8d5f             0.0s
+ => => naming to docker.io/library/ocr-service-ocr-web:latest                                                      0.0s
+ => => unpacking to docker.io/library/ocr-service-ocr-web:latest                                                   0.2s
+ => resolving provenance for metadata file                                                                         0.0s
+[+] Running 2/2
+ ✔ ocr-service-ocr-web  Built                                                                                      0.0s
+ ✔ Container ocr-web    Recreated                                                                                  0.4s
+Attaching to ocr-web
+ocr-web  | [2025-11-26 16:19:01] INFO: [BYPASS] remove outside INPUT_ROOT: /app/uploads/.write_test
+ocr-web  | [2025-11-26 16:19:01] INFO: ✅ Verzeichnis OK (lokal): /app/uploads
+ocr-web  | [2025-11-26 16:19:01] ERROR: ❌ Fehler bei lokalem Verzeichnis /app/medidok/work: No active session
+ocr-web  | [2025-11-26 16:19:01] ERROR: ❌ Fehler bei lokalem Verzeichnis /app/medidok/in: No active session
+ocr-web  | [2025-11-26 16:19:01] ERROR: ❌ Fehler bei lokalem Verzeichnis /app/medidok/fail: No active session
+ocr-web  | [2025-11-26 16:19:01] ERROR: ❌ Fehler bei lokalem Verzeichnis /app/medidok/logs: No active session
+ocr-web  | [2025-11-26 16:19:01] INFO: [BYPASS] remove outside INPUT_ROOT: /app/processed/json/.write_test
+ocr-web  | [2025-11-26 16:19:01] INFO: ✅ Verzeichnis OK (lokal): /app/processed/json
+ocr-web  | [2025-11-26 16:19:01] INFO: ✅ Verzeichnis erstellt (Netzlaufwerk): /app/medidok
+ocr-web  | [2025-11-26 16:19:01] INFO: ✅ Verzeichnis erstellt (Netzlaufwerk): /app/medidok/in
+ocr-web  | [2025-11-26 16:19:01] INFO: ✅ Verzeichnis erstellt (Netzlaufwerk): /app/medidok/trash
+ocr-web  | [2025-11-26 16:19:01] INFO: 🔍 INPUT_ROOT (/app/medidok): 45 verarbeitbare Dateien
+ocr-web  | [2025-11-26 16:19:01] INFO:    Beispiele: 201202131_Physio.PDF, 201311271_Befunde_2013.PDF, 201312061_Kur_.PDF, 201412221_Kernspinn_2014.PDF, 201502261_Neuro_Fügel.PDF
+ocr-web  | [2025-11-26 16:19:01] INFO: 🧹 Starte Startup-Cleanup...
+ocr-web  | [2025-11-26 16:19:01] INFO: ℹ️ Keine alten JSON-Dateien zum Löschen gefunden
+ocr-web  | [2025-11-26 16:19:01] INFO: 🗑️ Alte Session-Registry gelöscht (Server-Neustart)
+ocr-web  | [2025-11-26 16:19:01] INFO: 🔍 Cleanup: work_root=/app/medidok/work, output_root=/app/medidok/in
+ocr-web  | [2025-11-26 16:19:01] INFO: 🔍 Cleanup: 0 aktive Sessions: set()
+ocr-web  | [2025-11-26 16:19:01] INFO: 📂 Prüfe Work-Verzeichnis: /app/medidok/work
+ocr-web  | [2025-11-26 16:19:01] INFO:    Gefundene Session-Verzeichnisse: 4
+ocr-web  | [2025-11-26 16:19:02] INFO:    🗑️ Lösche Session-Verzeichnis: 64f07637-4042-43db-91d3-f730192d990a (1 Dateien)
+ocr-web  | [2025-11-26 16:19:02] WARNING:    ❌ Work-Dir 64f07637-4042-43db-91d3-f730192d990a: _plan_delete() got an unexpected keyword argument 'dir_fd'
+ocr-web  | [2025-11-26 16:19:02] INFO:    🗑️ Lösche Session-Verzeichnis: 9ffe0db4-970d-4125-aebf-eabcf771dd64 (2 Dateien)
+ocr-web  | [2025-11-26 16:19:02] WARNING:    ❌ Work-Dir 9ffe0db4-970d-4125-aebf-eabcf771dd64: _plan_delete() got an unexpected keyword argument 'dir_fd'
+ocr-web  | [2025-11-26 16:19:02] INFO:    🗑️ Lösche Session-Verzeichnis: ac3de9ea-2c41-4899-a762-c1ed2ef16b0b (1 Dateien)
+ocr-web  | [2025-11-26 16:19:03] WARNING:    ❌ Work-Dir ac3de9ea-2c41-4899-a762-c1ed2ef16b0b: _plan_delete() got an unexpected keyword argument 'dir_fd'
+ocr-web  | [2025-11-26 16:19:03] INFO:    🗑️ Lösche Session-Verzeichnis: d8cba4dc-8e20-47a6-8b41-7c0b4400db6c (1 Dateien)
+ocr-web  | [2025-11-26 16:19:03] WARNING:    ❌ Work-Dir d8cba4dc-8e20-47a6-8b41-7c0b4400db6c: _plan_delete() got an unexpected keyword argument 'dir_fd'
+ocr-web  | [2025-11-26 16:19:03] INFO: 📂 Prüfe Output-Verzeichnis: /app/medidok/in
+ocr-web  | [2025-11-26 16:19:08] INFO:    Gefundene Dateien: 1
+ocr-web  | [2025-11-26 16:19:08] WARNING:    ❌ Staging .write_test: [Errno 2] No such file or directory: '/app/medidok/in/.write_test'
+ocr-web  | [2025-11-26 16:19:08] INFO: 🧹 Cleanup-Statistik:
+ocr-web  | [2025-11-26 16:19:08] INFO:    - Work-Verzeichnisse: 0
+ocr-web  | [2025-11-26 16:19:08] INFO:    - Work-Dateien: 0
+ocr-web  |  * Tip: There are .env or .flaskenv files present. Do "pip install python-dotenv" to use them.
+ocr-web  |  * Serving Flask app 'app'
+ocr-web  | [2025-11-26 16:19:08] INFO:    - Staging-Dateien: 0
+ocr-web  |  * Debug mode: off
+ocr-web  | [2025-11-26 16:19:08] INFO: ⚠️ Cleanup-Fehler: 5
+ocr-web  | [2025-11-26 16:19:08] WARNING:    - Work-Dir 64f07637-4042-43db-91d3-f730192d990a: _plan_delete() got an unexpected keyword argument 'dir_fd'
+ocr-web  | [2025-11-26 16:19:08] WARNING:    - Work-Dir 9ffe0db4-970d-4125-aebf-eabcf771dd64: _plan_delete() got an unexpected keyword argument 'dir_fd'
+ocr-web  | [2025-11-26 16:19:08] WARNING:    - Work-Dir ac3de9ea-2c41-4899-a762-c1ed2ef16b0b: _plan_delete() got an unexpected keyword argument 'dir_fd'
+ocr-web  | [2025-11-26 16:19:08] WARNING:    - Work-Dir d8cba4dc-8e20-47a6-8b41-7c0b4400db6c: _plan_delete() got an unexpected keyword argument 'dir_fd'
+ocr-web  | [2025-11-26 16:19:08] WARNING:    - Staging .write_test: [Errno 2] No such file or directory: '/app/medidok/in/.write_test'
+ocr-web  | [2025-11-26 16:19:08] INFO: ✅ Startup-Cleanup abgeschlossen
+ocr-web  | [2025-11-26 16:19:08] INFO: 🔄 Initialisiere ImportQueue-Service...
+ocr-web  | [2025-11-26 16:19:08] INFO: 🔄 ImportQueueService initialisiert
+ocr-web  | [2025-11-26 16:19:08] INFO: 🔄 Worker-Loop gestartet
+ocr-web  | [2025-11-26 16:19:08] INFO: ✅ ImportQueueService Worker gestartet
+ocr-web  | [2025-11-26 16:19:08] INFO: ✅ ImportQueue-Service gestartet
+ocr-web  | WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ocr-web  |  * Running on all addresses (0.0.0.0)
+ocr-web  |  * Running on http://127.0.0.1:5000
+ocr-web  |  * Running on http://172.24.0.4:5000
+ocr-web  | Press CTRL+C to quit
+ocr-web  | [2025-11-26 16:19:19] INFO: ♻️ Session reaktiviert: 9ffe0db4-970d-4125-aebf-eabcf771dd64
+ocr-web  | [2025-11-26 16:19:19] INFO: 🧹 Staging für Session 9ffe0db4-970d-4125-aebf-eabcf771dd64 initialisiert
+ocr-web  | [2025-11-26 16:19:19] INFO: [BYPASS] remove outside INPUT_ROOT: /app/processed/json/control_9ffe0db4-970d-4125-aebf-eabcf771dd64.json
+ocr-web  | [2025-11-26 16:19:19] INFO: 🗑️ Session-spezifische control.json gelöscht: /app/processed/json/control_9ffe0db4-970d-4125-aebf-eabcf771dd64.json
+ocr-web  | [2025-11-26 16:19:19] INFO: 📂 Suche Dateien in: /app/medidok
+ocr-web  | [2025-11-26 16:19:19] INFO: 📂 Gefundene Dateien gesamt: 55
+ocr-web  | [2025-11-26 16:19:19] INFO: ✅ Gefilterte PDF/Bild-Dateien: 45
+ocr-web  | [2025-11-26 16:19:19] INFO:    Beispiele: ['201202131_Physio.PDF', '201311271_Befunde_2013.PDF', '201312061_Kur_.PDF', '201412221_Kernspinn_2014.PDF', '201502261_Neuro_Fügel.PDF']
+ocr-web  | 172.24.0.2 - - [26/Nov/2025 16:19:19] "GET / HTTP/1.1" 200 -
+ocr-web  | 172.24.0.2 - - [26/Nov/2025 16:19:19] "GET /static/app.js HTTP/1.1" 304 -
+ocr-web  | 172.24.0.2 - - [26/Nov/2025 16:19:19] "GET /static/logo.jpg HTTP/1.1" 304 -
+ocr-web  | 172.24.0.2 - - [26/Nov/2025 16:19:19] "GET /static/style.css?v=6882 HTTP/1.1" 200 -
+ocr-web  | 172.24.0.2 - - [26/Nov/2025 16:19:19] "GET /static/favicon.svg HTTP/1.1" 304 -
+ocr-web  | [2025-11-26 16:19:19] INFO: 📋 Staging-Dateien aufgelistet: 1 Dateien
+ocr-web  | 172.24.0.2 - - [26/Nov/2025 16:19:19] "GET /list_staged_files HTTP/1.1" 200 -
+ocr-web  | 172.24.0.2 - - [26/Nov/2025 16:19:19] "GET /stream HTTP/1.1" 200 -
+ocr-web  | [2025-11-26 16:19:19] INFO: 📄 OCR-Service wurde gestartet.
+ocr-web  | 172.24.0.2 - - [26/Nov/2025 16:19:19] "GET /available_models HTTP/1.1" 200 -
+ocr-web  | 172.24.0.2 - - [26/Nov/2025 16:19:19] "GET /preview/201202131_Physio.PDF HTTP/1.1" 304 -
+ocr-web  | 172.24.0.2 - - [26/Nov/2025 16:19:19] "GET /preview/201202131_Physio.PDF HTTP/1.1" 304 -
+ocr-web  | 172.24.0.2 - - [26/Nov/2025 16:19:19] "GET /preview/201202131_Physio.PDF HTTP/1.1" 304 -
+ocr-web  | [2025-11-26 16:19:24] INFO: 🚀 /copy_and_analyze gestartet (progressiv)
+ocr-web  | [2025-11-26 16:19:25] INFO: ♻️ Session reaktiviert: 9ffe0db4-970d-4125-aebf-eabcf771dd64
+ocr-web  | [2025-11-26 16:19:25] INFO: 🤖 Verwende Modell: qwen2.5:14b
+ocr-web  | [2025-11-26 16:19:25] INFO: Ollama wird vorgewärmt mit Modell: qwen2.5:14b
+ocr-web  | [2025-11-26 16:19:35] INFO: Ollama erfolgreich gewärmt.
+ocr-web  | [2025-11-26 16:19:35] INFO: 📄 Analysiere erste Datei: 201412221_Kernspinn_2014.PDF
+ocr-web  | [2025-11-26 16:19:35] INFO: 📂 Staging-Datei gefunden: 201412221_Kernspinn_2014.PDF
+ocr-web  | [2025-11-26 16:19:37] INFO: ✅ OCR erstellt im Staging: /app/medidok/work/9ffe0db4-970d-4125-aebf-eabcf771dd64/staging/201412221_Kernspinn_2014_ocr.pdf
+ocr-web  | [2025-11-26 16:19:38] INFO: [INFO] control.json aktualisiert (1 Einträge): /app/processed/json/control_9ffe0db4-970d-4125-aebf-eabcf771dd64.json
+ocr-web  | [2025-11-26 16:19:38] INFO: 📋 Result: {'original': '201412221_Kernspinn_2014_ocr.pdf', 'renamed': 'Akst_Johanna_19.02.1983_22.12.2014_Dr. med. Harry Tabler, Kernspintomographie des Schädels_6.pdf', 'summary': {'file': '201412221_Kernspinn_2014_ocr.pdf', 'filename': '201412221_Kernspinn_2014_ocr.pdf', 'originalFilename': '201412221_Kernspinn_2014.PDF', 'name': 'Akst', 'vorname': 'Johanna', 'geburtsdatum': '19.02.1983', 'datum': '22.12.2014', 'beschreibung1': 'Dr. med. Harry Tabler', 'beschreibung2': 'Kernspintomographie des Schädels', 'categoryID': '6'}}
+ocr-web  | [2025-11-26 16:19:38] INFO: [INFO] control.json aktualisiert (1 Einträge): /app/processed/json/control_9ffe0db4-970d-4125-aebf-eabcf771dd64.json
+ocr-web  | [2025-11-26 16:19:38] INFO: ✅ Erste Datei fertig: 201412221_Kernspinn_2014_ocr.pdf
+ocr-web  | 172.24.0.2 - - [26/Nov/2025 16:19:39] "POST /copy_and_analyze HTTP/1.1" 200 -
+ocr-web  | 172.24.0.2 - - [26/Nov/2025 16:19:39] "GET /control?index=0&progressive=false HTTP/1.1" 200 -
+ocr-web  | 172.24.0.2 - - [26/Nov/2025 16:19:39] "GET /static/queue_status_addon.css HTTP/1.1" 304 -
+ocr-web  | 172.24.0.2 - - [26/Nov/2025 16:19:39] "GET /static/queue_monitor.js HTTP/1.1" 304 -
+ocr-web  | 172.24.0.2 - - [26/Nov/2025 16:19:39] "GET /static/style.css HTTP/1.1" 304 -
+ocr-web  | 172.24.0.2 - - [26/Nov/2025 16:19:39] "GET /static/control.js HTTP/1.1" 304 -
+ocr-web  | 172.24.0.2 - - [26/Nov/2025 16:19:39] "GET /static/logo.jpg HTTP/1.1" 304 -
+ocr-web  | 172.24.0.2 - - [26/Nov/2025 16:19:39] "GET /processed/201412221_Kernspinn_2014_ocr.pdf HTTP/1.1" 200 -
+ocr-web  | 172.24.0.2 - - [26/Nov/2025 16:20:02] "POST /save_control_data HTTP/1.1" 200 -
+ocr-web  | 172.24.0.2 - - [26/Nov/2025 16:20:02] "POST /rename_file HTTP/1.1" 200 -
+ocr-web  | [2025-11-26 16:20:02] INFO: 📦 TRASH-Ordner erstellt: /app/medidok/trash/session_9ffe0db4-970d-4125-aebf-eabcf771dd64_20251126_162002
+ocr-web  | Commit rename: Quelle nicht gefunden: work/9ffe0db4-970d-4125-aebf-eabcf771dd64/staging/201412221_Kernspinn_2014_ocr.pdf
+ocr-web  | [2025-11-26 16:20:02] INFO: ✅ Commit erfolgreich für Session: 9ffe0db4-970d-4125-aebf-eabcf771dd64
+ocr-web  | [2025-11-26 16:20:02] INFO: 📄 Starte sequenziellen Import von 1 Dateien...
+ocr-web  | [2025-11-26 16:20:02] INFO: 📄 Reihe Datei 1/1 ein: Akst_Johanna_19.02.1983_22.12.2014_Dr. med. Harry Tabler, Kernspintomographie des Schädels_5.pdf
+ocr-web  | [2025-11-26 16:20:02] INFO: 📥 Datei in Import-Queue eingereiht: Akst_Johanna_19.02.1983_22.12.2014_Dr. med. Harry Tabler, Kernspintomographie des Schädels_5.pdf (Queue-Größe: 1)
+ocr-web  | [2025-11-26 16:20:02] INFO: ✅ In Import-Queue eingereiht: Akst_Johanna_19.02.1983_22.12.2014_Dr. med. Harry Tabler, Kernspintomographie des Schädels_5.pdf
+ocr-web  | [2025-11-26 16:20:02] INFO: 📄 Verarbeite: Akst_Johanna_19.02.1983_22.12.2014_Dr. med. Harry Tabler, Kernspintomographie des Schädels_5.pdf (Session: 9ffe0db4-970d-4125-aebf-eabcf771dd64)
+ocr-web  | [2025-11-26 16:20:02] INFO: ℹ️ Datei ist bereits in IMPORT: Akst_Johanna_19.02.1983_22.12.2014_Dr. med. Harry Tabler, Kernspintomographie des Schädels_5.pdf
+ocr-web  | [2025-11-26 16:20:02] INFO: ⏳ Warte auf Löschung durch externen Dienst: Akst_Johanna_19.02.1983_22.12.2014_Dr. med. Harry Tabler, Kernspintomographie des Schädels_5.pdf
+ocr-web  | [2025-11-26 16:20:02] WARNING: ⚠️ Fehler beim Verschieben nach TRASH: 201412221_Kernspinn_2014.PDF - name '_os_real' is not defined
+ocr-web  | 172.24.0.2 - - [26/Nov/2025 16:20:02] "POST /finalize_import HTTP/1.1" 200 -
+ocr-web  | [2025-11-26 16:20:02] INFO: 🧹 Session nach Finalisierung aufgeräumt: 9ffe0db4-970d-4125-aebf-eabcf771dd64
+ocr-web  | [2025-11-26 16:20:02] INFO: 📊 Zusammenfassung: 1 Dateien in Queue eingereiht, 0 Originale in TRASH verschoben
+ocr-web  | [2025-11-26 16:20:02] INFO: ℹ️ Die Dateien werden nun sequenziell verarbeitet. Nutzen Sie /import_queue_status zur Überwachung.
+ocr-web  | [2025-11-26 16:20:08] INFO: 🔧 Fallback-Modell gesetzt: qwen2.5:14b
+ocr-web  | 172.24.0.2 - - [26/Nov/2025 16:20:08] "GET /import_queue_status HTTP/1.1" 200 -
+ocr-web  | [2025-11-26 16:20:09] INFO: ✅ Datei wurde vom Dienst verarbeitet und gelöscht: Akst_Johanna_19.02.1983_22.12.2014_Dr. med. Harry Tabler, Kernspintomographie des Schädels_5.pdf (nach 6.2s)
+ocr-web  | 172.24.0.2 - - [26/Nov/2025 16:20:11] "GET /import_queue_status HTTP/1.1" 200 -
+ocr-web  | 172.24.0.2 - - [26/Nov/2025 16:20:11] "GET /import_queue_status HTTP/1.1" 200 -
+ocr-web  | [2025-11-26 16:20:14] INFO: 🆕 Neue Session erstellt: 3cc395f7-7c23-45bf-9e1e-91278026e890
+ocr-web  | [2025-11-26 16:20:14] INFO: 🧹 Staging für Session 3cc395f7-7c23-45bf-9e1e-91278026e890 initialisiert
+ocr-web  | [2025-11-26 16:20:14] INFO: 📂 Suche Dateien in: /app/medidok
+ocr-web  | [2025-11-26 16:20:14] INFO: 📂 Gefundene Dateien gesamt: 55
+ocr-web  | [2025-11-26 16:20:14] INFO: ✅ Gefilterte PDF/Bild-Dateien: 45
+ocr-web  | [2025-11-26 16:20:14] INFO:    Beispiele: ['201202131_Physio.PDF', '201311271_Befunde_2013.PDF', '201312061_Kur_.PDF', '201412221_Kernspinn_2014.PDF', '201502261_Neuro_Fügel.PDF']
+ocr-web  | 172.24.0.2 - - [26/Nov/2025 16:20:15] "GET / HTTP/1.1" 200 -
+ocr-web  | 172.24.0.2 - - [26/Nov/2025 16:20:15] "GET /static/logo.jpg HTTP/1.1" 304 -
+ocr-web  | 172.24.0.2 - - [26/Nov/2025 16:20:15] "GET /static/style.css?v=1923 HTTP/1.1" 200 -
+ocr-web  | 172.24.0.2 - - [26/Nov/2025 16:20:15] "GET /static/app.js HTTP/1.1" 304 -
+ocr-web  | [2025-11-26 16:20:15] INFO: 📋 Staging-Dateien aufgelistet: 0 Dateien
+ocr-web  | 172.24.0.2 - - [26/Nov/2025 16:20:15] "GET /list_staged_files HTTP/1.1" 200 -
+ocr-web  | 172.24.0.2 - - [26/Nov/2025 16:20:15] "GET /stream HTTP/1.1" 200 -
+ocr-web  | [2025-11-26 16:20:15] INFO: 📄 OCR-Service wurde gestartet.
+ocr-web  | 172.24.0.2 - - [26/Nov/2025 16:20:15] "GET /available_models HTTP/1.1" 200 -
+ocr-web  | 172.24.0.2 - - [26/Nov/2025 16:20:16] "GET /preview/201202131_Physio.PDF HTTP/1.1" 304 -
+ocr-web  | 172.24.0.2 - - [26/Nov/2025 16:20:16] "GET /preview/201202131_Physio.PDF HTTP/1.1" 304 -
+ocr-web  | 172.24.0.2 - - [26/Nov/2025 16:20:16] "GET /preview/201202131_Physio.PDF HTTP/1.1" 304 -

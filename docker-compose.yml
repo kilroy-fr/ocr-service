@@ -11,12 +11,21 @@ services:
       - ./processed:/app/processed
       - ./data:/app/data
       - medidok_share:/app/medidok
+      # Development: Mount source code for hot-reload
+      - ./app.py:/app/app.py
+      - ./config.py:/app/config.py
+      - ./routes:/app/routes
+      - ./services:/app/services
+      - ./templates:/app/templates
+      - ./static:/app/static
     environment:
       - TZ=Europe/Berlin
     stdin_open: true
     tty: true
     networks:
       - caddy-proxy-network
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
 
 networks:
   caddy-proxy-network:

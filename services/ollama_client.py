@@ -1,5 +1,5 @@
 import requests
-from config import MODEL_LLM1, MODEL_LLM2, OLLAMA_URL
+from config import MODEL_LLM1, OLLAMA_URL
 from flask import session
 from .logger import log
 
@@ -25,22 +25,46 @@ def warmup_ollama():
         log(f"Ollama nicht erreichbar: {e}")
 
 
-def send_to_ollama(prompt, mnr, model):
+def send_to_ollama(prompt, mnr, model, temperature=None):
     """
-    Sendet einen Prompt an Ollama.
-    
+    Sendet einen Prompt an Ollama mit optimierten Parametern für strukturierte Datenextraktion.
+
     Args:
         prompt: Der zu verarbeitende Text-Prompt
         mnr: Referenz-Nummer für Logging (wird derzeit nicht verwendet)
-        model: LLM-Modell (z.B. "mistral-nemo:latest") - PFLICHTPARAMETER
-        
+        model: LLM-Modell (z.B. "qwen2.5:14b") - PFLICHTPARAMETER
+        temperature: Optional - Überschreibt Session-Default (empfohlen: 0.0 für Extraktion)
+
     Returns:
         str: Response vom LLM oder None bei Fehler
     """
+    # Temperature aus Session holen, falls nicht explizit übergeben
+    if temperature is None:
+        try:
+            temperature = session.get("temperature", 0.0)
+        except RuntimeError:
+            # Außerhalb Request-Context
+            temperature = 0.0
+
+    # Optimierte Parameter für strukturierte Datenextraktion
+    payload = {
+        'model': model,
+        'prompt': prompt,
+        'stream': False,
+        'options': {
+            'temperature': temperature,      # 0.0 = deterministisch, konsistent
+            'top_p': 0.9,                   # Reduziert Kreativität, fokussiert auf wahrscheinlichste Tokens
+            'top_k': 10,                    # Begrenzt Token-Auswahl auf Top-10
+            'repeat_penalty': 1.1,          # Verhindert Wiederholungen
+            'num_predict': 200,             # Max. Tokens (~7 Zeilen à 25-30 Tokens)
+            'stop': ['\n\n\n'],            # Stoppt bei 3 aufeinanderfolgenden Leerzeilen
+        }
+    }
+
     try:
         response = requests.post(
             OLLAMA_URL,
-            json={'model': model, 'prompt': prompt, 'stream': False},
+            json=payload,
             timeout=30
         )
         response.raise_for_status()

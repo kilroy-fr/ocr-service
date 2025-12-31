@@ -7,7 +7,7 @@ import json
 from .summarizer import summarize_pdf
 from .file_utils import fs, to_rel_under_input, safe_line, handle_successful_processing
 from .logger import log
-from config import PROCESSED_FOLDER, SOURCE_DIR_MEDIDOK, FAIL_DIR_MEDIDOK, JSON_FOLDER
+from config import INPUT_ROOT, FAIL_DIR_MEDIDOK, JSON_FOLDER
 from flask import render_template, session
 
 def process_pdf(pdf_path, output_dir_unused):
@@ -155,7 +155,7 @@ def process_medidok_files(file_paths, target_dir_unused):
         
         # 2. Versuch: Im INPUT_ROOT suchen
         if not working_input:
-            original_path = os.path.join(SOURCE_DIR_MEDIDOK, filename)
+            original_path = os.path.join(INPUT_ROOT, filename)
             if os.path.exists(original_path):
                 working_input = original_path
                 log(f"📂 Original-Datei gefunden: {filename}")
@@ -261,7 +261,7 @@ def process_medidok_files_with_model(file_paths, target_dir_unused, model, sessi
                 log(f"📂 Staging-Datei gefunden: {filename}")
         
         if not working_input:
-            original_path = os.path.join(SOURCE_DIR_MEDIDOK, filename)
+            original_path = os.path.join(INPUT_ROOT, filename)
             if os.path.exists(original_path):
                 working_input = original_path
                 log(f"📂 Original-Datei gefunden: {filename}")
@@ -355,6 +355,7 @@ def create_control_json_from_summaries(summaries, *, overwrite=False, dedupe=Tru
         entry = {
             "file": s.get("file",""),
             "filename": s.get("filename",""),
+            "originalFilename": s.get("originalFilename", s.get("filename","")),  # ✅ WICHTIG: Original-Namen bewahren!
             "name": s.get("name",""),
             "vorname": s.get("vorname",""),
             "geburtsdatum": s.get("geburtsdatum",""),

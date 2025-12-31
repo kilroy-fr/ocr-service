@@ -3,12 +3,22 @@
 <head>
   <meta charset="UTF-8">
   <title>OCR+KI Service</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ range(1, 10000) | random }}">
 </head>
 <body>
-  <h1>OCR+KI Service</h1>
-  <p>Importtool für medizinische Dokumente</p>
-  
+  <div class="page-header">
+    <div class="header-container">
+      <div class="header-left">
+        <img src="{{ url_for('static', filename='logo.jpg') }}" alt="Logo" class="logo">
+        <div>
+          <h1>OCR+KI Service</h1>
+          <p class="page-subtitle">Importtool für medizinische Dokumente</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div id="mainWrapper">
     <div class="header-controls">
       <div class="model-control">
@@ -30,7 +40,7 @@
         <!-- DATEIBEARBEITUNGS-SEKTION -->
         <div class="file-ops-section">
           <h3>🛠️ Dateibearbeitung</h3>
-          <p style="margin: 10px 0; color: #555;">
+          <p style="margin: 10px 0; color: #9ca3af;">
             Bearbeiten Sie Dateien vor der Analyse. Wählen Sie zunächst Dateien aus der Liste unten aus.
           </p>
           <div class="file-ops-buttons">
@@ -44,8 +54,8 @@
               📄 Nur OCR (ohne Analyse)
             </button>
           </div>
-          <p style="margin-top: 10px; font-size: 0.9em; color: #666;">
-            ℹ️ <strong>Hinweis:</strong> Es wird nur mit Kopien gearbeitet. 
+          <p style="margin-top: 10px; font-size: 0.9em; color: #9ca3af;">
+            ℹ️ <strong>Hinweis:</strong> Es wird nur mit Kopien gearbeitet.
             Ihre Originaldateien bleiben unverändert.
           </p>
         </div>
@@ -70,18 +80,18 @@
             <div style="display: flex; gap: 20px;">
               <div style="flex: 1;">
                 <!-- Master-Checkbox -->
-                <div style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 6px; border: 2px solid #dee2e6;">
-                  <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 600; color: #495057;">
-                    <input type="checkbox" id="masterCheckbox" style="width: 18px; height: 18px; cursor: pointer;">
+                <div class="master-checkbox-container">
+                  <label class="master-checkbox-label">
+                    <input type="checkbox" id="masterCheckbox">
                     <span id="masterCheckboxLabel">Alle auswählbaren Dateien auswählen</span>
                     <span id="selectionCount"></span>
                   </label>
                 </div>
-                
+
                 <p>Verzeichnis: <code>{{ med_src }}</code></p>
-                
+
                 <!-- Original-Dateien mit Scrollbar -->
-                <div id="fileList" style="max-height: 400px; overflow-y: auto; border: 1px solid #ddd; border-radius: 6px; padding: 12px; background: white;">
+                <div id="fileList">
                   {% for file in medidok_files %}
                   <div class="file-item" data-filename="{{ file }}">
                     <input type="checkbox" name="selected_files" value="{{ file }}" class="file-checkbox">
@@ -94,8 +104,8 @@
                 </div>
                 
                 <!-- Neu erstellte Dateien (Staging) -->
-                <div id="stagedFileList" style="margin-top: 20px; padding-top: 15px; border-top: 2px dashed #ccc;">
-                  <p style="font-weight: bold; color: #666; margin-bottom: 10px;">📄 Vorläufige Dateien (noch nicht übernommen):</p>
+                <div id="stagedFileList" style="margin-top: 20px; padding-top: 15px; border-top: 2px dashed #4b5563;">
+                  <p style="font-weight: bold; color: #9ca3af; margin-bottom: 10px;">📄 Vorläufige Dateien (noch nicht übernommen):</p>
                   <div id="stagedFiles">
                     <p style="color: #999; font-style: italic;">Keine bearbeiteten Dateien</p>
                   </div>
@@ -103,7 +113,7 @@
               </div>
               <div style="flex: 2;">
                 <div id="preview" class="preview">
-                  <p style="color: #666;">Keine Vorschau verfügbar</p>
+                  <p style="color: #9ca3af;">Keine Vorschau verfügbar</p>
                 </div>
               </div>
             </div>
@@ -116,7 +126,7 @@
         <!-- DATEIBEARBEITUNGS-SEKTION -->
         <div class="file-ops-section">
           <h3>🛠️ Dateibearbeitung</h3>
-          <p style="margin: 10px 0; color: #555;">
+          <p style="margin: 10px 0; color: #9ca3af;">
             Bearbeiten Sie hochgeladene Dateien vor der Analyse.
           </p>
           <div class="file-ops-buttons">
@@ -143,7 +153,7 @@
           <div style="display: flex; gap: 20px;">
             <div style="flex: 1;">
               <p>Erlaubte Formate: PDF, JPG, JPEG, PNG, TIFF</p>
-              <p style="color: #666; font-size: 0.9em; margin-top: 5px;">
+              <p style="color: #9ca3af; font-size: 0.9em; margin-top: 5px;">
                 Nach Auswahl werden die Dateien automatisch hochgeladen und stehen zur Bearbeitung bereit.
               </p>
               <label for="fileInput" class="btn">📂 Dateien auswählen</label>
@@ -151,7 +161,7 @@
               
               <!-- Dateiliste für Staging -->
               <div id="einzelFileList" style="margin-top: 20px;">
-                <p style="font-weight: bold; color: #666; margin-bottom: 10px;">📄 Hochgeladene Dateien:</p>
+                <p style="font-weight: bold; color: #9ca3af; margin-bottom: 10px;">📄 Hochgeladene Dateien:</p>
                 <div id="einzelStagedFiles">
                   <p style="color: #999; font-style: italic;">Keine Dateien hochgeladen</p>
                 </div>
@@ -171,7 +181,7 @@
         <!-- DATEIBEARBEITUNGS-SEKTION -->
         <div class="file-ops-section">
           <h3>🛠️ Dateibearbeitung</h3>
-          <p style="margin: 10px 0; color: #555;">
+          <p style="margin: 10px 0; color: #9ca3af;">
             Bearbeiten Sie hochgeladene Dateien vor der Analyse.
           </p>
           <div class="file-ops-buttons">
@@ -198,16 +208,16 @@
           <div style="display: flex; gap: 20px;">
             <div style="flex: 1;">
               <p>Verzeichnisse oder mehrere Dateien auswählen</p>
-              <p style="color: #666; font-size: 0.9em; margin-top: 5px;">
+              <p style="color: #9ca3af; font-size: 0.9em; margin-top: 5px;">
                 Nach Auswahl werden alle Dateien automatisch hochgeladen und stehen zur Bearbeitung bereit.
               </p>
               <label for="folderInput" class="btn">📂 Verzeichnisse/Dateien wählen</label>
               <input type="file" id="folderInput" name="files" webkitdirectory directory multiple accept=".pdf,image/*" style="display: none;">
-              
+
               <!-- Master-Checkbox für Batch -->
-              <div style="margin: 20px 0 15px; padding: 10px; background: #f8f9fa; border-radius: 6px; border: 2px solid #dee2e6;">
-                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 600; color: #495057;">
-                  <input type="checkbox" id="batchMasterCheckbox" style="width: 18px; height: 18px; cursor: pointer;">
+              <div class="master-checkbox-container" style="margin-top: 20px;">
+                <label class="master-checkbox-label">
+                  <input type="checkbox" id="batchMasterCheckbox">
                   <span id="batchMasterCheckboxLabel">Alle auswählbaren Dateien auswählen</span>
                   <span id="batchSelectionCount"></span>
                 </label>
@@ -215,7 +225,7 @@
               
               <!-- Dateiliste für Staging -->
               <div id="batchFileList">
-                <p style="font-weight: bold; color: #666; margin-bottom: 10px;">📄 Hochgeladene Dateien:</p>
+                <p style="font-weight: bold; color: #9ca3af; margin-bottom: 10px;">📄 Hochgeladene Dateien:</p>
                 <div id="batchStagedFiles">
                   <p style="color: #999; font-style: italic;">Keine Dateien hochgeladen</p>
                 </div>
@@ -240,7 +250,7 @@
   <!-- Logging -->
   <div class="section">
     <h2>Logging</h2>
-    <pre id="output" style="background:#eee; padding:10px; height:300px; width:100%; overflow:auto; border-radius:5px;"></pre>
+    <pre id="output"></pre>
   </div>
 
   <!-- Processed files an JavaScript übergeben -->

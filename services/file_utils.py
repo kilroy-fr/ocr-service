@@ -19,6 +19,10 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Speichere originale os-Funktionen BEVOR sie von app.py gepatcht werden
+_os_remove_original = os.remove
+_os_rename_original = os.rename
+
 # ============================================================================
 # DATACLASSES
 # ============================================================================
@@ -157,10 +161,42 @@ def cleanup_orphaned_files(work_root: Path, output_root: Path,
                     try:
                         # Dateien zählen
                         file_count = sum(1 for _ in session_dir.rglob('*') if _.is_file())
-                        
+
                         log(f"   🗑️ Lösche Session-Verzeichnis: {session_id} ({file_count} Dateien)")
-                        shutil.rmtree(session_dir)
-                        
+
+                        # Netzlaufwerk-Kompatibilität: rmtree hat Probleme mit dir_fd auf CIFS
+                        # Lösung: Manuelles Löschen statt shutil.rmtree()
+                        def remove_readonly(func, path, exc_info):
+                            """Entferne Read-Only-Attribut und versuche erneut"""
+                            import stat
+                            os.chmod(path, stat.S_IWRITE)
+                            func(path)
+
+                        # Erst alle Dateien löschen, dann Verzeichnisse von unten nach oben
+                        for item in session_dir.rglob('*'):
+                            try:
+                                if item.is_file():
+                                    item.unlink()
+                                elif item.is_dir():
+                                    # Wird später gelöscht
+                                    pass
+                            except Exception:
+                                pass
+
+                        # Jetzt Verzeichnisse von unten nach oben löschen
+                        for item in sorted(session_dir.rglob('*'), reverse=True):
+                            try:
+                                if item.is_dir():
+                                    item.rmdir()
+                            except Exception:
+                                pass
+
+                        # Abschließend das Session-Verzeichnis selbst löschen
+                        try:
+                            session_dir.rmdir()
+                        except Exception:
+                            pass
+
                         stats['work_dirs_removed'] += 1
                         stats['work_files_removed'] += file_count
                     except Exception as e:
@@ -291,27 +327,28 @@ def cleanup_old_json_files(folder, days_old=1):
     if not os.path.exists(folder):
         log(f"⚠️ JSON-Ordner existiert nicht: {folder}")
         return 0
-    
+
     cutoff = datetime.now() - timedelta(days=days_old)
     deleted_count = 0
-    
+
     for filename in os.listdir(folder):
         if filename.endswith(".json"):
             file_path = os.path.join(folder, filename)
             try:
                 modified_time = datetime.fromtimestamp(os.path.getmtime(file_path))
                 if modified_time < cutoff:
-                    os.remove(file_path)
+                    # Verwende originale os.remove (umgeht das Staging-System)
+                    _os_remove_original(file_path)
                     deleted_count += 1
                     log(f"🗑️ Alte control.json gelöscht: {filename}")
             except Exception as e:
                 log(f"⚠️ Fehler beim Löschen von {filename}: {e}", level="warning")
-    
+
     if deleted_count > 0:
         log(f"✅ {deleted_count} alte control.json-Dateien aufgeräumt")
     else:
         log(f"ℹ️ Keine alten JSON-Dateien zum Löschen gefunden")
-    
+
     return deleted_count
 
 def clear_folder(folder_path):
@@ -446,7 +483,34 @@ class StagingSession:
     def abort(self):
         if not self.session_id:
             return
-        shutil.rmtree(self.work_dir, ignore_errors=True)
+
+        # Netzlaufwerk-Kompatibilität: Manuelles Löschen statt rmtree
+        if self.work_dir.exists():
+            try:
+                # Erst alle Dateien löschen
+                for item in self.work_dir.rglob('*'):
+                    try:
+                        if item.is_file():
+                            item.unlink()
+                    except Exception:
+                        pass
+
+                # Dann Verzeichnisse von unten nach oben
+                for item in sorted(self.work_dir.rglob('*'), reverse=True):
+                    try:
+                        if item.is_dir():
+                            item.rmdir()
+                    except Exception:
+                        pass
+
+                # Abschließend work_dir selbst
+                try:
+                    self.work_dir.rmdir()
+                except Exception:
+                    pass
+            except Exception:
+                pass
+
         self.meta_file.unlink(missing_ok=True)
         logger.info("Staging session %s aborted", self.session_id)
         self.session_id = None
@@ -482,7 +546,33 @@ class StagingSession:
                 if staged_out.exists():
                     os.replace(staged_out, final_out)
 
-        shutil.rmtree(self.work_dir, ignore_errors=True)
+        # Netzlaufwerk-Kompatibilität: Manuelles Löschen statt rmtree
+        if self.work_dir.exists():
+            try:
+                # Erst alle Dateien löschen
+                for item in self.work_dir.rglob('*'):
+                    try:
+                        if item.is_file():
+                            item.unlink()
+                    except Exception:
+                        pass
+
+                # Dann Verzeichnisse von unten nach oben
+                for item in sorted(self.work_dir.rglob('*'), reverse=True):
+                    try:
+                        if item.is_dir():
+                            item.rmdir()
+                    except Exception:
+                        pass
+
+                # Abschließend work_dir selbst
+                try:
+                    self.work_dir.rmdir()
+                except Exception:
+                    pass
+            except Exception:
+                pass
+
         self.meta_file.unlink(missing_ok=True)
         logger.info(f"Staging session {self.session_id} committed")
         self.session_id = None

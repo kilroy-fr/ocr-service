@@ -21,8 +21,9 @@ from pathlib import Path
 from services.logger import log
 from services.session_manager import registry, update_session_activity
 from services.file_utils import fs, to_rel_under_input, cleanup_old_json_files, cleanup_orphaned_files
+from services.import_queue import get_import_queue_service, shutdown_import_queue_service
 from config import (
-    UPLOAD_FOLDER, PROCESSED_FOLDER, INPUT_ROOT, OUTPUT_ROOT, WORK_ROOT,
+    UPLOAD_FOLDER, INPUT_ROOT, OUTPUT_ROOT, WORK_ROOT,
     IMPORT_MEDIDOK, FAIL_DIR_MEDIDOK, LOGGING_FOLDER, JSON_FOLDER,
     TRASH_DIR, MODEL_LLM1
 )
@@ -40,14 +41,18 @@ app.jinja_env.globals.update(str=str)
 
 # Verzeichnisse erstellen
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-os.makedirs(PROCESSED_FOLDER, exist_ok=True)
 
 
 # OS-Patching für Staging (Plan-Modus)
 import os as _os_patch
 
+# Originale OS-Funktionen speichern (für direkten Zugriff ohne Staging)
 _os_rename_real = _os_patch.rename
 _os_remove_real = _os_patch.remove
+
+# Exportiere für andere Module
+os_remove_real = _os_remove_real
+os_rename_real = _os_rename_real
 
 
 def _plan_rename(src, dst):
@@ -74,6 +79,7 @@ def _plan_delete(path):
 # OS-Funktionen patchen
 _os_patch.rename = _plan_rename
 _os_patch.remove = _plan_delete
+_os_patch.unlink = _plan_delete  # unlink ist Alias für remove
 
 
 # Flask Hooks
@@ -115,7 +121,6 @@ def ensure_directories():
     # Lokale Verzeichnisse, die wir erstellen UND testen können
     local_dirs = [
         UPLOAD_FOLDER,
-        PROCESSED_FOLDER,
         WORK_ROOT,
         IMPORT_MEDIDOK,
         FAIL_DIR_MEDIDOK,
@@ -213,4 +218,19 @@ def startup_cleanup():
 if __name__ == '__main__':
     ensure_directories()
     startup_cleanup()
-    app.run(host='0.0.0.0', port=5000)
+
+    # ImportQueue-Service initialisieren und starten
+    log("🔄 Initialisiere ImportQueue-Service...")
+    try:
+        import_queue = get_import_queue_service(IMPORT_MEDIDOK)
+        log("✅ ImportQueue-Service gestartet")
+    except Exception as e:
+        log(f"❌ Fehler beim Starten des ImportQueue-Service: {e}", level="error")
+
+    try:
+        # Debug-Modus für Hot-Reload während Entwicklung
+        app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=True)
+    finally:
+        # Sauberes Herunterfahren des ImportQueue-Service
+        log("🛑 Fahre ImportQueue-Service herunter...")
+        shutdown_import_queue_service()

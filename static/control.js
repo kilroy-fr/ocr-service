@@ -382,9 +382,11 @@ function updateUI() {
   file.categoryID = (catID === 5 || catID === 6) ? String(catID) : "11";
   
   // originalFilename bewahren - NIEMALS überschreiben!
+  // Fallback nur wenn wirklich nicht gesetzt (sollte normalerweise vom Backend kommen)
   if (!file.originalFilename || file.originalFilename === file.filename) {
     if (file.filename && file.filename.includes('_ocr.pdf')) {
-      file.originalFilename = file.filename.replace('_ocr.pdf', '.PDF');
+      // Fallback: _ocr.pdf entfernen (behält Original-Extension bei)
+      file.originalFilename = file.filename.replace('_ocr.pdf', '.pdf');
     } else {
       file.originalFilename = file.filename;
     }
@@ -676,13 +678,13 @@ async function finalizeAnalysis() {
       body: JSON.stringify({ files: payload })
     });
     const data = await res.json().catch(() => ({}));
-    
+
     // Verstecke Spinner nach Abschluss
     hideCopySpinner();
-    
+
     if (res.ok && data.success) {
-      alert(`Analyse abgeschlossen.\n\n${data.moved} Dateien importiert\n${data.trashed} Originale in TRASH verschoben`);
-      window.location.href = "/";
+      // Zeige Queue-Monitor statt direkt zur Startseite zu springen
+      showQueueMonitor(data);
     } else {
       alert("Fehler: " + (data.message || `HTTP ${res.status}`));
     }
@@ -703,6 +705,106 @@ async function abortAll() {
     alert("Fehler beim Abbrechen: " + (data.message || `HTTP ${res.status}`));
   }
 }
+
+// Queue Monitor Funktionen
+function showQueueMonitor(finalizeData) {
+  // Verstecke Hauptformular und zeige Queue-Monitor
+  document.querySelector('.container').style.display = 'none';
+  document.querySelector('.filename-section').style.display = 'none';
+
+  const queueSection = document.getElementById('queue-status-section');
+  queueSection.style.display = 'block';
+
+  // Info-Alert zeigen
+  const queuedCount = finalizeData.queued || finalizeData.moved || 0;
+  if (queuedCount > 0) {
+    alert(finalizeData.message || `${queuedCount} Dateien werden sequenziell importiert.\n\nDer externe Dienst erhält jeweils nur eine Datei.\n\nDas Monitoring startet automatisch.`);
+  }
+
+  // Scroll zum Queue-Monitor
+  queueSection.scrollIntoView({ behavior: 'smooth' });
+
+  // Kleine Verzögerung vor Start damit Alert geschlossen werden kann
+  setTimeout(() => {
+    // Starte Queue-Monitor
+    QueueMonitor.start('queue-status');
+
+    // Überwache Abschluss
+    monitorQueueCompletion();
+  }, 500);
+}
+
+function monitorQueueCompletion() {
+  let hasSeenActivity = false;  // Flag um zu wissen ob Queue aktiv war
+
+  // Prüfe alle 3 Sekunden ob Queue leer ist (schneller für besseres UX)
+  const checkInterval = setInterval(async () => {
+    try {
+      const response = await fetch('/import_queue_status');
+      const data = await response.json();
+
+      if (data.success && data.stats) {
+        const { current_queue_size, total_processed, total_queued } = data.stats;
+
+        // Merke dass Queue aktiv war/ist
+        if (total_queued > 0 || current_queue_size > 0) {
+          hasSeenActivity = true;
+        }
+
+        // Wenn Queue leer und alle verarbeitet UND wir haben Aktivität gesehen
+        if (hasSeenActivity && current_queue_size === 0 && total_processed > 0 && total_processed === total_queued) {
+          clearInterval(checkInterval);
+          QueueMonitor.stop();
+
+          // Zeige Success-Message
+          setTimeout(() => {
+            if (confirm(`✅ Alle ${total_processed} Dateien wurden erfolgreich importiert!\n\nZur Startseite zurückkehren?`)) {
+              window.location.href = "/";
+            }
+          }, 1000); // 1 Sekunde Verzögerung
+        }
+      }
+    } catch (error) {
+      console.error('Fehler beim Überwachen der Queue:', error);
+    }
+  }, 3000); // Alle 3 Sekunden prüfen (war 5)
+}
+
+// Event-Listener für "Monitoring beenden" Button
+document.addEventListener('DOMContentLoaded', function() {
+  const closeButton = document.getElementById('closeQueueMonitor');
+  if (closeButton) {
+    closeButton.addEventListener('click', async function() {
+      // Hole aktuellen Queue-Status
+      try {
+        const response = await fetch('/import_queue_status');
+        const data = await response.json();
+
+        if (data.success && data.stats) {
+          const { current_queue_size, total_processed } = data.stats;
+
+          // Warnung wenn noch Dateien in der Queue
+          if (current_queue_size > 0) {
+            const proceed = confirm(`⚠️ ACHTUNG: Es sind noch ${current_queue_size} Datei(en) in der Warteschlange!\n\n${total_processed} Datei(en) wurden bereits importiert.\n\nWenn Sie jetzt abbrechen, werden die verbleibenden Dateien NICHT importiert.\n\nTrotzdem zur Startseite zurückkehren?`);
+            if (!proceed) return;
+          } else {
+            // Queue ist leer - normale Bestätigung
+            const proceed = confirm(`${total_processed} Datei(en) wurden erfolgreich importiert.\n\nZur Startseite zurückkehren?`);
+            if (!proceed) return;
+          }
+        }
+      } catch (error) {
+        // Fallback bei Fehler
+        if (!confirm('Queue-Monitoring beenden und zur Startseite zurückkehren?')) {
+          return;
+        }
+      }
+
+      QueueMonitor.stop();
+      window.location.href = "/";
+    });
+  }
+});
 
 // Session-Checkbox Handler
 function setupSessionCheckboxes() {

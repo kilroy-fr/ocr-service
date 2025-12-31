@@ -1,0 +1,234 @@
+/* ============================================ */
+/* QUEUE MONITOR STYLES */
+/* ============================================ */
+#queue-status-section {
+  max-width: 1200px;
+  margin: 30px auto;
+  padding: 30px;
+  background: var(--container-bg);
+  border-radius: var(--border-radius);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+#queue-status-section h2 {
+  color: var(--text);
+  font-size: 1.8em;
+  margin-top: 0;
+  margin-bottom: 20px;
+}
+
+/* Queue Monitor Card */
+#queue-status .card {
+  background: var(--card-bg);
+  border-radius: var(--border-radius);
+  padding: 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+#queue-status .card-header {
+  background: rgba(16, 185, 129, 0.1);
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  padding: 15px 20px;
+  border-radius: var(--border-radius) var(--border-radius) 0 0;
+}
+
+#queue-status .card-header h5 {
+  margin: 0;
+  color: var(--text);
+  font-size: 1.2em;
+}
+
+#queue-status .card-body {
+  padding: 20px;
+}
+
+/* Status Badges */
+#queue-status .badge {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.9em;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+#queue-status .badge-success {
+  background: var(--success);
+  color: white;
+}
+
+#queue-status .badge-warning {
+  background: var(--warning);
+  color: white;
+}
+
+#queue-status .badge-secondary {
+  background: var(--secondary);
+  color: white;
+}
+
+/* Alert Box */
+#queue-status .alert {
+  padding: 15px;
+  border-radius: var(--border-radius);
+  margin-bottom: 15px;
+  border-left: 4px solid;
+}
+
+#queue-status .alert-info {
+  background: rgba(59, 130, 246, 0.1);
+  border-left-color: var(--info);
+  color: var(--text);
+}
+
+#queue-status .alert strong {
+  display: block;
+  margin-bottom: 5px;
+}
+
+#queue-status .alert code {
+  background: rgba(0,0,0,0.3);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9em;
+  color: #fbbf24;
+}
+
+/* Metrics Row */
+#queue-status .row {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0 -10px;
+}
+
+#queue-status .col-md-3 {
+  flex: 0 0 25%;
+  max-width: 25%;
+  padding: 0 10px;
+}
+
+#queue-status .metric {
+  background: rgba(0,0,0,0.2);
+  padding: 20px;
+  border-radius: var(--border-radius);
+  text-align: center;
+}
+
+#queue-status .metric h3 {
+  margin: 0;
+  font-size: 2.5em;
+  font-weight: bold;
+}
+
+#queue-status .metric h3.text-primary {
+  color: var(--info);
+}
+
+#queue-status .metric h3.text-success {
+  color: var(--success);
+}
+
+#queue-status .metric h3.text-danger {
+  color: var(--danger);
+}
+
+#queue-status .metric h3.text-info {
+  color: #60a5fa;
+}
+
+#queue-status .metric small {
+  display: block;
+  margin-top: 8px;
+  font-size: 0.85em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Progress Bar */
+#queue-status .progress {
+  background: rgba(0,0,0,0.3);
+  border-radius: 15px;
+  height: 35px;
+  overflow: hidden;
+  margin-top: 20px;
+}
+
+#queue-status .progress-bar {
+  background: linear-gradient(90deg, var(--success) 0%, var(--success-hover) 100%);
+  height: 100%;
+  line-height: 35px;
+  font-weight: bold;
+  text-align: center;
+  transition: width 0.3s ease;
+  border-radius: 15px;
+}
+
+#queue-status .progress-bar.bg-success {
+  background: linear-gradient(90deg, var(--success) 0%, var(--success-hover) 100%);
+}
+
+/* Spinner Animation */
+#queue-status .spinner-border {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spinner-border 0.75s linear infinite;
+  vertical-align: middle;
+  margin-left: 8px;
+}
+
+@keyframes spinner-border {
+  to { transform: rotate(360deg); }
+}
+
+/* Small Text */
+#queue-status .text-muted {
+  color: var(--text-muted);
+}
+
+#queue-status .small {
+  font-size: 0.85em;
+}
+
+/* Icons */
+#queue-status .fas,
+#queue-status .fa {
+  margin-right: 5px;
+}
+
+/* Close Button */
+#closeQueueMonitor {
+  min-width: 250px;
+  padding: 12px 24px;
+  font-size: 1.1em;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  #queue-status .col-md-3 {
+    flex: 0 0 50%;
+    max-width: 50%;
+    margin-bottom: 15px;
+  }
+
+  #queue-status .metric h3 {
+    font-size: 2em;
+  }
+
+  #closeQueueMonitor {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  #queue-status .col-md-3 {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+}

@@ -3,12 +3,21 @@
 <head>
   <meta charset="UTF-8">
   <title>OCR PDF Service - Kontrolle</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='queue_status_addon.css') }}">
 </head>
 <body>
-  <header>
-    <h1>OCR KI Service - Kontrolle</h1>
-  </header>
+  <div class="page-header">
+    <div class="header-container">
+      <div class="header-left">
+        <img src="{{ url_for('static', filename='logo.jpg') }}" alt="Logo" class="logo">
+        <div>
+          <h1>OCR KI Service - Kontrolle</h1>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <main class="container">
     <section class="left section">
@@ -141,7 +150,7 @@
   <section class="section filename-section">
     <p id="originalFilename">Original: ...</p>
     <p id="newFilename">Neu: ...</p>
-    
+
     <!-- Fortschrittsanzeige -->
     <div class="progress-container">
       <div class="progress-info">
@@ -152,10 +161,21 @@
         <div class="progress-bar" id="progressBar"></div>
       </div>
     </div>
-    
+
     <div class="nav-buttons">
       <button id="prevBtn" class="btn">⬅️ Zurück</button>
       <button id="nextBtn" class="btn">➡️ Weiter</button>
+    </div>
+  </section>
+
+  <!-- Import Queue Status (initially hidden) -->
+  <section class="section" id="queue-status-section" style="display: none; margin-top: 30px;">
+    <h2 style="text-align: center; margin-bottom: 20px;">📦 Import-Fortschritt</h2>
+    <div id="queue-status"></div>
+    <div style="text-align: center; margin-top: 20px;">
+      <button id="closeQueueMonitor" class="btn btn-abort">
+        ✅ Monitoring beenden und zur Startseite
+      </button>
     </div>
   </section>
 
@@ -163,6 +183,7 @@
     // Files-Variable wird vom Server generiert
     const files = {{ files | tojson }};
   </script>
+  <script src="{{ url_for('static', filename='queue_monitor.js') }}"></script>
   <script src="{{ url_for('static', filename='control.js') }}"></script>
 </body>
 </html>

@@ -12,9 +12,10 @@ from services.logger import log
 from services.session_manager import ensure_staging, cleanup_session, registry
 from services.file_utils import (
     fs, handle_successful_processing, sanitize_filename,
-    cleanup_orphaned_files
+    cleanup_orphaned_files, _os_rename_original
 )
 from services.ollama_client import warmup_ollama
+from services.import_queue import get_import_queue_service
 from config import (
     JSON_FOLDER, INPUT_ROOT, OUTPUT_ROOT, WORK_ROOT,
     IMPORT_MEDIDOK, TRASH_DIR, MODEL_LLM1
@@ -169,27 +170,28 @@ def finalize_import():
         log(f"❌ Commit fehlgeschlagen: {e}", level="error")
         return jsonify(success=False, message=f"Commit fehlgeschlagen: {e}"), 500
 
-    # 2) Dateien nach IMPORT_MEDIDOK verschieben
+    # 2) Dateien sequenziell über ImportQueue nach IMPORT_MEDIDOK verschieben
     os.makedirs(IMPORT_MEDIDOK, exist_ok=True)
     moved = 0
+    queued = 0
     trashed = 0
     original_files_to_trash = set()
 
     files_to_copy = [e for e in entries if bool(e.get("include")) and e.get("file")]
     total_files = len(files_to_copy)
 
-    log(f"📄 Starte Kopieren von {total_files} Dateien nach IMPORT_MEDIDOK...")
+    log(f"📄 Starte sequenziellen Import von {total_files} Dateien...")
 
-    # Verwende echte OS-Funktionen nach Commit
-    import os as _os_real
+    # ImportQueue-Service holen
+    import_queue = get_import_queue_service(IMPORT_MEDIDOK)
 
     for idx, entry in enumerate(files_to_copy, 1):
         rel_name = entry.get("file")
         original_filename = entry.get("originalFilename")
 
-        log(f"📄 Kopiere Datei {idx}/{total_files}: {os.path.basename(rel_name)}")
+        log(f"📄 Reihe Datei {idx}/{total_files} ein: {os.path.basename(rel_name)}")
 
-        # Verarbeitete Datei aus OUTPUT_ROOT nach IMPORT_MEDIDOK verschieben
+        # Verarbeitete Datei aus OUTPUT_ROOT
         src = os.path.join(OUTPUT_ROOT, rel_name)
         if not os.path.exists(src):
             alt = os.path.join(OUTPUT_ROOT, os.path.basename(rel_name))
@@ -199,24 +201,18 @@ def finalize_import():
                 log(f"[WARN] finalize_import: Quelle nicht gefunden: {src}")
                 continue
 
-        dst = os.path.join(IMPORT_MEDIDOK, os.path.basename(rel_name))
-        os.makedirs(os.path.dirname(dst), exist_ok=True)
-
-        try:
-            _os_real.rename(src, dst)
-            moved += 1
-            log(f"✅ Verschoben nach IMPORT: {os.path.basename(rel_name)}")
-        except Exception as e:
-            log(f"❌ Fehler beim Verschieben von {src}: {e}", level="error")
+        # In Import-Queue einreihen (wird sequenziell verarbeitet)
+        filename = os.path.basename(rel_name)
+        if import_queue.enqueue_file(src, filename, sid):
+            queued += 1
+            moved += 1  # Zählt als "verschoben" sobald in Queue
+            log(f"✅ In Import-Queue eingereiht: {filename}")
+        else:
+            log(f"❌ Fehler beim Einreihen: {filename}", level="error")
 
         # Original-Dateinamen für TRASH sammeln
         if original_filename:
             original_files_to_trash.add(original_filename)
-
-        # 5 Sekunden Pause zwischen Kopiervorgängen
-        if idx < total_files:
-            log(f"⏳ Warte 5 Sekunden vor nächstem Kopiervorgang...")
-            time.sleep(5)
 
     # 3) Original-Dateien in TRASH verschieben
     for original_filename in original_files_to_trash:
@@ -227,7 +223,8 @@ def finalize_import():
             os.makedirs(os.path.dirname(trash_path), exist_ok=True)
 
             try:
-                _os_real.rename(original_path, trash_path)
+                # Verwende originale os.rename (umgeht Staging-Patch)
+                _os_rename_original(original_path, trash_path)
                 trashed += 1
                 log(f"🗑️ Original in TRASH: {original_filename}")
             except Exception as e:
@@ -242,13 +239,16 @@ def finalize_import():
 
     session.clear()
 
-    log(f"📊 Zusammenfassung: {moved} Dateien importiert, {trashed} Originale in TRASH verschoben")
+    log(f"📊 Zusammenfassung: {queued} Dateien in Queue eingereiht, {trashed} Originale in TRASH verschoben")
+    log(f"ℹ️ Die Dateien werden nun sequenziell verarbeitet. Nutzen Sie /import_queue_status zur Überwachung.")
 
     return jsonify(
         success=True,
+        queued=queued,
         moved=moved,
         trashed=trashed,
-        trash_location=trash_session_dir
+        trash_location=trash_session_dir,
+        message=f"{queued} Dateien werden sequenziell importiert. Der externe Dienst erhält jeweils nur eine Datei."
     )
 
 
@@ -485,3 +485,23 @@ def reset_session():
     log(f"🔄 Session-Reset abgeschlossen")
 
     return redirect(url_for("main.index"))
+
+
+@control_bp.route("/import_queue_status", methods=["GET"])
+def import_queue_status():
+    """
+    Gibt den aktuellen Status der Import-Queue zurück.
+
+    Ermöglicht Überwachung des sequenziellen Import-Prozesses.
+    """
+    try:
+        import_queue = get_import_queue_service(IMPORT_MEDIDOK)
+        stats = import_queue.get_stats()
+
+        return jsonify(
+            success=True,
+            stats=stats
+        )
+    except Exception as e:
+        log(f"❌ Fehler beim Abrufen des Queue-Status: {e}", level="error")
+        return jsonify(success=False, message=str(e)), 500
