@@ -51,11 +51,18 @@ def process_pdf(pdf_path, output_dir_unused):
     }
 
     create_control_json_from_summaries([summary_data])
-    handle_successful_processing(
+    result = handle_successful_processing(
         summary_data=summary_data,
         original_path=staged_out,  # die Staging-Datei
         target_dir=os.path.dirname(staged_out)
-    )    
+    )
+
+    # Aktualisiere summary_data mit dem neuen Dateinamen
+    summary_data["file"] = result["renamed"]
+
+    # Control JSON mit aktualisiertem Dateinamen neu schreiben (mit originalFilename als Key für Dedupe)
+    create_control_json_from_summaries([summary_data], key="originalFilename")
+
     return staged_out, summary_data
 
 
@@ -241,7 +248,13 @@ def process_medidok_files(file_paths, target_dir_unused):
             original_path=staged_out,  # hier: die STAGING-Datei (absoluter Pfad)
             target_dir=os.path.dirname(staged_out)
         )
-        
+
+        # Aktualisiere summary_data mit dem neuen Dateinamen
+        summary_data["file"] = result["renamed"]
+
+        # Control JSON mit aktualisiertem Dateinamen neu schreiben (mit originalFilename als Key für Dedupe)
+        create_control_json_from_summaries([summary_data], key="originalFilename")
+
         log(f"📋 Result: {result}")
         results.append(result)
 
@@ -365,7 +378,10 @@ def process_medidok_files_with_model(file_paths, target_dir_unused, model, sessi
             original_path=staged_out,
             target_dir=os.path.dirname(staged_out)
         )
-        
+
+        # Aktualisiere summary_data mit dem neuen Dateinamen
+        summary_data["file"] = result["renamed"]
+
         log(f"📋 Result: {result}")
         results.append(result)
 

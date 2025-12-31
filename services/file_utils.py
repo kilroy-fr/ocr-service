@@ -252,8 +252,10 @@ def cleanup_orphaned_files(work_root: Path, output_root: Path,
 # UTILITY FUNCTIONS
 # ============================================================================
 def sanitize_filename(name):
-    # Entfernt ungültige Zeichen und Unterstriche (da _ als Trennzeichen dient)
-    name = re.sub(r'[\\/:"*?<>|_]', '', name)
+    # Entfernt nur ungültige Dateisystem-Zeichen und Unterstriche (da _ als Trennzeichen dient)
+    # Leerzeichen, Kommas und Punkte bleiben erhalten
+    name = re.sub(r'[\\/:"*?<>|]', '', name)
+    name = name.replace('_', '')
     return name.strip()
     
 def safe_line(lines, index, fallback):
@@ -305,6 +307,11 @@ def handle_successful_processing(summary_data, original_path, target_dir):
     feld7 = sanitize_filename(summary_data.get("categoryID", "11"))
 
     new_filename = f"{feld1}_{feld2}_{feld3}_{feld4}_{feld5}, {feld6}_{feld7}.pdf"
+
+    log(f"🔍 DEBUG handle_successful_processing:")
+    log(f"   feld1={repr(feld1)}, feld2={repr(feld2)}")
+    log(f"   new_filename={repr(new_filename)}")
+    log(f"   Enthält Unterstriche: {'_' in new_filename}")
 
     if os.path.isabs(original_path):
         rel_src = to_rel_under_input(original_path)

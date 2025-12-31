@@ -134,7 +134,7 @@ def rename_file():
     feld7 = sanitize_filename(entry.get("categoryID", "11"))
 
     new_base = f"{feld1}_{feld2}_{feld3}_{feld4}_{feld5}, {feld6}_{feld7}.pdf"
-    new_base = sanitize_filename(new_base)
+    # WICHTIG: sanitize_filename NICHT auf new_base anwenden, da die Unterstriche Trennzeichen sind!
     new_rel = os.path.join(os.path.dirname(old_rel), new_base) if "/" in old_rel else new_base
 
     # Eintrag in control.json aktualisieren
