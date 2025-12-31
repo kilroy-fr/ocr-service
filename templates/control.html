@@ -137,8 +137,8 @@
     <section class="right section">
       <!-- Action Buttons -->
       <div class="control-actions">
-        <button id="finalizeBtn" class="btn" disabled>Analyse abschließen</button>
         <button id="abortBtn" class="btn btn-abort" type="button">⬅ Abbrechen und zur Startseite</button>
+        <button id="finalizeBtn" class="btn" disabled>Analyse abschließen</button>
       </div>
       
       <div id="preview" class="preview">
@@ -182,7 +182,10 @@
   <script>
     // Files-Variable wird vom Server generiert
     const files = {{ files | tojson }};
+    // HOME_URL für Weiterleitungen
+    const HOME_URL = {{ home_url | tojson }};
   </script>
+  <script src="{{ url_for('static', filename='notifications.js') }}"></script>
   <script src="{{ url_for('static', filename='queue_monitor.js') }}"></script>
   <script src="{{ url_for('static', filename='control.js') }}"></script>
 </body>

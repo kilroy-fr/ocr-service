@@ -157,7 +157,7 @@
                 Nach Auswahl werden die Dateien automatisch hochgeladen und stehen zur Bearbeitung bereit.
               </p>
               <label for="fileInput" class="btn">📂 Dateien auswählen</label>
-              <input type="file" name="files" id="fileInput" multiple accept=".pdf,image/*" style="display: none;">
+              <input type="file" name="files" id="fileInput" multiple style="display: none;">
               
               <!-- Dateiliste für Staging -->
               <div id="einzelFileList" style="margin-top: 20px;">
@@ -212,7 +212,7 @@
                 Nach Auswahl werden alle Dateien automatisch hochgeladen und stehen zur Bearbeitung bereit.
               </p>
               <label for="folderInput" class="btn">📂 Verzeichnisse/Dateien wählen</label>
-              <input type="file" id="folderInput" name="files" webkitdirectory directory multiple accept=".pdf,image/*" style="display: none;">
+              <input type="file" id="folderInput" name="files" webkitdirectory directory multiple style="display: none;">
 
               <!-- Master-Checkbox für Batch -->
               <div class="master-checkbox-container" style="margin-top: 20px;">
@@ -258,6 +258,9 @@
     window.processedFilesData = {{ processed_files | safe }};
   </script>
   
+  <!-- Notification-System laden -->
+  <script src="{{ url_for('static', filename='notifications.js') }}"></script>
+
   <!-- Haupt-JavaScript laden -->
   <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>

@@ -252,7 +252,8 @@ def cleanup_orphaned_files(work_root: Path, output_root: Path,
 # UTILITY FUNCTIONS
 # ============================================================================
 def sanitize_filename(name):
-    name = re.sub(r'[\\/:"*?<>|]', '_', name)
+    # Entfernt ungültige Zeichen und Unterstriche (da _ als Trennzeichen dient)
+    name = re.sub(r'[\\/:"*?<>|_]', '', name)
     return name.strip()
     
 def safe_line(lines, index, fallback):
@@ -285,8 +286,9 @@ def timestamped_pdf_name(prefix="merged_images"):
     return f"{prefix}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
     
 def safe_filename_from_summary(summary: str, ext=".pdf") -> str:
-    name = summary.replace("§", "_").replace(" ", "_").replace("/", "-").strip()
-    name = "".join(c for c in name if c.isalnum() or c in "._-")
+    # Ersetzt Sonderzeichen, entfernt Unterstriche (da _ als Trennzeichen dient)
+    name = summary.replace("§", "").replace(" ", "_").replace("/", "-").strip()
+    name = "".join(c for c in name if c.isalnum() or c in ".-")
     return name[:260] + ext
 
 def copy_to_target(source_path, target_dir, new_filename):

@@ -18,7 +18,7 @@ from services.ollama_client import warmup_ollama
 from services.import_queue import get_import_queue_service
 from config import (
     JSON_FOLDER, INPUT_ROOT, OUTPUT_ROOT, WORK_ROOT,
-    IMPORT_MEDIDOK, TRASH_DIR, MODEL_LLM1
+    IMPORT_MEDIDOK, TRASH_DIR, MODEL_LLM1, HOME_URL
 )
 
 control_bp = Blueprint('control', __name__)
@@ -41,7 +41,8 @@ def control():
 
     return render_template("control.html",
                            files=control_data,
-                           index=index)
+                           index=index,
+                           home_url=HOME_URL)
 
 
 @control_bp.route("/get_control_data", methods=["GET"])
@@ -103,7 +104,7 @@ def save_control_data():
 
 @control_bp.route("/rename_file", methods=["POST"])
 def rename_file():
-    """Benennt Datei nach Kanon-Schema um."""
+    """Benennt Datei nach Kanon-Schema um (nur in control.json, echte Umbenennung erfolgt beim Commit)."""
     data = request.get_json(force=True) or {}
     old_rel = data.get("old_filename")
     if not old_rel:
@@ -123,14 +124,17 @@ def rename_file():
     if not entry:
         return jsonify(success=False, message="Eintrag nicht gefunden."), 404
 
-    # Zielnamen nach Kanon-Schema bestimmen
-    result = handle_successful_processing(
-        summary_data=entry,
-        original_path=old_rel,
-        target_dir=os.path.dirname(old_rel) if "/" in old_rel else ""
-    )
-    new_base_presan = result["renamed"]
-    new_base = sanitize_filename(new_base_presan)
+    # Zielnamen nach Kanon-Schema bestimmen (OHNE fs.plan_rename aufzurufen!)
+    feld1 = sanitize_filename(entry.get("name", "Unbekannt"))
+    feld2 = sanitize_filename(entry.get("vorname", "Unbekannt"))
+    feld3 = sanitize_filename(entry.get("geburtsdatum", "Unbekannt"))
+    feld4 = sanitize_filename(entry.get("datum", "Unbekannt"))
+    feld5 = sanitize_filename(entry.get("beschreibung1", "Unbekannt"))[:30]
+    feld6 = sanitize_filename(entry.get("beschreibung2", "Unbekannt"))[:120]
+    feld7 = sanitize_filename(entry.get("categoryID", "11"))
+
+    new_base = f"{feld1}_{feld2}_{feld3}_{feld4}_{feld5}, {feld6}_{feld7}.pdf"
+    new_base = sanitize_filename(new_base)
     new_rel = os.path.join(os.path.dirname(old_rel), new_base) if "/" in old_rel else new_base
 
     # Eintrag in control.json aktualisieren
@@ -142,6 +146,8 @@ def rename_file():
 
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump(control_data, f, ensure_ascii=False, indent=2)
+
+    log(f"📝 Dateiname in control.json aktualisiert: {old_rel} → {new_rel} (physische Umbenennung erfolgt beim Commit)")
 
     return jsonify(success=True, new_filename=new_rel)
 
@@ -161,6 +167,52 @@ def finalize_import():
     trash_session_dir = os.path.join(TRASH_DIR, f"session_{sid}_{timestamp}")
     os.makedirs(trash_session_dir, exist_ok=True)
     log(f"📦 TRASH-Ordner erstellt: {trash_session_dir}")
+
+    # 0) VOR dem Commit: Umbenennungen aus control.json planen
+    # Problem: In control.json steht bereits der neue Dateiname, aber die physische Datei
+    # im Staging hat noch den ursprünglichen Namen (*_ocr.pdf aus der Analyse).
+    # Lösung: Finde die tatsächliche Datei im Staging und plane die Umbenennung.
+
+    json_path = os.path.join(JSON_FOLDER, f"control_{sid}.json")
+    if os.path.exists(json_path):
+        with open(json_path, "r", encoding="utf-8") as f:
+            control_data = json.load(f)
+
+        # fs.work_dir ist bereits das Staging-Verzeichnis (.../session_id/staging)
+        staging_dir = str(fs.work_dir) if hasattr(fs, 'work_dir') else None
+
+        if staging_dir and os.path.exists(staging_dir):
+            # Liste alle Dateien im Staging
+            staging_files = {}
+            for fname in os.listdir(staging_dir):
+                if fname.endswith(".pdf"):
+                    # Speichere ohne Pfad für einfachen Vergleich
+                    staging_files[fname] = fname
+
+            log(f"📂 Gefundene Dateien im Staging ({staging_dir}): {list(staging_files.keys())}")
+
+            for entry in control_data:
+                new_rel_name = entry.get("file")  # Neuer relativer Pfad aus control.json
+                original_fname = entry.get("originalFilename", "")  # Original-Dateiname
+
+                # Der ursprüngliche Name der OCR-Datei ist original_fname + "_ocr.pdf"
+                if original_fname:
+                    base = os.path.splitext(original_fname)[0]
+                    old_fname = f"{base}_ocr.pdf"
+
+                    if old_fname in staging_files:
+                        # Plane Umbenennung: alter Name → neuer Name (nur Basisname)
+                        new_fname = os.path.basename(new_rel_name)
+
+                        if old_fname != new_fname:
+                            fs.plan_rename(old_fname, new_fname)
+                            log(f"🔄 Plane Umbenennung: {old_fname} → {new_fname}")
+                        else:
+                            log(f"ℹ️ Keine Umbenennung nötig: {old_fname}")
+                    else:
+                        log(f"⚠️ Datei nicht im Staging gefunden: {old_fname}")
+        else:
+            log(f"⚠️ Staging-Verzeichnis nicht gefunden: {staging_dir}")
 
     # 1) Commit durchführen
     try:
@@ -254,7 +306,7 @@ def finalize_import():
 
 @control_bp.route("/combine_medidok", methods=["POST"])
 def combine_medidok_route():
-    """Kombiniert mehrere PDFs zu einer Datei."""
+    """Kombiniert mehrere PDFs und/oder Bilder (JPG, PNG, TIF) zu einer PDF-Datei."""
     session_id = ensure_staging()
     data = request.get_json(force=True) or {}
     selected_files = data.get("files", [])
@@ -265,6 +317,9 @@ def combine_medidok_route():
     log(f"🧩 combine_medidok gestartet mit {len(selected_files)} Dateien")
 
     try:
+        from PIL import Image
+        import tempfile
+
         # Pfade auflösen
         resolved_paths = []
         for filename in selected_files:
@@ -283,12 +338,66 @@ def combine_medidok_route():
         if len(resolved_paths) < 2:
             raise ValueError("Mindestens 2 Dateien erforderlich zum Kombinieren")
 
+        # Temporäre PDFs für Bildkonvertierung
+        temp_pdfs = []
+
         # Kombinieren mit PyMuPDF
         combined_pdf = fitz.open()
 
         for path in resolved_paths:
-            with fitz.open(path) as pdf:
-                combined_pdf.insert_pdf(pdf)
+            file_ext = os.path.splitext(path)[1].lower()
+
+            # Unterscheide zwischen PDF und Bilddateien
+            if file_ext == '.pdf':
+                # PDF direkt einfügen
+                with fitz.open(path) as pdf:
+                    combined_pdf.insert_pdf(pdf)
+                log(f"✅ PDF hinzugefügt: {os.path.basename(path)}")
+            elif file_ext in ['.jpg', '.jpeg', '.png', '.tif', '.tiff']:
+                # Bild zu PDF konvertieren und einfügen
+                try:
+                    img = Image.open(path)
+
+                    # Multi-Page TIFF: Alle Seiten verarbeiten
+                    if file_ext in ['.tif', '.tiff'] and hasattr(img, 'n_frames') and img.n_frames > 1:
+                        for frame_idx in range(img.n_frames):
+                            img.seek(frame_idx)
+                            frame = img.convert('RGB')
+
+                            # Temporäres PDF für diese Seite
+                            with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as tmp:
+                                temp_pdf_path = tmp.name
+                                temp_pdfs.append(temp_pdf_path)
+                                frame.save(temp_pdf_path, 'PDF', resolution=100.0)
+
+                            # Ins kombinierte PDF einfügen
+                            with fitz.open(temp_pdf_path) as pdf:
+                                combined_pdf.insert_pdf(pdf)
+
+                        log(f"✅ Multi-Page TIFF hinzugefügt ({img.n_frames} Seiten): {os.path.basename(path)}")
+                    else:
+                        # Einzelbild zu RGB konvertieren
+                        if img.mode not in ('RGB', 'L'):
+                            img = img.convert('RGB')
+
+                        # Temporäres PDF erstellen
+                        with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as tmp:
+                            temp_pdf_path = tmp.name
+                            temp_pdfs.append(temp_pdf_path)
+                            img.save(temp_pdf_path, 'PDF', resolution=100.0)
+
+                        # Ins kombinierte PDF einfügen
+                        with fitz.open(temp_pdf_path) as pdf:
+                            combined_pdf.insert_pdf(pdf)
+
+                        log(f"✅ Bild zu PDF konvertiert und hinzugefügt: {os.path.basename(path)}")
+
+                    img.close()
+                except Exception as img_error:
+                    log(f"❌ Fehler beim Konvertieren von {os.path.basename(path)}: {img_error}", level="error")
+                    raise
+            else:
+                log(f"⚠️ Nicht unterstütztes Dateiformat übersprungen: {os.path.basename(path)}", level="warning")
 
         # Ausgabedateiname
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -298,9 +407,16 @@ def combine_medidok_route():
         combined_pdf.save(out_path)
         combined_pdf.close()
 
+        # Temporäre PDFs aufräumen
+        for temp_pdf in temp_pdfs:
+            try:
+                os.unlink(temp_pdf)
+            except Exception:
+                pass
+
         log(f"✅ PDF kombiniert: {out_name} ({len(resolved_paths)} Dateien)")
 
-        # Als verarbeitet markieren
+        # Als verarbeitet markieren - WICHTIG: Ursprungsdateien werden ausgegraut
         if "processed_files" not in session:
             session["processed_files"] = {}
 
@@ -311,6 +427,8 @@ def combine_medidok_route():
                 "result": out_name
             }
         session.modified = True
+
+        log(f"🔒 {len(selected_files)} Quelldateien als 'merged' markiert (werden von Analyse ausgeschlossen)")
 
         return jsonify(
             success=True,

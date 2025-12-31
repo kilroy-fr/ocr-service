@@ -89,13 +89,56 @@ def index():
 
     if os.path.exists(medidok_dir):
         try:
+            from PIL import Image
+
             all_files = os.listdir(medidok_dir)
             log(f"📂 Gefundene Dateien gesamt: {len(all_files)}")
 
-            medidok_files = [
+            # Alle unterstützten Dateien sammeln (inkl. TIF)
+            supported_files = [
                 f for f in all_files
-                if f.lower().endswith(('.pdf', '.jpg', '.jpeg', '.png'))
+                if f.lower().endswith(('.pdf', '.jpg', '.jpeg', '.png', '.tif', '.tiff'))
             ]
+
+            medidok_files = []
+
+            for filename in supported_files:
+                file_path = os.path.join(medidok_dir, filename)
+
+                # ✅ TIF/TIFF automatisch zu JPG konvertieren
+                if filename.lower().endswith(('.tif', '.tiff')):
+                    try:
+                        log(f"🔄 Konvertiere TIF zu JPG: {filename}")
+                        img = Image.open(file_path)
+
+                        # Erste Seite bei Multi-Page TIFF
+                        if hasattr(img, 'n_frames') and img.n_frames > 1:
+                            img.seek(0)
+
+                        # RGB konvertieren für JPG
+                        if img.mode not in ('RGB', 'L'):
+                            img = img.convert('RGB')
+
+                        # Neuer JPG-Dateiname
+                        base_name = os.path.splitext(filename)[0]
+                        jpg_name = base_name + '.jpg'
+                        jpg_path = os.path.join(medidok_dir, jpg_name)
+
+                        # Als JPG speichern
+                        img.save(jpg_path, 'JPEG', quality=95)
+                        img.close()
+
+                        # Original TIF löschen
+                        os.remove(file_path)
+
+                        log(f"✅ TIF zu JPG konvertiert und Original gelöscht: {jpg_name}")
+                        medidok_files.append(jpg_name)
+                    except Exception as e:
+                        log(f"❌ Fehler bei TIF-Konvertierung {filename}: {e}", level="error")
+                        # Bei Fehler: Original behalten
+                        medidok_files.append(filename)
+                else:
+                    medidok_files.append(filename)
 
             log(f"✅ Gefilterte PDF/Bild-Dateien: {len(medidok_files)}")
             if medidok_files:

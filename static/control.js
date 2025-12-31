@@ -508,7 +508,7 @@ async function saveData() {
   });
 
   if (!res.ok) {
-    alert("Fehler beim Umbenennen (Plan).");
+    Notifications.error("Fehler beim Umbenennen (Plan).");
   } else {
     const j = await res.json().catch(() => ({}));
     const effectiveRel = j && j.new_filename ? j.new_filename : newRel;
@@ -683,49 +683,64 @@ async function finalizeAnalysis() {
     hideCopySpinner();
 
     if (res.ok && data.success) {
+      console.log('✅ Finalize erfolgreich, rufe showQueueMonitor() auf', data);
       // Zeige Queue-Monitor statt direkt zur Startseite zu springen
       showQueueMonitor(data);
     } else {
-      alert("Fehler: " + (data.message || `HTTP ${res.status}`));
+      console.error('❌ Finalize fehlgeschlagen', data);
+      Notifications.error("Fehler: " + (data.message || `HTTP ${res.status}`));
     }
   } catch (error) {
     // Verstecke Spinner auch bei Fehler
     hideCopySpinner();
-    alert("Fehler beim Finalisieren: " + error.message);
+    Notifications.error("Fehler beim Finalisieren: " + error.message);
   }
 }
 
 async function abortAll() {
-  if (!confirm("Alle Änderungen verwerfen und zur Startseite zurückkehren?")) return;
+  if (!await Notifications.confirm("Alle Änderungen verwerfen und zur Startseite zurückkehren?", "Abbrechen", "Bleiben")) return;
   const res = await fetch("/abort", { method: "POST" });
   const data = await res.json().catch(() => ({}));
   if (res.ok && data.success) {
     window.location.href = "/";
   } else {
-    alert("Fehler beim Abbrechen: " + (data.message || `HTTP ${res.status}`));
+    Notifications.error("Fehler beim Abbrechen: " + (data.message || `HTTP ${res.status}`));
   }
 }
 
 // Queue Monitor Funktionen
 function showQueueMonitor(finalizeData) {
+  console.log('📦 showQueueMonitor() aufgerufen', finalizeData);
+
   // Verstecke Hauptformular und zeige Queue-Monitor
-  document.querySelector('.container').style.display = 'none';
-  document.querySelector('.filename-section').style.display = 'none';
-
+  const container = document.querySelector('.container');
+  const filenameSection = document.querySelector('.filename-section');
   const queueSection = document.getElementById('queue-status-section');
-  queueSection.style.display = 'block';
 
-  // Info-Alert zeigen
-  const queuedCount = finalizeData.queued || finalizeData.moved || 0;
-  if (queuedCount > 0) {
-    alert(finalizeData.message || `${queuedCount} Dateien werden sequenziell importiert.\n\nDer externe Dienst erhält jeweils nur eine Datei.\n\nDas Monitoring startet automatisch.`);
+  if (container) {
+    container.style.display = 'none';
+    console.log('✅ Hauptcontainer ausgeblendet');
   }
 
-  // Scroll zum Queue-Monitor
-  queueSection.scrollIntoView({ behavior: 'smooth' });
+  if (filenameSection) {
+    filenameSection.style.display = 'none';
+    console.log('✅ Filename-Section ausgeblendet');
+  }
+
+  if (queueSection) {
+    queueSection.style.display = 'block';
+    console.log('✅ Queue-Section eingeblendet');
+
+    // Scroll zum Queue-Monitor
+    queueSection.scrollIntoView({ behavior: 'smooth' });
+  } else {
+    console.error('❌ Queue-Section nicht gefunden!');
+    return;
+  }
 
   // Kleine Verzögerung vor Start damit Alert geschlossen werden kann
   setTimeout(() => {
+    console.log('🚀 Starte Queue-Monitor...');
     // Starte Queue-Monitor
     QueueMonitor.start('queue-status');
 
@@ -756,10 +771,37 @@ function monitorQueueCompletion() {
           clearInterval(checkInterval);
           QueueMonitor.stop();
 
-          // Zeige Success-Message
-          setTimeout(() => {
-            if (confirm(`✅ Alle ${total_processed} Dateien wurden erfolgreich importiert!\n\nZur Startseite zurückkehren?`)) {
-              window.location.href = "/";
+          // Zeige Success-Message mit Verzögerung
+          setTimeout(async () => {
+            const proceed = await Notifications.confirm(
+              `✅ Alle ${total_processed} Dateien wurden erfolgreich importiert!\n\nZur Startseite zurückkehren?`,
+              "Zur Startseite",
+              "Hier bleiben"
+            );
+
+            if (proceed) {
+              // Fallback für undefined/null HOME_URL
+              let targetUrl = "/";
+              if (typeof HOME_URL !== 'undefined' && HOME_URL && HOME_URL !== 'undefined') {
+                targetUrl = HOME_URL;
+              }
+              console.log(`🔄 Weiterleitung zu: ${targetUrl} (HOME_URL type: ${typeof HOME_URL}, value: ${HOME_URL})`);
+              window.location.href = targetUrl;
+            } else {
+              // Wenn Benutzer "Hier bleiben" wählt, blende Fortschritt-Fenster aus
+              // und zeige Hauptformular wieder
+              const queueSection = document.getElementById('queue-status-section');
+              if (queueSection) {
+                queueSection.style.display = 'none';
+              }
+              const container = document.querySelector('.container');
+              if (container) {
+                container.style.display = 'block';
+              }
+              const filenameSection = document.querySelector('.filename-section');
+              if (filenameSection) {
+                filenameSection.style.display = 'block';
+              }
             }
           }, 1000); // 1 Sekunde Verzögerung
         }
@@ -771,38 +813,80 @@ function monitorQueueCompletion() {
 }
 
 // Event-Listener für "Monitoring beenden" Button
-document.addEventListener('DOMContentLoaded', function() {
-  const closeButton = document.getElementById('closeQueueMonitor');
-  if (closeButton) {
-    closeButton.addEventListener('click', async function() {
-      // Hole aktuellen Queue-Status
-      try {
-        const response = await fetch('/import_queue_status');
-        const data = await response.json();
+// Verwende Event-Delegation auf document, da der Button dynamisch angezeigt wird
+document.addEventListener('click', async function(e) {
+  if (e.target && e.target.id === 'closeQueueMonitor') {
+    e.preventDefault();
+    e.stopPropagation();
 
-        if (data.success && data.stats) {
-          const { current_queue_size, total_processed } = data.stats;
+    console.log('closeQueueMonitor Button geklickt');
 
-          // Warnung wenn noch Dateien in der Queue
-          if (current_queue_size > 0) {
-            const proceed = confirm(`⚠️ ACHTUNG: Es sind noch ${current_queue_size} Datei(en) in der Warteschlange!\n\n${total_processed} Datei(en) wurden bereits importiert.\n\nWenn Sie jetzt abbrechen, werden die verbleibenden Dateien NICHT importiert.\n\nTrotzdem zur Startseite zurückkehren?`);
-            if (!proceed) return;
-          } else {
-            // Queue ist leer - normale Bestätigung
-            const proceed = confirm(`${total_processed} Datei(en) wurden erfolgreich importiert.\n\nZur Startseite zurückkehren?`);
-            if (!proceed) return;
+    // Hole aktuellen Queue-Status
+    try {
+      const response = await fetch('/import_queue_status');
+      const data = await response.json();
+      console.log('Queue Status:', data);
+
+      if (data.success && data.stats) {
+        const { current_queue_size, total_processed } = data.stats;
+
+        // Warnung wenn noch Dateien in der Queue
+        if (current_queue_size > 0) {
+          console.log('Queue nicht leer, zeige Warnung');
+          const proceed = await Notifications.confirm(
+            `⚠️ ACHTUNG: Es sind noch ${current_queue_size} Datei(en) in der Warteschlange!\n\n${total_processed} Datei(en) wurden bereits importiert.\n\nWenn Sie jetzt abbrechen, werden die verbleibenden Dateien NICHT importiert.\n\nTrotzdem zur Startseite zurückkehren?`,
+            "Zur Startseite",
+            "Abbrechen"
+          );
+          console.log('User Entscheidung:', proceed);
+          if (!proceed) return;
+        } else {
+          // Queue ist leer - normale Bestätigung
+          console.log('Queue leer, zeige Erfolgsmeldung');
+          const proceed = await Notifications.confirm(
+            `✅ ${total_processed} Datei(en) wurden erfolgreich importiert.\n\nZur Startseite zurückkehren?`,
+            "Zur Startseite",
+            "Hier bleiben"
+          );
+          console.log('User Entscheidung:', proceed);
+          if (!proceed) {
+            // Wenn Benutzer "Hier bleiben" wählt, schließe Fortschritt-Fenster
+            const queueSection = document.getElementById('queue-status-section');
+            if (queueSection) {
+              queueSection.style.display = 'none';
+            }
+            const container = document.querySelector('.container');
+            if (container) {
+              container.style.display = 'block';
+            }
+            const filenameSection = document.querySelector('.filename-section');
+            if (filenameSection) {
+              filenameSection.style.display = 'block';
+            }
+            return;
           }
         }
-      } catch (error) {
-        // Fallback bei Fehler
-        if (!confirm('Queue-Monitoring beenden und zur Startseite zurückkehren?')) {
-          return;
-        }
       }
+    } catch (error) {
+      // Fallback bei Fehler
+      console.error('Fehler beim Laden des Queue Status:', error);
+      const proceed = await Notifications.confirm(
+        'Queue-Monitoring beenden und zur Startseite zurückkehren?',
+        "Zur Startseite",
+        "Abbrechen"
+      );
+      console.log('User Entscheidung (Fehlerfall):', proceed);
+      if (!proceed) return;
+    }
 
-      QueueMonitor.stop();
-      window.location.href = "/";
-    });
+    // Fallback für undefined/null HOME_URL
+    let targetUrl = "/";
+    if (typeof HOME_URL !== 'undefined' && HOME_URL && HOME_URL !== 'undefined') {
+      targetUrl = HOME_URL;
+    }
+    console.log(`Stopping QueueMonitor und redirect zu: ${targetUrl} (HOME_URL: ${HOME_URL})`);
+    QueueMonitor.stop();
+    window.location.href = targetUrl;
   }
 });
 
@@ -906,4 +990,15 @@ window.addEventListener("DOMContentLoaded", () => {
       checkFinalizeReady();
     });
   });
+
+  // Debug: HOME_URL prüfen
+  console.log('🏠 HOME_URL definiert:', typeof HOME_URL !== 'undefined' ? HOME_URL : 'NICHT DEFINIERT');
+
+  // Queue-Monitor automatisch starten, wenn Import-Fortschritt-Sektion sichtbar ist
+  const queueSection = document.getElementById('queue-status-section');
+  if (queueSection && queueSection.style.display !== 'none') {
+    console.log('📦 Import-Fortschritt-Sektion ist sichtbar - starte Queue-Monitor sofort');
+    QueueMonitor.start('queue-status');
+    monitorQueueCompletion();
+  }
 });

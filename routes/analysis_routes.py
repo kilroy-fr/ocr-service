@@ -159,15 +159,37 @@ def ocr_only():
             # Zuerst im Staging suchen (Einzel/Batch)
             staging_path = os.path.join(fs.work_dir, name)
             if os.path.exists(staging_path):
+                # ✅ Dateien ohne gültige Dateiendung als .jpg behandeln und umbenennen
+                has_valid_extension = name.lower().endswith(('.pdf', '.jpg', '.jpeg', '.png', '.tif', '.tiff'))
+                if not has_valid_extension:
+                    log(f"📝 Datei ohne gültige Endung erkannt: {name}")
+                    new_name = name + '.jpg'
+                    new_staging_path = os.path.join(fs.work_dir, new_name)
+                    import shutil
+                    shutil.move(staging_path, new_staging_path)
+                    staging_path = new_staging_path
+                    log(f"✅ Im Staging umbenannt: {new_name}")
+
                 file_paths.append(staging_path)
-                log(f"📂 Datei aus Staging: {name}")
+                log(f"📂 Datei aus Staging: {os.path.basename(staging_path)}")
                 continue
 
             # Fallback: INPUT_ROOT (Medidok)
             abs_path = os.path.join(INPUT_ROOT, name)
             if os.path.exists(abs_path):
+                # ✅ Dateien ohne gültige Dateiendung als .jpg behandeln und umbenennen
+                has_valid_extension = name.lower().endswith(('.pdf', '.jpg', '.jpeg', '.png', '.tif', '.tiff'))
+                if not has_valid_extension:
+                    log(f"📝 Datei ohne gültige Endung erkannt: {name}")
+                    new_name = name + '.jpg'
+                    new_abs_path = os.path.join(INPUT_ROOT, new_name)
+                    import shutil
+                    shutil.move(abs_path, new_abs_path)
+                    abs_path = new_abs_path
+                    log(f"✅ In INPUT_ROOT umbenannt: {new_name}")
+
                 file_paths.append(abs_path)
-                log(f"📂 Datei aus INPUT_ROOT: {name}")
+                log(f"📂 Datei aus INPUT_ROOT: {os.path.basename(abs_path)}")
                 continue
 
             # Nicht gefunden

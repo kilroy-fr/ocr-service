@@ -46,12 +46,51 @@ def send_to_ollama(prompt, mnr, model, temperature=None):
             # Außerhalb Request-Context
             temperature = 0.0
 
-    # Optimierte Parameter für strukturierte Datenextraktion
-    payload = {
-        'model': model,
-        'prompt': prompt,
-        'stream': False,
-        'options': {
+    # Modell-spezifische Optimierungen
+    is_qwen3_14b = model.startswith("qwen3:14b")
+    is_deepseek_r1 = model.startswith("deepseek-r1")
+    is_gpt_oss = model.startswith("gpt-oss")
+
+    # Qwen3:14b braucht spezielle Parameter (weniger restriktiv als qwen2.5)
+    if is_qwen3_14b:
+        options = {
+            'temperature': 0.1,             # Minimal höher als 0, sonst zu restriktiv
+            'top_p': 0.95,                  # Weniger streng, mehr Flexibilität
+            'top_k': 40,                    # Mehr Tokens für bessere Auswahl
+            'repeat_penalty': 1.05,         # Schwächer, qwen3 braucht Wiederholungen für Format
+            'num_predict': 400,             # Genug Tokens für 7 vollständige Zeilen
+            'num_ctx': 2048,                # Erhöhter Kontext für besseres Verständnis
+            # KEINE stop-tokens! qwen3 stoppt sonst zu früh
+        }
+        timeout = 60  # Längerer Timeout
+
+    elif is_deepseek_r1:
+        # DeepSeek-R1 braucht ähnliche Parameter wie qwen3
+        options = {
+            'temperature': 0.1,
+            'top_p': 0.95,
+            'top_k': 40,
+            'repeat_penalty': 1.05,
+            'num_predict': 400,
+            'num_ctx': 2048,
+        }
+        timeout = 60
+
+    elif is_gpt_oss:
+        # GPT-OSS ist sehr groß und langsam - braucht mehr Zeit und weniger Restriktionen
+        options = {
+            'temperature': 0.2,             # Etwas höher für Kreativität
+            'top_p': 0.95,
+            'top_k': 50,
+            'repeat_penalty': 1.05,
+            'num_predict': 400,
+            'num_ctx': 2048,
+        }
+        timeout = 90  # Sehr langer Timeout wegen Modellgröße
+
+    else:
+        # Standard-Parameter für andere Modelle (qwen2.5:14b, qwen3:8b, etc.)
+        options = {
             'temperature': temperature,      # 0.0 = deterministisch, konsistent
             'top_p': 0.9,                   # Reduziert Kreativität, fokussiert auf wahrscheinlichste Tokens
             'top_k': 10,                    # Begrenzt Token-Auswahl auf Top-10
@@ -59,13 +98,20 @@ def send_to_ollama(prompt, mnr, model, temperature=None):
             'num_predict': 200,             # Max. Tokens (~7 Zeilen à 25-30 Tokens)
             'stop': ['\n\n\n'],            # Stoppt bei 3 aufeinanderfolgenden Leerzeilen
         }
+        timeout = 30
+
+    payload = {
+        'model': model,
+        'prompt': prompt,
+        'stream': False,
+        'options': options
     }
 
     try:
         response = requests.post(
             OLLAMA_URL,
             json=payload,
-            timeout=30
+            timeout=timeout
         )
         response.raise_for_status()
         return response.json().get("response", "").strip()

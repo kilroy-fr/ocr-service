@@ -32,13 +32,61 @@ def upload_files():
     uploaded_files = []
     for file in files:
         if file.filename:
+            from PIL import Image
+            filename = file.filename
+
+            # ✅ Dateien ohne gültige Dateiendung als .jpg behandeln
+            # Prüfe ob Datei eine bekannte Endung hat
+            has_valid_extension = filename.lower().endswith(('.pdf', '.jpg', '.jpeg', '.png', '.tif', '.tiff'))
+            if not has_valid_extension:
+                log(f"📝 Datei ohne gültige Endung erkannt beim Upload: {filename}")
+                filename = filename + '.jpg'
+                log(f"✅ Dateiname ergänzt: {filename}")
+
             # Sichere den Dateinamen
-            safe_name = secure_filename(file.filename)
-            # Speichere direkt ins Staging-Verzeichnis
-            staging_path = os.path.join(fs.work_dir, safe_name)
-            file.save(staging_path)
-            uploaded_files.append(safe_name)
-            log(f"📤 Datei ins Staging kopiert: {safe_name}")
+            safe_name = secure_filename(filename)
+
+            # ✅ TIF/TIFF direkt zu JPG konvertieren (ohne TIF zu speichern)
+            if safe_name.lower().endswith(('.tif', '.tiff')):
+                try:
+                    log(f"🔄 TIF/TIFF wird zu JPG konvertiert: {safe_name}")
+
+                    # TIF direkt aus Upload-Stream öffnen
+                    img = Image.open(file.stream)
+
+                    # Erste Seite bei Multi-Page TIFF
+                    if hasattr(img, 'n_frames') and img.n_frames > 1:
+                        img.seek(0)
+
+                    # RGB konvertieren für JPG
+                    if img.mode not in ('RGB', 'L'):
+                        img = img.convert('RGB')
+
+                    # Neuer JPG-Dateiname
+                    base_name = os.path.splitext(safe_name)[0]
+                    jpg_name = base_name + '.jpg'
+                    jpg_path = os.path.join(fs.work_dir, jpg_name)
+
+                    # Als JPG speichern
+                    img.save(jpg_path, 'JPEG', quality=95)
+                    img.close()
+
+                    log(f"✅ TIF zu JPG konvertiert (TIF nicht gespeichert): {jpg_name}")
+                    uploaded_files.append(jpg_name)
+                except Exception as e:
+                    log(f"❌ Fehler bei TIF-Konvertierung: {e}", level="error")
+                    # Bei Fehler: TIF-Original speichern
+                    staging_path = os.path.join(fs.work_dir, safe_name)
+                    file.seek(0)  # Stream zurückspulen
+                    file.save(staging_path)
+                    uploaded_files.append(safe_name)
+            else:
+                # Normale Dateien (PDF, JPG, PNG) direkt speichern
+                staging_path = os.path.join(fs.work_dir, safe_name)
+                file.save(staging_path)
+                uploaded_files.append(safe_name)
+
+            log(f"📤 Datei ins Staging kopiert: {uploaded_files[-1]}")
 
     if not uploaded_files:
         return jsonify(success=False, message="Keine Dateien hochgeladen"), 400
@@ -67,8 +115,18 @@ def upload_folder():
         if not file.filename:
             continue
 
+        from PIL import Image
+
         # Nur Dateiname, keine Pfadstruktur
         filename = os.path.basename(file.filename)
+
+        # ✅ Dateien ohne gültige Dateiendung als .jpg behandeln
+        # Prüfe ob Datei eine bekannte Endung hat
+        has_valid_extension = filename.lower().endswith(('.pdf', '.jpg', '.jpeg', '.png', '.tif', '.tiff'))
+        if not has_valid_extension:
+            log(f"📝 Datei ohne gültige Endung erkannt beim Upload: {filename}")
+            filename = filename + '.jpg'
+            log(f"✅ Dateiname ergänzt: {filename}")
 
         # Nur unterstützte Formate
         if not filename.lower().endswith(('.pdf', '.jpg', '.jpeg', '.png', '.tif', '.tiff')):
@@ -78,17 +136,63 @@ def upload_folder():
         # Sichere den Dateinamen
         safe_name = secure_filename(filename)
 
-        # Bei Namenskonflikten: Präfix mit Timestamp
-        staging_path = os.path.join(fs.work_dir, safe_name)
-        if os.path.exists(staging_path):
-            base, ext = os.path.splitext(safe_name)
-            safe_name = f"{base}_{int(time.time())}{ext}"
+        # ✅ TIF/TIFF direkt zu JPG konvertieren (ohne TIF zu speichern)
+        if safe_name.lower().endswith(('.tif', '.tiff')):
+            try:
+                log(f"🔄 TIF/TIFF wird zu JPG konvertiert: {safe_name}")
+
+                # TIF direkt aus Upload-Stream öffnen
+                img = Image.open(file.stream)
+
+                # Erste Seite bei Multi-Page TIFF
+                if hasattr(img, 'n_frames') and img.n_frames > 1:
+                    img.seek(0)
+
+                # RGB konvertieren für JPG
+                if img.mode not in ('RGB', 'L'):
+                    img = img.convert('RGB')
+
+                # Neuer JPG-Dateiname
+                base_name = os.path.splitext(safe_name)[0]
+                jpg_name = base_name + '.jpg'
+                jpg_path = os.path.join(fs.work_dir, jpg_name)
+
+                # Bei Namenskonflikten: Timestamp hinzufügen
+                if os.path.exists(jpg_path):
+                    jpg_name = f"{base_name}_{int(time.time())}.jpg"
+                    jpg_path = os.path.join(fs.work_dir, jpg_name)
+
+                # Als JPG speichern
+                img.save(jpg_path, 'JPEG', quality=95)
+                img.close()
+
+                log(f"✅ TIF zu JPG konvertiert (TIF nicht gespeichert): {jpg_name}")
+                collected_files.append(jpg_name)
+            except Exception as e:
+                log(f"❌ Fehler bei TIF-Konvertierung: {e}", level="error")
+                # Bei Fehler: TIF-Original speichern
+                staging_path = os.path.join(fs.work_dir, safe_name)
+                if os.path.exists(staging_path):
+                    base, ext = os.path.splitext(safe_name)
+                    safe_name = f"{base}_{int(time.time())}{ext}"
+                    staging_path = os.path.join(fs.work_dir, safe_name)
+                file.seek(0)  # Stream zurückspulen
+                file.save(staging_path)
+                collected_files.append(safe_name)
+        else:
+            # Normale Dateien (PDF, JPG, PNG) direkt speichern
             staging_path = os.path.join(fs.work_dir, safe_name)
 
-        # Speichern
-        file.save(staging_path)
-        collected_files.append(safe_name)
-        log(f"📤 Datei ins Staging kopiert: {safe_name}")
+            # Bei Namenskonflikten: Präfix mit Timestamp
+            if os.path.exists(staging_path):
+                base, ext = os.path.splitext(safe_name)
+                safe_name = f"{base}_{int(time.time())}{ext}"
+                staging_path = os.path.join(fs.work_dir, safe_name)
+
+            file.save(staging_path)
+            collected_files.append(safe_name)
+
+        log(f"📤 Datei ins Staging kopiert: {collected_files[-1]}")
 
     if not collected_files:
         return jsonify(success=False, message="Keine verarbeitbaren Dateien gefunden"), 400
@@ -99,17 +203,21 @@ def upload_folder():
 
 @file_bp.route('/preview/<path:filename>')
 def preview_file(filename):
-    """Vorschau - einfach mit UTF-8 Mount."""
+    """Vorschau - TIF-Dateien wurden bereits beim Upload zu JPG konvertiert."""
     filename = unquote(filename)
 
-    # Versuche zuerst im Staging
+    # Pfad zur Datei finden
     if fs.session_id:
         staged = os.path.join(fs.work_dir, filename)
         if os.path.exists(staged):
             return send_from_directory(fs.work_dir, filename)
 
     # Fallback: Original im INPUT_ROOT
-    return send_from_directory(INPUT_ROOT, filename)
+    original = os.path.join(INPUT_ROOT, filename)
+    if os.path.exists(original):
+        return send_from_directory(INPUT_ROOT, filename)
+
+    return jsonify(success=False, message="Datei nicht gefunden"), 404
 
 
 @file_bp.route('/processed/<path:filename>')
@@ -117,11 +225,18 @@ def serve_processed_file(filename):
     """Liefert verarbeitete Dateien aus Staging oder Output."""
     from config import OUTPUT_ROOT
 
+    filename = unquote(filename)
+
     if fs.session_id:
         staged = os.path.join(fs.work_dir, filename)
         if os.path.exists(staged):
             return send_from_directory(fs.work_dir, filename)
-    return send_from_directory(OUTPUT_ROOT, filename)
+
+    output = os.path.join(OUTPUT_ROOT, filename)
+    if os.path.exists(output):
+        return send_from_directory(OUTPUT_ROOT, filename)
+
+    return jsonify(success=False, message="Datei nicht gefunden"), 404
 
 
 @file_bp.route("/list_staged_files", methods=["GET"])

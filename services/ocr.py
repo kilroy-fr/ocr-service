@@ -131,20 +131,16 @@ def process_medidok_files(file_paths, target_dir_unused):
         # - Nur Dateiname (z.B. "test.pdf")
         # - Relativer Pfad (z.B. "combined_20250114_123456.pdf")
         # - Absoluter Pfad (sollte nicht vorkommen)
-        
+
         filename = os.path.basename(file_identifier)
-        
-        if not filename.lower().endswith(('.pdf', '.jpg', '.jpeg', '.png')):
-            log(f"⏭️ Überspringe Datei (kein unterstütztes Format): {filename}")
-            continue
 
         # ✅ WICHTIG: Original-Dateinamen JETZT speichern (ohne _ocr.pdf)
         true_original_filename = filename
-        
+
         # Pfadauflösung: Staging ZUERST, dann Original
         working_input = None
         is_from_staging = False
-        
+
         # 1. Versuch: Im Staging suchen
         if fs.session_id:
             staged_path = fs.work_dir / file_identifier
@@ -152,13 +148,42 @@ def process_medidok_files(file_paths, target_dir_unused):
                 working_input = str(staged_path)
                 is_from_staging = True
                 log(f"📂 Staging-Datei gefunden: {filename}")
-        
+
         # 2. Versuch: Im INPUT_ROOT suchen
         if not working_input:
             original_path = os.path.join(INPUT_ROOT, filename)
             if os.path.exists(original_path):
                 working_input = original_path
                 log(f"📂 Original-Datei gefunden: {filename}")
+
+        # ✅ Dateien ohne gültige Dateiendung als .jpg behandeln und umbenennen
+        has_valid_extension = filename.lower().endswith(('.pdf', '.jpg', '.jpeg', '.png', '.tif', '.tiff'))
+        if working_input and not has_valid_extension:
+            log(f"📝 Datei ohne gültige Endung erkannt: {filename}")
+            new_filename = filename + '.jpg'
+
+            if is_from_staging:
+                # Im Staging umbenennen
+                new_path = fs.work_dir / new_filename
+                import shutil
+                shutil.move(working_input, str(new_path))
+                working_input = str(new_path)
+                filename = new_filename
+                true_original_filename = new_filename
+                log(f"✅ Im Staging umbenannt: {filename}")
+            else:
+                # Im INPUT_ROOT umbenennen
+                new_path = os.path.join(INPUT_ROOT, new_filename)
+                import shutil
+                shutil.move(working_input, new_path)
+                working_input = new_path
+                filename = new_filename
+                true_original_filename = new_filename
+                log(f"✅ In INPUT_ROOT umbenannt: {filename}")
+
+        if not filename.lower().endswith(('.pdf', '.jpg', '.jpeg', '.png')):
+            log(f"⏭️ Überspringe Datei (kein unterstütztes Format): {filename}")
+            continue
         
         # 3. Nicht gefunden
         if not working_input:
@@ -226,46 +251,69 @@ def process_medidok_files_with_model(file_paths, target_dir_unused, model, sessi
     """
     Thread-sichere Variante von process_medidok_files für Background-Threads.
     Benötigt explizites Modell und Session-ID (kein Flask Request-Context).
-    
+
     Args:
         file_paths: Liste von Dateipfaden
         target_dir_unused: Wird nicht verwendet (Kompatibilität)
         model: LLM-Modell explizit (z.B. "mistral-nemo:latest")
         session_id: Flask Session-ID explizit
-        
+
     Returns:
         list: Liste von Result-Dictionaries mit 'summary' Key
     """
     from .summarizer import summarize_pdf
-    
+
     results = []
 
     for file_identifier in file_paths:
         filename = os.path.basename(file_identifier)
-        
-        if not filename.lower().endswith(('.pdf', '.jpg', '.jpeg', '.png')):
-            log(f"⏭️ Überspringe Datei (kein unterstütztes Format): {filename}")
-            continue
 
         true_original_filename = filename
-        
+
         # Pfadauflösung: Staging ZUERST, dann Original
         working_input = None
         is_from_staging = False
-        
+
         if fs.session_id:
             staged_path = fs.work_dir / file_identifier
             if staged_path.exists():
                 working_input = str(staged_path)
                 is_from_staging = True
                 log(f"📂 Staging-Datei gefunden: {filename}")
-        
+
         if not working_input:
             original_path = os.path.join(INPUT_ROOT, filename)
             if os.path.exists(original_path):
                 working_input = original_path
                 log(f"📂 Original-Datei gefunden: {filename}")
-        
+
+        # ✅ Dateien ohne gültige Dateiendung als .jpg behandeln und umbenennen
+        has_valid_extension = filename.lower().endswith(('.pdf', '.jpg', '.jpeg', '.png', '.tif', '.tiff'))
+        if working_input and not has_valid_extension:
+            log(f"📝 Datei ohne gültige Endung erkannt: {filename}")
+            new_filename = filename + '.jpg'
+
+            if is_from_staging:
+                # Im Staging umbenennen
+                new_path = fs.work_dir / new_filename
+                shutil.move(working_input, str(new_path))
+                working_input = str(new_path)
+                filename = new_filename
+                true_original_filename = new_filename
+                log(f"✅ Im Staging umbenannt: {filename}")
+            else:
+                # Im INPUT_ROOT umbenennen
+                new_path = os.path.join(INPUT_ROOT, new_filename)
+                shutil.move(working_input, new_path)
+                working_input = new_path
+                filename = new_filename
+                true_original_filename = new_filename
+                log(f"✅ In INPUT_ROOT umbenannt: {filename}")
+
+        if not filename.lower().endswith(('.pdf', '.jpg', '.jpeg', '.png')):
+            log(f"⏭️ Überspringe Datei (kein unterstütztes Format): {filename}")
+            continue
+
         if not working_input:
             log(f"❌ Datei nicht gefunden: {filename}", level="error")
             continue

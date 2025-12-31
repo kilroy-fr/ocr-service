@@ -53,6 +53,7 @@ const QueueMonitor = {
      * Lädt aktuellen Queue-Status vom Server
      */
     async updateStatus() {
+        console.log('🔄 Queue-Monitor: Fetching /import_queue_status...');
         try {
             const response = await fetch('/import_queue_status');
 
@@ -61,21 +62,24 @@ const QueueMonitor = {
             }
 
             const data = await response.json();
+            console.log('📊 Queue-Monitor: Received data:', data);
 
             if (data.success && data.stats) {
+                console.log('✅ Queue-Monitor: Rendering status with stats:', data.stats);
                 this.renderStatus(data.stats);
             } else {
                 // Nur Fehler zeigen wenn Queue-Service wirklich nicht läuft
                 // Bei leerem/initialem State zeige Status trotzdem an
                 if (data.stats) {
+                    console.log('⚠️ Queue-Monitor: Rendering status (no success flag)');
                     this.renderStatus(data.stats);
                 } else {
-                    console.warn('Queue-Status ohne stats:', data);
+                    console.warn('⚠️ Queue-Status ohne stats:', data);
                     this.renderError(data.message || 'Queue-Service startet...');
                 }
             }
         } catch (error) {
-            console.error('Fehler beim Laden des Queue-Status:', error);
+            console.error('❌ Fehler beim Laden des Queue-Status:', error);
             // Weniger aufdringliche Fehlerdarstellung
             this.renderError('Verbindung zum Queue-Service wird hergestellt...');
         }
@@ -102,73 +106,61 @@ const QueueMonitor = {
             : 0;
 
         // Status-Badge
-        const statusBadge = is_running && current_file
-            ? `<span class="badge badge-success">🔄 Aktiv</span>`
+        const statusIcon = is_running && current_file
+            ? `🔄 Aktiv`
             : current_queue_size > 0
-            ? `<span class="badge badge-warning">⏸️ Wartend</span>`
-            : `<span class="badge badge-secondary">✅ Leerlauf</span>`;
+            ? `⏸️ Wartend`
+            : `✅ Abgeschlossen`;
 
-        // HTML generieren
+        // HTML generieren ohne Bootstrap
         const html = `
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">📦 Import Queue Status</h5>
-                    ${statusBadge}
+            <div style="background: var(--bg-secondary, #2a2a2a); border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h3 style="margin: 0; color: var(--text-primary, #fff);">📦 Import Queue Status</h3>
+                    <span style="padding: 5px 15px; background: var(--accent-color, #4a9eff); border-radius: 4px; font-weight: bold;">
+                        ${statusIcon}
+                    </span>
                 </div>
-                <div class="card-body">
-                    ${current_file ? `
-                        <div class="alert alert-info mb-3">
-                            <strong>Aktuelle Datei:</strong><br>
-                            <code>${this.truncateFilename(current_file, 60)}</code>
-                            <div class="spinner-border spinner-border-sm ml-2" role="status">
-                                <span class="sr-only">Verarbeitung läuft...</span>
-                            </div>
-                        </div>
-                    ` : ''}
 
-                    <div class="row text-center">
-                        <div class="col-md-3">
-                            <div class="metric">
-                                <h3 class="text-primary">${current_queue_size}</h3>
-                                <small class="text-muted">In Warteschlange</small>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="metric">
-                                <h3 class="text-success">${total_processed}</h3>
-                                <small class="text-muted">Verarbeitet</small>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="metric">
-                                <h3 class="text-danger">${total_failed}</h3>
-                                <small class="text-muted">Fehler</small>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="metric">
-                                <h3 class="text-info">${total_queued}</h3>
-                                <small class="text-muted">Gesamt</small>
-                            </div>
+                ${current_file ? `
+                    <div style="background: rgba(74, 158, 255, 0.2); border-left: 4px solid #4a9eff; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
+                        <strong>Aktuelle Datei:</strong><br>
+                        <code style="color: #4a9eff; word-break: break-all;">${this.truncateFilename(current_file, 60)}</code>
+                        <span style="display: inline-block; margin-left: 10px;">⏳</span>
+                    </div>
+                ` : ''}
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px; margin-bottom: 20px; text-align: center;">
+                    <div class="queue-metric">
+                        <div class="queue-metric-value" style="font-size: 2.5em; font-weight: bold; color: #ffa500;">${current_queue_size}</div>
+                        <div class="queue-metric-label" style="color: #999; font-size: 0.9em; margin-top: 5px;">In Warteschlange</div>
+                    </div>
+                    <div class="queue-metric">
+                        <div class="queue-metric-value" style="font-size: 2.5em; font-weight: bold; color: #4caf50;">${total_processed}</div>
+                        <div class="queue-metric-label" style="color: #999; font-size: 0.9em; margin-top: 5px;">Verarbeitet</div>
+                    </div>
+                    <div class="queue-metric">
+                        <div class="queue-metric-value" style="font-size: 2.5em; font-weight: bold; color: #f44336;">${total_failed}</div>
+                        <div class="queue-metric-label" style="color: #999; font-size: 0.9em; margin-top: 5px;">Fehler</div>
+                    </div>
+                    <div class="queue-metric">
+                        <div class="queue-metric-value" style="font-size: 2.5em; font-weight: bold; color: #4a9eff;">${total_queued}</div>
+                        <div class="queue-metric-label" style="color: #999; font-size: 0.9em; margin-top: 5px;">Gesamt</div>
+                    </div>
+                </div>
+
+                ${total_queued > 0 ? `
+                    <div style="background: #1a1a1a; border-radius: 15px; height: 30px; overflow: hidden; margin-bottom: 15px;">
+                        <div style="background: linear-gradient(90deg, #4caf50, #8bc34a); height: 100%; width: ${processed_percent}%;
+                                    display: flex; align-items: center; justify-content: center; font-weight: bold;
+                                    transition: width 0.3s ease; color: #fff;">
+                            ${processed_percent}% abgeschlossen
                         </div>
                     </div>
+                ` : ''}
 
-                    ${total_queued > 0 ? `
-                        <div class="progress mt-3" style="height: 30px;">
-                            <div class="progress-bar bg-success" role="progressbar"
-                                 style="width: ${processed_percent}%"
-                                 aria-valuenow="${processed_percent}"
-                                 aria-valuemin="0"
-                                 aria-valuemax="100">
-                                ${processed_percent}% abgeschlossen
-                            </div>
-                        </div>
-                    ` : ''}
-
-                    <div class="mt-3 text-muted small">
-                        <i class="fas fa-info-circle"></i>
-                        Aktualisiert: ${new Date().toLocaleTimeString('de-DE')}
-                    </div>
+                <div style="text-align: center; color: #999; font-size: 0.85em; margin-top: 15px;">
+                    ⏰ Aktualisiert: ${new Date().toLocaleTimeString('de-DE')}
                 </div>
             </div>
         `;
@@ -182,14 +174,12 @@ const QueueMonitor = {
      */
     renderError(message) {
         const html = `
-            <div class="alert alert-info">
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <div class="spinner-border" role="status">
-                        <span class="sr-only">Laden...</span>
-                    </div>
+            <div style="background: rgba(74, 158, 255, 0.2); border-left: 4px solid #4a9eff; padding: 20px; border-radius: 4px;">
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <div style="font-size: 2em;">⏳</div>
                     <div>
-                        <strong>Warte auf Queue-Service...</strong><br>
-                        <small>${message}</small>
+                        <strong style="color: #4a9eff;">Warte auf Queue-Service...</strong><br>
+                        <small style="color: #999;">${message}</small>
                     </div>
                 </div>
             </div>
@@ -216,32 +206,24 @@ const QueueMonitor = {
     }
 };
 
-// CSS für bessere Darstellung (optional - kann auch in style.css eingefügt werden)
-const style = document.createElement('style');
-style.textContent = `
-    .metric {
-        padding: 15px;
-    }
-    .metric h3 {
-        margin: 0;
-        font-weight: bold;
-    }
-    .metric small {
-        display: block;
-        margin-top: 5px;
-    }
-    #queue-status .card {
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    #queue-status .progress {
-        border-radius: 15px;
-    }
-    #queue-status .progress-bar {
-        font-weight: bold;
-        line-height: 30px;
-    }
-`;
-document.head.appendChild(style);
+// Minimales CSS für Queue-Metriken (nur einmal hinzufügen)
+if (!document.getElementById('queue-monitor-styles')) {
+    const style = document.createElement('style');
+    style.id = 'queue-monitor-styles';
+    style.textContent = `
+        .queue-metric {
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            transition: transform 0.2s;
+        }
+        .queue-metric:hover {
+            transform: translateY(-2px);
+            background: rgba(255, 255, 255, 0.08);
+        }
+    `;
+    document.head.appendChild(style);
+}
 
 // Export für ES6-Module (optional)
 if (typeof module !== 'undefined' && module.exports) {

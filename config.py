@@ -26,3 +26,6 @@ OLLAMA_URL          = "http://host.docker.internal:11434/api/generate"
 # Default-Modell für neue Sessions
 DEFAULT_MODEL       = MODEL_LLM1
 DEFAULT_TEMPERATURE = 0.0  # Für deterministische, konsistente Extraktion
+
+# Frontend-URLs
+HOME_URL            = "https://localhost"  # Startseite für Weiterleitung

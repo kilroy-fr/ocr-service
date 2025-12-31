@@ -17,11 +17,28 @@ admin_bp = Blueprint('admin', __name__)
 @admin_bp.route("/available_models", methods=["GET"])
 def available_models():
     """Gibt Liste verfügbarer LLM-Modelle zurück."""
+    # Whitelist der erlaubten Modelle (reduzierte Auswahl)
+    ALLOWED_MODELS = [
+        "qwen2.5:14b",
+        "qwen3:14b",
+        "qwen3:8b",
+        "deepseek-r1:14b",
+        "gpt-oss:20b",
+        "llama3.1:8b"
+    ]
+
     try:
         response = requests.get(OLLAMA_URL.replace("/generate", "/tags"), timeout=5)
         response.raise_for_status()
         data = response.json()
-        models = [model["name"] for model in data.get("models", [])]
+        all_models = [model["name"] for model in data.get("models", [])]
+
+        # Nur erlaubte Modelle filtern
+        models = [m for m in all_models if m in ALLOWED_MODELS]
+
+        # Falls keine erlaubten Modelle gefunden, Fallback
+        if not models:
+            models = [MODEL_LLM1]
 
         # Aktuell ausgewähltes Modell mitgeben
         current = session.get("selected_model")
