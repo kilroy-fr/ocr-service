@@ -320,7 +320,7 @@ input[type="submit"]:hover,
 /* TABS */
 /* ============================================ */
 .tabs {
-  margin-bottom: 20px;
+  margin-bottom: 0;
 }
 
 .tab-button {
@@ -355,7 +355,7 @@ input[type="submit"]:hover,
 .preview {
   border: 1px solid #374151;
   background: #0d1117;
-  height: calc(100% - 90px);
+  height: 900px;
   overflow: hidden;
   position: relative;
   border-radius: var(--border-radius);
@@ -471,7 +471,8 @@ input[type="submit"]:hover,
 /* ============================================ */
 .control-actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
   gap: 15px;
   margin-bottom: 20px;
   padding-bottom: 15px;
@@ -487,6 +488,45 @@ input[type="submit"]:hover,
 .btn-abort:hover {
   background-color: #c82333;
   filter: brightness(1.1);
+}
+
+/* Navigation Arrows */
+.nav-arrow {
+  background-color: var(--primary);
+  color: #022c22;
+  border: none;
+  width: 50px;
+  height: 50px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  padding: 0;
+  margin: 0;
+  font-weight: bold;
+}
+
+.nav-arrow:hover:not(:disabled) {
+  background-color: var(--primary-hover);
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+.nav-arrow:disabled {
+  background-color: var(--secondary);
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.nav-arrow-left {
+  order: -1;
+}
+
+.nav-arrow-right {
+  order: 1;
 }
 
 /* PRINT STYLES */
@@ -701,14 +741,14 @@ input[readonly] {
   border-radius: 8px;
   padding: 12px;
   background: #0d1117;
-  max-height: 400px;
+  max-height: 900px;
   overflow-y: auto;
 }
 
 /* Batch- und Einzel-Upload Dateilisten mit begrenzter Höhe */
 #einzelStagedFiles,
 #batchStagedFiles {
-  max-height: 400px;
+  max-height: 900px;
   overflow-y: auto;
   border: 1px solid #374151;
   border-radius: 8px;

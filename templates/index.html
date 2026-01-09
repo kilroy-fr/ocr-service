@@ -28,6 +28,49 @@
     </div>
 
     <div id="mainContent">
+      <!-- DATEIBEARBEITUNGS-SEKTION (über allen Tabs) -->
+      <div class="file-ops-section">
+        <h3>🛠️ Dateibearbeitung</h3>
+        <p style="margin: 10px 0; color: #9ca3af;">
+          Bearbeiten Sie Dateien vor der Analyse. Wählen Sie zunächst Dateien aus der Liste unten aus.
+        </p>
+        <div class="file-ops-buttons">
+          <button type="button" class="op-btn" id="mediCombine" disabled>
+            🧩 Ausgewählte zusammenfügen
+          </button>
+          <button type="button" class="op-btn" id="einzelCombine" disabled style="display: none;">
+            🧩 Ausgewählte zusammenfügen
+          </button>
+          <button type="button" class="op-btn" id="batchCombine" disabled style="display: none;">
+            🧩 Ausgewählte zusammenfügen
+          </button>
+
+          <button type="button" class="op-btn" id="mediSplit" disabled>
+            🔪 PDF in einzelne Seiten zerlegen
+          </button>
+          <button type="button" class="op-btn" id="einzelSplit" disabled style="display: none;">
+            🔪 PDF in einzelne Seiten zerlegen
+          </button>
+          <button type="button" class="op-btn" id="batchSplit" disabled style="display: none;">
+            🔪 PDF in einzelne Seiten zerlegen
+          </button>
+
+          <button type="button" class="op-btn ocr-only-btn" id="mediOcrOnly" disabled>
+            📄 Nur OCR (ohne Analyse)
+          </button>
+          <button type="button" class="op-btn ocr-only-btn" id="einzelOcrOnly" disabled style="display: none;">
+            📄 Nur OCR (ohne Analyse)
+          </button>
+          <button type="button" class="op-btn ocr-only-btn" id="batchOcrOnly" disabled style="display: none;">
+            📄 Nur OCR (ohne Analyse)
+          </button>
+        </div>
+        <p style="margin-top: 10px; font-size: 0.9em; color: #9ca3af;">
+          ℹ️ <strong>Hinweis:</strong> Es wird nur mit Kopien gearbeitet.
+          Ihre Originaldateien bleiben unverändert.
+        </p>
+      </div>
+
       <!-- Tab Navigation -->
       <div class="tabs">
         <button class="tab-button active" data-tab="medidok">Medidok-Verarbeitung</button>
@@ -37,29 +80,6 @@
 
       <!-- Medidok Tab -->
       <div class="tab-content active" id="medidok">
-        <!-- DATEIBEARBEITUNGS-SEKTION -->
-        <div class="file-ops-section">
-          <h3>🛠️ Dateibearbeitung</h3>
-          <p style="margin: 10px 0; color: #9ca3af;">
-            Bearbeiten Sie Dateien vor der Analyse. Wählen Sie zunächst Dateien aus der Liste unten aus.
-          </p>
-          <div class="file-ops-buttons">
-            <button type="button" class="op-btn" id="mediCombine" disabled>
-              🧩 Ausgewählte zusammenfügen
-            </button>
-            <button type="button" class="op-btn" id="mediSplit" disabled>
-              🔪 PDF in einzelne Seiten zerlegen
-            </button>
-            <button type="button" class="op-btn ocr-only-btn" id="mediOcrOnly" disabled>
-              📄 Nur OCR (ohne Analyse)
-            </button>
-          </div>
-          <p style="margin-top: 10px; font-size: 0.9em; color: #9ca3af;">
-            ℹ️ <strong>Hinweis:</strong> Es wird nur mit Kopien gearbeitet.
-            Ihre Originaldateien bleiben unverändert.
-          </p>
-        </div>
-
         <div class="section" style="position: relative;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
             <div style="display: flex; align-items: center; gap: 5px;">
@@ -123,25 +143,6 @@
 
       <!-- Einzel-Upload Tab -->
       <div class="tab-content" id="einzel">
-        <!-- DATEIBEARBEITUNGS-SEKTION -->
-        <div class="file-ops-section">
-          <h3>🛠️ Dateibearbeitung</h3>
-          <p style="margin: 10px 0; color: #9ca3af;">
-            Bearbeiten Sie hochgeladene Dateien vor der Analyse.
-          </p>
-          <div class="file-ops-buttons">
-            <button type="button" class="op-btn" id="einzelCombine" disabled>
-              🧩 Ausgewählte zusammenfügen
-            </button>
-            <button type="button" class="op-btn" id="einzelSplit" disabled>
-              🔪 PDF in einzelne Seiten zerlegen
-            </button>
-            <button type="button" class="op-btn ocr-only-btn" id="einzelOcrOnly" disabled>
-              📄 Nur OCR (ohne Analyse)
-            </button>
-          </div>
-        </div>
-
         <div class="section">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
             <h2 style="margin: 0;">📤 Einzel-Datei Upload</h2>
@@ -178,25 +179,6 @@
 
       <!-- Batch-Upload Tab -->
       <div class="tab-content" id="batch">
-        <!-- DATEIBEARBEITUNGS-SEKTION -->
-        <div class="file-ops-section">
-          <h3>🛠️ Dateibearbeitung</h3>
-          <p style="margin: 10px 0; color: #9ca3af;">
-            Bearbeiten Sie hochgeladene Dateien vor der Analyse.
-          </p>
-          <div class="file-ops-buttons">
-            <button type="button" class="op-btn" id="batchCombine" disabled>
-              🧩 Ausgewählte zusammenfügen
-            </button>
-            <button type="button" class="op-btn" id="batchSplit" disabled>
-              🔪 PDF in einzelne Seiten zerlegen
-            </button>
-            <button type="button" class="op-btn ocr-only-btn" id="batchOcrOnly" disabled>
-              📄 Nur OCR (ohne Analyse)
-            </button>
-          </div>
-        </div>
-
         <div class="section">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
             <h2 style="margin: 0;">📁 Batch/Ordner Upload</h2>
