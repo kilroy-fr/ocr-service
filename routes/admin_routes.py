@@ -20,6 +20,7 @@ def available_models():
     # Whitelist der erlaubten Modelle (reduzierte Auswahl)
     ALLOWED_MODELS = [
         "qwen2.5:14b",
+        "qwen2.5:7b",
         "qwen3:14b",
         "qwen3:8b",
         "deepseek-r1:14b",
