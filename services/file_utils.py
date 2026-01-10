@@ -268,35 +268,6 @@ def safe_line(lines, index, fallback):
     line = str(line).strip()
     return line if line else fallback
 
-def merge_images_to_pdf(image_paths, output_path):
-    images = []
-    for img_path in sorted(image_paths):
-        img = Image.open(img_path)
-        if img_path.lower().endswith(('.tif', '.tiff')) and getattr(img, "n_frames", 1) > 1:
-            for i in range(img.n_frames):
-                img.seek(i)
-                images.append(img.convert("RGB").copy())
-        else:
-            images.append(img.convert("RGB"))
-
-    if not images:
-        raise ValueError("Keine gültigen Bilder zum Zusammenfassen gefunden.")
-    
-    images[0].save(output_path, save_all=True, append_images=images[1:])
-
-def timestamped_pdf_name(prefix="merged_images"):
-    return f"{prefix}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-    
-def safe_filename_from_summary(summary: str, ext=".pdf") -> str:
-    # Ersetzt Sonderzeichen, entfernt Unterstriche (da _ als Trennzeichen dient)
-    name = summary.replace("§", "").replace(" ", "_").replace("/", "-").strip()
-    name = "".join(c for c in name if c.isalnum() or c in ".-")
-    return name[:260] + ext
-
-def copy_to_target(source_path, target_dir, new_filename):
-    log(f"[SKIP COPY] {source_path} -> {os.path.join(target_dir, new_filename)} (wird erst beim Commit finalisiert)")
-    return os.path.join(target_dir, new_filename)
-    
 def handle_successful_processing(summary_data, original_path, target_dir):
     feld1 = sanitize_filename(summary_data.get("name", "Unbekannt"))
     feld2 = sanitize_filename(summary_data.get("vorname", "Unbekannt"))
@@ -359,100 +330,6 @@ def cleanup_old_json_files(folder, days_old=1):
         log(f"ℹ️ Keine alten JSON-Dateien zum Löschen gefunden")
 
     return deleted_count
-
-def clear_folder(folder_path):
-    for filename in os.listdir(folder_path):
-        file_path = os.path.join(folder_path, filename)
-        try:
-            if os.path.isfile(file_path) or os.path.islink(file_path):
-                os.unlink(file_path)
-            elif os.path.isdir(file_path):
-                shutil.rmtree(file_path)
-        except Exception as e:
-            log(f'Fehler beim Löschen von {file_path}: {e}')
-
-def _image_to_temp_pdf(img_path: str, tmp_dir: str) -> str:
-    out = os.path.join(tmp_dir, Path(img_path).stem + "_tmp.pdf")
-    with open(out, "wb") as f:
-        f.write(img2pdf.convert([img_path]))
-    return out
-
-def combine_and_delete(source_dir: str, selected_filenames: list[str]) -> str:
-    if not selected_filenames:
-        raise ValueError("Keine Dateien ausgewählt.")
-
-    rel_inputs = []
-    for name in selected_filenames:
-        abs_p = os.path.join(source_dir, name)
-        if not os.path.exists(abs_p):
-            raise FileNotFoundError(f"Datei nicht gefunden: {name}")
-        
-        rel = to_rel_under_input(abs_p)
-        if not rel:
-            raise ValueError(f"Pfad liegt nicht unter INPUT_ROOT: {abs_p}")
-        rel_inputs.append(rel)
-
-    rel_dir = _to_rel_dir_under_input(source_dir)
-    if not rel_dir:
-        raise ValueError(f"Quellordner liegt nicht unter INPUT_ROOT: {source_dir}")
-
-    out_name = f"combined_{time.strftime('%Y%m%d_%H%M%S')}.pdf"
-    out_rel  = os.path.join(rel_dir, out_name) if rel_dir else out_name
-
-    fs.plan_merge(rel_inputs, out_rel)
-    fs.merge_in_staging(rel_inputs, out_rel)
-
-    log(f"✅ Merge abgeschlossen: {out_rel}")
-    return out_rel
-
-def split_pdf_to_pages(source_dir: str, filename: str) -> list[str]:
-    """Zerlegt eine PDF in einzelne Seiten im STAGING."""
-    abs_path = os.path.join(source_dir, filename)
-    if not os.path.exists(abs_path):
-        raise FileNotFoundError(f"PDF nicht gefunden: {filename}")
-    
-    if not filename.lower().endswith('.pdf'):
-        raise ValueError(f"Keine PDF-Datei: {filename}")
-    
-    rel_input = to_rel_under_input(abs_path)
-    if not rel_input:
-        raise ValueError(f"Pfad liegt nicht unter INPUT_ROOT: {abs_path}")
-    
-    rel_dir = os.path.dirname(rel_input)
-    base_name = Path(filename).stem
-    
-    try:
-        doc = fitz.open(abs_path)
-    except Exception as e:
-        raise ValueError(f"Fehler beim Öffnen der PDF: {e}")
-    
-    num_pages = len(doc)
-    if num_pages <= 1:
-        doc.close()
-        raise ValueError(f"PDF hat nur {num_pages} Seite(n). Mindestens 2 Seiten erforderlich.")
-    
-    created_files = []
-    staging_dir = fs.work_dir / rel_dir if rel_dir else fs.work_dir
-    staging_dir.mkdir(parents=True, exist_ok=True)
-    
-    for page_num in range(num_pages):
-        new_name = f"{base_name}_Seite_{page_num + 1}.pdf"
-        new_rel = os.path.join(rel_dir, new_name) if rel_dir else new_name
-        
-        staged_path = fs.work_dir / new_rel
-        staged_path.parent.mkdir(parents=True, exist_ok=True)
-        
-        new_doc = fitz.open()
-        new_doc.insert_pdf(doc, from_page=page_num, to_page=page_num)
-        new_doc.save(str(staged_path))
-        new_doc.close()
-        
-        created_files.append(new_rel)
-    
-    doc.close()
-    log(f"✅ PDF in {num_pages} Einzelseiten zerlegt: {filename}")
-    
-    return created_files
 
 # ============================================================================
 # STAGING SESSION
@@ -695,7 +572,3 @@ def _to_rel_dir_under_input(abs_dir: str | Path) -> Optional[str]:
     except ValueError:
         logger.warning("Dir %s not under INPUT_ROOT %s", p, root)
         return None
-
-def _resolve_rel_for_read(rel: str) -> Path:
-    cand = fs.work_dir / rel
-    return cand if cand.exists() else (fs.input_root / rel)
