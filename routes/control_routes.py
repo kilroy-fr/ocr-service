@@ -196,9 +196,15 @@ def finalize_import():
                 original_fname = entry.get("originalFilename", "")  # Original-Dateiname
 
                 # Der ursprüngliche Name der OCR-Datei ist original_fname + "_ocr.pdf"
+                # Bei TXT-Dateien ist es "_txt_converted.pdf"
                 if original_fname:
                     base = os.path.splitext(original_fname)[0]
-                    old_fname = f"{base}_ocr.pdf"
+
+                    # Prüfe ob es eine TXT-Datei war
+                    if original_fname.lower().endswith('.txt'):
+                        old_fname = f"{base}_txt_converted.pdf"
+                    else:
+                        old_fname = f"{base}_ocr.pdf"
 
                     if old_fname in staging_files:
                         # Plane Umbenennung: alter Name → neuer Name (nur Basisname)

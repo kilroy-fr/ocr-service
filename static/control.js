@@ -82,7 +82,7 @@ window.addEventListener("DOMContentLoaded", () => {
   isProgressiveMode = urlParams.get('progressive') === 'true';
   
   if (isProgressiveMode) {
-    console.log('ðŸ“„ Progressive Analyse-Modus aktiviert');
+    console.log('Progressive Analyse-Modus aktiviert');
     setupProgressiveMode();
   }
   
@@ -127,43 +127,43 @@ window.addEventListener("DOMContentLoaded", () => {
 });
 
 function setupProgressiveMode() {
-  // Status-Banner erstellen und einfügen
+  // Status-Banner als transparente Overlay-Anzeige rechts oben erstellen
   const banner = document.createElement('div');
   banner.id = 'progressiveBanner';
   banner.style.cssText = `
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 200px;
+    background: rgba(16, 185, 129, 0.95);
     color: white;
-    padding: 15px 20px;
-    margin-bottom: 20px;
+    padding: 15px;
     border-radius: 8px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    z-index: 1000;
+    font-size: 0.85em;
   `;
-  
+
   banner.innerHTML = `
-    <div>
-      <strong>ðŸ“„ Weitere Dateien werden im Hintergrund analysiert...</strong>
-      <div id="progressiveStatus" style="margin-top: 5px; font-size: 0.9em; opacity: 0.9;">
+    <div style="text-align: center;">
+      <div id="progressiveSpinner" style="
+        width: 24px;
+        height: 24px;
+        border: 3px solid rgba(255,255,255,0.3);
+        border-top: 3px solid white;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 10px;
+      "></div>
+      <strong style="display: block; margin-bottom: 8px;">Bearbeitung l\u00e4uft...</strong>
+      <div id="progressiveStatus" style="font-size: 0.9em; opacity: 0.95;">
         Lade Status...
       </div>
     </div>
-    <div id="progressiveSpinner" style="
-      width: 24px;
-      height: 24px;
-      border: 3px solid rgba(255,255,255,0.3);
-      border-top: 3px solid white;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-    "></div>
   `;
-  
-  // Banner vor dem ersten .section einfügen
-  const firstSection = document.querySelector('.section');
-  if (firstSection) {
-    firstSection.parentNode.insertBefore(banner, firstSection);
-  }
+
+  // Banner direkt an body anhängen
+  document.body.appendChild(banner);
   
   // CSS für Spinner-Animation hinzufügen
   if (!document.getElementById('progressiveStyles')) {
@@ -190,7 +190,7 @@ function setupProgressiveMode() {
 }
 
 async function startProgressivePolling() {
-  console.log('ðŸ“„ Starte Polling für neue Analyse-Ergebnisse');
+  console.log('Starte Polling f\u00fcr neue Analyse-Ergebnisse');
   
   // Alle 2 Sekunden Status prüfen
   progressiveInterval = setInterval(async () => {
@@ -214,7 +214,7 @@ async function checkForNewFiles() {
     const newCount = newFiles.length;
     
     if (newCount > lastKnownCount) {
-      console.log(`ðŸ“¥ ${newCount - lastKnownCount} neue Datei(en) verfügbar`);
+      console.log(`${newCount - lastKnownCount} neue Datei(en) verf\u00fcgbar`);
       
       // Neue Dateien zu globalem Array hinzufügen
       const addedFiles = newFiles.slice(lastKnownCount);
@@ -267,7 +267,7 @@ async function updateAnalysisStatus() {
 }
 
 function finishProgressiveMode() {
-  console.log('âœ… Progressive Analyse abgeschlossen');
+  console.log('Progressive Analyse abgeschlossen');
   
   if (progressiveInterval) {
     clearInterval(progressiveInterval);
@@ -276,12 +276,12 @@ function finishProgressiveMode() {
   
   const banner = document.getElementById('progressiveBanner');
   if (banner) {
-    banner.style.background = 'linear-gradient(135deg, #28a745 0%, #20c997 100%)';
+    banner.style.background = 'rgba(40, 167, 69, 0.95)';
     banner.innerHTML = `
-      <div>
-        <strong>âœ… Alle Dateien analysiert!</strong>
-        <div style="margin-top: 5px; font-size: 0.9em; opacity: 0.9;">
-          Sie können nun alle Dokumente bearbeiten.
+      <div style="text-align: center;">
+        <strong style="display: block; margin-bottom: 8px;">Alle Dateien analysiert!</strong>
+        <div style="font-size: 0.9em; opacity: 0.95;">
+          Sie k\u00f6nnen nun alle Dokumente bearbeiten.
         </div>
       </div>
     `;
@@ -318,7 +318,7 @@ function showNewFileNotification(count) {
   `;
   
   notification.innerHTML = `
-    <strong>ðŸ“¥ ${count} neue Datei(en) verfügbar</strong>
+    <strong>${count} neue Datei(en) verf\u00fcgbar</strong>
   `;
   
   document.body.appendChild(notification);
@@ -434,12 +434,16 @@ function updateUI() {
   updateProgress();
 
   // Vorschau
-  const ext = extOf(file.file);
+  // WICHTIG: Verwende filename (tatsächlicher Name im Staging), nicht file (geplanter neuer Name)
+  const previewFile = file.filename || file.file;
+  const ext = extOf(previewFile);
   let previewContent = "";
   if (["jpg","jpeg","png"].includes(ext)) {
-    previewContent = `<img src="/processed/${file.file}" alt="Bildvorschau">`;
+    previewContent = `<img src="/processed/${encodeURIComponent(previewFile)}" alt="Bildvorschau">`;
   } else if (ext === "pdf") {
-    previewContent = `<iframe src="/processed/${file.file}#page=1&zoom=fit"></iframe>`;
+    previewContent = `<iframe src="/processed/${encodeURIComponent(previewFile)}#page=1&zoom=fit"></iframe>`;
+  } else if (ext === "txt") {
+    previewContent = `<iframe src="/preview/${encodeURIComponent(previewFile)}" scrolling="auto" style="background: #1e1e1e;"></iframe>`;
   } else {
     previewContent = `<p>Keine Vorschau verfügbar</p>`;
   }
@@ -533,7 +537,7 @@ function checkFinalizeReady() {
   
   if (allVisited && !allDecided) {
     const remaining = files.filter(f => f.include !== true && f.include !== false).length;
-    console.log(`âš ï¸ ${remaining} Datei(en) haben noch keine Include-Entscheidung`);
+    console.log(`WARNUNG: ${remaining} Datei(en) haben noch keine Include-Entscheidung`);
   }
 }
 
@@ -616,7 +620,7 @@ async function finalizeAnalysis() {
   const undecided = files.filter(f => f.include !== true && f.include !== false);
   
   if (undecided.length > 0) {
-    alert(`âš ï¸ Bitte treffen Sie für alle ${undecided.length} Datei(en) eine Entscheidung (Ja/Nein), bevor Sie die Analyse abschließen.`);
+    alert(`WARNUNG: Bitte treffen Sie für alle ${undecided.length} Datei(en) eine Entscheidung (Ja/Nein), bevor Sie die Analyse abschließen.`);
     return;
   }
 
@@ -698,7 +702,7 @@ async function finalizeAnalysis() {
 }
 
 async function abortAll() {
-  if (!await Notifications.confirm("Alle Änderungen verwerfen und zur Startseite zurückkehren?", "Abbrechen", "Bleiben")) return;
+  if (!await Notifications.confirm("Alle Änderungen verwerfen und zur Startseite zurückkehren?", "Zur Startseite", "Bleiben")) return;
   const res = await fetch("/abort", { method: "POST" });
   const data = await res.json().catch(() => ({}));
   if (res.ok && data.success) {
@@ -924,7 +928,7 @@ function setupSessionCheckboxes() {
         // Speichere die Änderungen
         saveCurrentFileData();
         updateProgress();
-        console.log(`âœ… Feld "${field}" für Session gesperrt mit Wert: "${currentValue}"`);
+        console.log(`Feld "${field}" f\u00fcr Session gesperrt mit Wert: "${currentValue}"`);
       } else {
         sessionData[field].locked = false;
         sessionData[field].value = "";
@@ -943,7 +947,7 @@ function setupSessionCheckboxes() {
         // Speichere die Änderungen
         saveCurrentFileData();
         updateProgress();
-        console.log(`ðŸ”“ Feld "${field}" für Session entsperrt`);
+        console.log(`Feld "${field}" f\u00fcr Session entsperrt`);
       }
     });
   });

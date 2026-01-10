@@ -94,10 +94,10 @@ def index():
             all_files = os.listdir(medidok_dir)
             log(f"📂 Gefundene Dateien gesamt: {len(all_files)}")
 
-            # Alle unterstützten Dateien sammeln (inkl. TIF)
+            # Alle unterstützten Dateien sammeln (inkl. TIF, TXT)
             supported_files = [
                 f for f in all_files
-                if f.lower().endswith(('.pdf', '.jpg', '.jpeg', '.png', '.tif', '.tiff'))
+                if f.lower().endswith(('.pdf', '.jpg', '.jpeg', '.png', '.tif', '.tiff', '.txt'))
             ]
 
             medidok_files = []

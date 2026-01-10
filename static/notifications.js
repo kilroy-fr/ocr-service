@@ -315,21 +315,21 @@ style.textContent = `
     }
 
     .notification-btn-cancel {
-        background: #e9ecef;
-        color: #495057;
+        background: #28a745;
+        color: white;
     }
 
     .notification-btn-cancel:hover {
-        background: #d3d6d8;
+        background: #218838;
     }
 
     .notification-btn-confirm {
-        background: #007BFF;
+        background: #dc3545;
         color: white;
     }
 
     .notification-btn-confirm:hover {
-        background: #0056b3;
+        background: #c82333;
     }
 
     /* Dark theme support */
@@ -359,12 +359,21 @@ style.textContent = `
         }
 
         .notification-btn-cancel {
-            background: #3d3d3d;
-            color: #e0e0e0;
+            background: #28a745;
+            color: white;
         }
 
         .notification-btn-cancel:hover {
-            background: #4d4d4d;
+            background: #218838;
+        }
+
+        .notification-btn-confirm {
+            background: #dc3545;
+            color: white;
+        }
+
+        .notification-btn-confirm:hover {
+            background: #c82333;
         }
     }
 

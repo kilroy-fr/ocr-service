@@ -102,9 +102,10 @@ def create_control_json_from_summaries_explicit(summaries, session_id, *, overwr
     else:
         control_data = []
 
-    # Dedupe-Map aufbauen
+    # Dedupe-Map aufbauen - NUTZE ORIGINALFILENAME als eindeutigen Schlüssel
     if dedupe and control_data:
-        index = {str(entry.get(key, "")): i for i, entry in enumerate(control_data)}
+        # Verwende originalFilename statt des konfigurierbaren key-Parameters für Eindeutigkeit
+        index = {str(entry.get("originalFilename", "")): i for i, entry in enumerate(control_data)}
     else:
         index = {}
 
@@ -123,8 +124,9 @@ def create_control_json_from_summaries_explicit(summaries, session_id, *, overwr
             "categoryID": s.get("categoryID", ""),
             "selected": True,
         }
-        k = str(entry.get(key, ""))
-        if dedupe and k in index:
+        # Nutze originalFilename als eindeutigen Schlüssel (nicht den key-Parameter)
+        k = str(entry.get("originalFilename", ""))
+        if dedupe and k and k in index:
             control_data[index[k]] = entry  # überschreiben (neueste Werte)
         else:
             index[k] = len(control_data)

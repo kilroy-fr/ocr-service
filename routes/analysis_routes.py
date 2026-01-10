@@ -44,7 +44,7 @@ def copy_and_analyze_progressive():
 
     warmup_ollama()
 
-    # Pfade auflösen
+    # Pfade auflösen (inkl. TXT-Dateien)
     file_paths = []
     for name in selected:
         staging_path = os.path.join(fs.work_dir, name)
@@ -58,6 +58,9 @@ def copy_and_analyze_progressive():
             continue
 
         return jsonify(success=False, message=f"Datei nicht gefunden: {name}"), 404
+
+    if not file_paths:
+        return jsonify(success=False, message="Keine Dateien gefunden"), 400
 
     try:
         # ERSTE DATEI SOFORT ANALYSIEREN

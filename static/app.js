@@ -107,6 +107,10 @@ function setupPreview(tab) {
       const previewUrl = `/preview/${encodeURIComponent(filename)}#page=1&zoom=fit`;
       console.log(`📄 PDF-Vorschau URL: ${previewUrl}`);
       content = `<iframe src="${previewUrl}" scrolling="no"></iframe>`;
+    } else if (ext === "txt") {
+      const previewUrl = `/preview/${encodeURIComponent(filename)}`;
+      console.log(`📝 TXT-Vorschau URL: ${previewUrl}`);
+      content = `<iframe src="${previewUrl}" scrolling="auto" style="background: #1e1e1e;"></iframe>`;
     } else {
       content = "<p>Dateiformat wird nicht unterstützt.</p>";
     }

@@ -137,10 +137,12 @@
     <section class="right section">
       <!-- Action Buttons -->
       <div class="control-actions">
+        <button id="prevBtn" class="nav-arrow nav-arrow-left" title="Vorheriges Dokument">◀</button>
         <button id="abortBtn" class="btn btn-abort" type="button">⬅ Abbrechen und zur Startseite</button>
         <button id="finalizeBtn" class="btn" disabled>Analyse abschließen</button>
+        <button id="nextBtn" class="nav-arrow nav-arrow-right" title="Nächstes Dokument">▶</button>
       </div>
-      
+
       <div id="preview" class="preview">
         <p>Keine Vorschau verfügbar</p>
       </div>
@@ -161,11 +163,6 @@
         <div class="progress-bar" id="progressBar"></div>
       </div>
     </div>
-
-    <div class="nav-buttons">
-      <button id="prevBtn" class="btn">⬅️ Zurück</button>
-      <button id="nextBtn" class="btn">➡️ Weiter</button>
-    </div>
   </section>
 
   <!-- Import Queue Status (initially hidden) -->
@@ -185,8 +182,8 @@
     // HOME_URL für Weiterleitungen
     const HOME_URL = {{ home_url | tojson }};
   </script>
-  <script src="{{ url_for('static', filename='notifications.js') }}"></script>
-  <script src="{{ url_for('static', filename='queue_monitor.js') }}"></script>
-  <script src="{{ url_for('static', filename='control.js') }}"></script>
+  <script src="{{ url_for('static', filename='notifications.js') }}?v={{ range(1, 10000) | random }}"></script>
+  <script src="{{ url_for('static', filename='queue_monitor.js') }}?v={{ range(1, 10000) | random }}"></script>
+  <script src="{{ url_for('static', filename='control.js') }}?v={{ range(1, 10000) | random }}"></script>
 </body>
 </html>

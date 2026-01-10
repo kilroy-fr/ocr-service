@@ -2,6 +2,9 @@
 // DATEI-SORTIERUNG: DRAG & DROP + PFEILE
 // ========================================
 
+// Tracking ob Sortierung bereits initialisiert wurde
+const initializedContainers = new Set();
+
 /**
  * Initialisiert die Sortier-Funktionalität für eine Dateiliste
  * @param {string} containerId - Die ID des Containers (z.B. 'fileList', 'einzelStagedFiles', 'batchStagedFiles')
@@ -10,14 +13,42 @@ function initFileSorting(containerId) {
   const container = document.getElementById(containerId);
   if (!container) return;
 
-  // Observer für dynamisch hinzugefügte Elemente
-  const observer = new MutationObserver(() => {
+  // Verhindere doppelte Initialisierung
+  if (initializedContainers.has(containerId)) {
+    // Nur Items aktualisieren, nicht den Observer neu registrieren
     setupSortingForItems(container);
+    return;
+  }
+
+  initializedContainers.add(containerId);
+
+  // Debounce-Timeout für Observer
+  let observerTimeout = null;
+
+  // Observer für dynamisch hinzugefügte Elemente
+  const observer = new MutationObserver((mutations) => {
+    // Prüfe ob neue file-items hinzugefügt wurden (nicht nur Attribute geändert)
+    const hasNewFileItems = mutations.some(mutation =>
+      mutation.type === 'childList' &&
+      Array.from(mutation.addedNodes).some(node =>
+        node.nodeType === 1 && node.classList.contains('file-item')
+      )
+    );
+
+    if (hasNewFileItems) {
+      // Debounce: Warte 100ms bevor Setup ausgeführt wird
+      if (observerTimeout) {
+        clearTimeout(observerTimeout);
+      }
+      observerTimeout = setTimeout(() => {
+        setupSortingForItems(container);
+      }, 100);
+    }
   });
 
   observer.observe(container, {
     childList: true,
-    subtree: true
+    subtree: false  // Nur direkte Kinder beobachten, nicht subtree!
   });
 
   // Initiale Einrichtung

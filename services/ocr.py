@@ -163,6 +163,116 @@ def process_medidok_files(file_paths, target_dir_unused):
                 working_input = original_path
                 log(f"📂 Original-Datei gefunden: {filename}")
 
+        # ✅ TXT-Dateien: Direkt analysieren ohne OCR
+        if filename.lower().endswith('.txt'):
+            log(f"📝 TXT-Datei erkannt - überspringe OCR: {filename}")
+
+            if not working_input:
+                log(f"❌ TXT-Datei nicht gefunden: {filename}", level="error")
+                continue
+
+            # TXT-Inhalt direkt lesen
+            try:
+                encodings = ['utf-8', 'windows-1252', 'latin-1', 'iso-8859-1', 'cp1252']
+                txt_content = None
+
+                for encoding in encodings:
+                    try:
+                        with open(working_input, 'r', encoding=encoding) as f:
+                            txt_content = f.read()
+                        log(f"✅ TXT-Datei gelesen mit {encoding}: {filename}")
+                        break
+                    except (UnicodeDecodeError, LookupError):
+                        continue
+
+                if txt_content is None:
+                    with open(working_input, 'rb') as f:
+                        raw_content = f.read()
+                    txt_content = raw_content.decode('utf-8', errors='replace')
+                    log(f"⚠️ TXT-Datei mit errors='replace' gelesen: {filename}")
+
+                # TXT zu temporärem PDF konvertieren für einheitliche Verarbeitung
+                temp_rel = f"{os.path.splitext(filename)[0]}_txt_converted.pdf"
+                temp_pdf = fs.work_dir / temp_rel
+                temp_pdf.parent.mkdir(parents=True, exist_ok=True)
+
+                # Text als einfaches PDF erstellen mit PyMuPDF (fitz)
+                import fitz  # PyMuPDF ist bereits installiert
+
+                doc = fitz.open()  # Neues leeres PDF
+                page = doc.new_page(width=595, height=842)  # A4-Format
+
+                # Text zeilenweise einfügen (robuster als textbox)
+                text_lines = txt_content.split('\n')
+                y_position = 50
+                line_height = 14
+                max_y = 792  # Unterer Rand
+                page_num = 1
+
+                for line in text_lines:
+                    # Neue Seite falls nötig
+                    if y_position + line_height > max_y:
+                        page = doc.new_page(width=595, height=842)
+                        y_position = 50
+                        page_num += 1
+
+                    # Zeile einfügen
+                    try:
+                        page.insert_text(
+                            (50, y_position),
+                            line,
+                            fontsize=10,
+                            fontname="helv"
+                        )
+                    except Exception as e:
+                        # Bei Fehler: Zeile mit ASCII-only versuchen
+                        try:
+                            ascii_line = line.encode('ascii', 'replace').decode('ascii')
+                            page.insert_text(
+                                (50, y_position),
+                                ascii_line,
+                                fontsize=10,
+                                fontname="helv"
+                            )
+                        except:
+                            log(f"⚠️ Zeile konnte nicht eingefügt werden: {str(e)[:50]}")
+
+                    y_position += line_height
+
+                page_count = len(doc)  # Vor dem Schließen speichern
+                doc.save(str(temp_pdf))
+                doc.close()
+
+                log(f"✅ TXT zu PDF konvertiert ({len(text_lines)} Zeilen, {page_count} Seiten): {temp_rel}")
+
+                # Jetzt normale PDF-Analyse mit bewährter Funktion
+                summary = summarize_pdf(str(temp_pdf))
+                text = (summary or "").strip()
+                lines = [(s or "").strip() for s in text.split("\n")]
+
+                summary_data = {
+                    "file": filename,
+                    "filename": filename,
+                    "originalFilename": true_original_filename,
+                    "name": safe_line(lines, 0, "Unbekannt"),
+                    "vorname": safe_line(lines, 1, "Unbekannt"),
+                    "geburtsdatum": safe_line(lines, 2, "Unbekannt"),
+                    "datum": safe_line(lines, 3, "Unbekannt"),
+                    "beschreibung1": safe_line(lines, 4, "Kein Arzt erkannt"),
+                    "beschreibung2": safe_line(lines, 5, "Keine Beschreibung verfügbar"),
+                    "categoryID": safe_line(lines, 6, "11"),
+                }
+
+                result = {"summary": summary_data}
+                log(f"✅ TXT-Datei analysiert: {filename}")
+                log(f"📋 Result: {result}")
+                results.append(result)
+                continue
+
+            except Exception as e:
+                log(f"❌ Fehler bei TXT-Analyse: {e}", level="error")
+                continue
+
         # ✅ Dateien ohne gültige Dateiendung als .jpg behandeln und umbenennen
         has_valid_extension = filename.lower().endswith(('.pdf', '.jpg', '.jpeg', '.png', '.tif', '.tiff'))
         if working_input and not has_valid_extension:
@@ -300,6 +410,118 @@ def process_medidok_files_with_model(file_paths, target_dir_unused, model, sessi
                 working_input = original_path
                 log(f"📂 Original-Datei gefunden: {filename}")
 
+        # ✅ TXT-Dateien: Direkt analysieren ohne OCR
+        if filename.lower().endswith('.txt'):
+            log(f"📝 TXT-Datei erkannt - überspringe OCR (mit explizitem Modell): {filename}")
+
+            if not working_input:
+                log(f"❌ TXT-Datei nicht gefunden: {filename}", level="error")
+                continue
+
+            # TXT-Inhalt direkt lesen
+            try:
+                encodings = ['utf-8', 'windows-1252', 'latin-1', 'iso-8859-1', 'cp1252']
+                txt_content = None
+
+                for encoding in encodings:
+                    try:
+                        with open(working_input, 'r', encoding=encoding) as f:
+                            txt_content = f.read()
+                        log(f"✅ TXT-Datei gelesen mit {encoding}: {filename}")
+                        break
+                    except (UnicodeDecodeError, LookupError):
+                        continue
+
+                if txt_content is None:
+                    with open(working_input, 'rb') as f:
+                        raw_content = f.read()
+                    txt_content = raw_content.decode('utf-8', errors='replace')
+                    log(f"⚠️ TXT-Datei mit errors='replace' gelesen: {filename}")
+
+                # TXT zu temporärem PDF konvertieren für einheitliche Verarbeitung
+                temp_rel = f"{os.path.splitext(filename)[0]}_txt_converted.pdf"
+                temp_pdf = fs.work_dir / temp_rel
+                temp_pdf.parent.mkdir(parents=True, exist_ok=True)
+
+                # Text als einfaches PDF erstellen mit PyMuPDF (fitz)
+                import fitz  # PyMuPDF ist bereits installiert
+
+                doc = fitz.open()  # Neues leeres PDF
+                page = doc.new_page(width=595, height=842)  # A4-Format
+
+                # Text zeilenweise einfügen (robuster als textbox)
+                text_lines = txt_content.split('\n')
+                y_position = 50
+                line_height = 14
+                max_y = 792  # Unterer Rand
+                page_num = 1
+
+                for line in text_lines:
+                    # Neue Seite falls nötig
+                    if y_position + line_height > max_y:
+                        page = doc.new_page(width=595, height=842)
+                        y_position = 50
+                        page_num += 1
+
+                    # Zeile einfügen
+                    try:
+                        page.insert_text(
+                            (50, y_position),
+                            line,
+                            fontsize=10,
+                            fontname="helv"
+                        )
+                    except Exception as e:
+                        # Bei Fehler: Zeile mit ASCII-only versuchen
+                        try:
+                            ascii_line = line.encode('ascii', 'replace').decode('ascii')
+                            page.insert_text(
+                                (50, y_position),
+                                ascii_line,
+                                fontsize=10,
+                                fontname="helv"
+                            )
+                        except:
+                            log(f"⚠️ Zeile konnte nicht eingefügt werden: {str(e)[:50]}")
+
+                    y_position += line_height
+
+                page_count = len(doc)  # Vor dem Schließen speichern
+                doc.save(str(temp_pdf))
+                doc.close()
+
+                log(f"✅ TXT zu PDF konvertiert ({len(text_lines)} Zeilen, {page_count} Seiten, Modell: {model}): {temp_rel}")
+
+                # Jetzt normale PDF-Analyse mit bewährter Funktion
+                summary = summarize_pdf(str(temp_pdf), model=model)
+                text = (summary or "").strip()
+                lines = [(s or "").strip() for s in text.split("\n")]
+
+                summary_data = {
+                    "file": filename,
+                    "filename": filename,
+                    "originalFilename": true_original_filename,
+                    "name": safe_line(lines, 0, "Unbekannt"),
+                    "vorname": safe_line(lines, 1, "Unbekannt"),
+                    "geburtsdatum": safe_line(lines, 2, "Unbekannt"),
+                    "datum": safe_line(lines, 3, "Unbekannt"),
+                    "beschreibung1": safe_line(lines, 4, "Kein Arzt erkannt"),
+                    "beschreibung2": safe_line(lines, 5, "Keine Beschreibung verfügbar"),
+                    "categoryID": safe_line(lines, 6, "11"),
+                }
+
+                result = {"summary": summary_data}
+                log(f"✅ TXT-Datei analysiert (mit Modell {model}): {filename}")
+                log(f"📋 Result: {result}")
+                results.append(result)
+                continue
+
+            except Exception as e:
+                log(f"❌ Fehler bei TXT-Analyse: {e}", level="error")
+                import traceback
+                log(traceback.format_exc(), level="error")
+                continue
+
         # ✅ Dateien ohne gültige Dateiendung als .jpg behandeln und umbenennen
         has_valid_extension = filename.lower().endswith(('.pdf', '.jpg', '.jpeg', '.png', '.tif', '.tiff'))
         if working_input and not has_valid_extension:
@@ -408,9 +630,10 @@ def create_control_json_from_summaries(summaries, *, overwrite=False, dedupe=Tru
     else:
         control_data = []
 
-    # Dedupe-Map aufbauen
+    # Dedupe-Map aufbauen - NUTZE ORIGINALFILENAME als eindeutigen Schlüssel
     if dedupe and control_data:
-        index = { str(entry.get(key, "")) : i for i, entry in enumerate(control_data) }
+        # Verwende originalFilename statt des konfigurierbaren key-Parameters für Eindeutigkeit
+        index = {str(entry.get("originalFilename", "")): i for i, entry in enumerate(control_data)}
     else:
         index = {}
 
@@ -429,8 +652,9 @@ def create_control_json_from_summaries(summaries, *, overwrite=False, dedupe=Tru
             "categoryID": s.get("categoryID",""),
             "selected": True,
         }
-        k = str(entry.get(key, ""))
-        if dedupe and k in index:
+        # Nutze originalFilename als eindeutigen Schlüssel (nicht den key-Parameter)
+        k = str(entry.get("originalFilename", ""))
+        if dedupe and k and k in index:
             control_data[index[k]] = entry  # überschreiben (neueste Werte)
         else:
             index[k] = len(control_data)
@@ -449,7 +673,7 @@ def ocr_to_staging(input_pdf_path: str, output_rel: str):
 
     try:
         result = subprocess.run(
-            ['ocrmypdf', '-l', 'deu', '--skip-text', '--invalidate-digital-signatures', input_pdf_path, staged_out],
+            ['ocrmypdf', '-l', 'deu', '--force-ocr', '--invalidate-digital-signatures', input_pdf_path, staged_out],
             check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
         )
     except subprocess.CalledProcessError as e:
