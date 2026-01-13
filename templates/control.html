@@ -138,6 +138,14 @@
       <!-- Action Buttons -->
       <div class="control-actions">
         <button id="prevBtn" class="nav-arrow nav-arrow-left" title="Vorheriges Dokument">◀</button>
+
+        <!-- PDF Rotation Controls (inline mit Nav-Buttons) -->
+        <div id="pdfControls" class="pdf-controls-inline" style="display: none;">
+          <button id="rotateLeftBtn" class="btn-rotate" title="90° gegen Uhrzeigersinn drehen">↶</button>
+          <button id="rotate180Btn" class="btn-rotate" title="180° drehen">↻</button>
+          <button id="rotateRightBtn" class="btn-rotate" title="90° im Uhrzeigersinn drehen">↷</button>
+        </div>
+
         <button id="abortBtn" class="btn btn-abort" type="button">⬅ Abbrechen und zur Startseite</button>
         <button id="finalizeBtn" class="btn" disabled>Analyse abschließen</button>
         <button id="nextBtn" class="nav-arrow nav-arrow-right" title="Nächstes Dokument">▶</button>

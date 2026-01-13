@@ -102,7 +102,21 @@ window.addEventListener("DOMContentLoaded", () => {
   document.getElementById("nextBtn").addEventListener("click", nextFile);
   document.getElementById("finalizeBtn").addEventListener("click", finalizeAnalysis);
   document.getElementById("abortBtn").addEventListener("click", abortAll);
-  
+
+  // PDF Rotation Buttons
+  const rotateLeftBtn = document.getElementById("rotateLeftBtn");
+  const rotate180Btn = document.getElementById("rotate180Btn");
+  const rotateRightBtn = document.getElementById("rotateRightBtn");
+  if (rotateLeftBtn) {
+    rotateLeftBtn.addEventListener("click", () => rotatePDF("left"));
+  }
+  if (rotate180Btn) {
+    rotate180Btn.addEventListener("click", () => rotatePDF("180"));
+  }
+  if (rotateRightBtn) {
+    rotateRightBtn.addEventListener("click", () => rotatePDF("right"));
+  }
+
   // Auto-save Setup
   const autoSaveFields = ['name', 'vorname', 'geburtsdatum', 'datum', 'beschreibung1', 'beschreibung2', 'categoryID'];
   autoSaveFields.forEach(fieldId => {
@@ -380,7 +394,7 @@ function updateUI() {
 
   const catID = parseInt(file.categoryID || "11", 10);
   file.categoryID = (catID === 5 || catID === 6) ? String(catID) : "11";
-  
+
   // originalFilename bewahren - NIEMALS überschreiben!
   // Fallback nur wenn wirklich nicht gesetzt (sollte normalerweise vom Backend kommen)
   if (!file.originalFilename || file.originalFilename === file.filename) {
@@ -391,14 +405,14 @@ function updateUI() {
       file.originalFilename = file.filename;
     }
   }
-  
+
   console.log(`[updateUI] File: ${file.filename}, Original: ${file.originalFilename}`);
 
   // Session-Felder: entweder gesperrter Wert oder Datei-Wert
   SESSION_FIELDS.forEach(field => {
     const input = document.getElementById(field);
     const checkbox = document.getElementById(`${field}-session`);
-    
+
     if (sessionData[field].locked) {
       input.value = sessionData[field].value;
       input.readOnly = true;
@@ -420,7 +434,7 @@ function updateUI() {
 
   // Include-Option initial NICHT vorbelegt
   document.querySelectorAll('input[name="includeOption"]').forEach(r => r.checked = false);
-  
+
   if (file.include === true || file.include === false) {
     const radio = document.querySelector(`input[name="includeOption"][value="${file.include}"]`);
     if (radio) radio.checked = true;
@@ -438,6 +452,15 @@ function updateUI() {
   const previewFile = file.filename || file.file;
   const ext = extOf(previewFile);
   let previewContent = "";
+
+  // PDF Rotation Controls zeigen/verstecken
+  const pdfControls = document.getElementById("pdfControls");
+  if (ext === "pdf" && pdfControls) {
+    pdfControls.style.display = "flex";
+  } else if (pdfControls) {
+    pdfControls.style.display = "none";
+  }
+
   if (["jpg","jpeg","png"].includes(ext)) {
     previewContent = `<img src="/processed/${encodeURIComponent(previewFile)}" alt="Bildvorschau">`;
   } else if (ext === "pdf") {
@@ -585,6 +608,150 @@ function prevFile() {
 function nextFile() {
   saveCurrentFileData();
   if (currentIndex < files.length - 1) { currentIndex++; updateUI(); }
+}
+
+async function rotatePDF(direction) {
+  const file = files[currentIndex];
+  if (!file) return;
+
+  const filename = file.filename || file.file;
+
+  // Buttons deaktivieren während Rotation
+  const rotateLeftBtn = document.getElementById("rotateLeftBtn");
+  const rotate180Btn = document.getElementById("rotate180Btn");
+  const rotateRightBtn = document.getElementById("rotateRightBtn");
+  if (rotateLeftBtn) rotateLeftBtn.disabled = true;
+  if (rotate180Btn) rotate180Btn.disabled = true;
+  if (rotateRightBtn) rotateRightBtn.disabled = true;
+
+  // Zeige Lade-Overlay
+  const overlay = document.createElement('div');
+  overlay.id = 'rotateSpinner';
+  overlay.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  `;
+
+  overlay.innerHTML = `
+    <div style="
+      background: white;
+      padding: 40px;
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      text-align: center;
+      max-width: 400px;
+    ">
+      <div style="
+        width: 60px;
+        height: 60px;
+        border: 6px solid #f3f3f3;
+        border-top: 6px solid #3b82f6;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 20px;
+      "></div>
+      <h3 style="margin: 0 0 10px 0; color: #333;">PDF wird gedreht...</h3>
+      <p style="margin: 0; color: #666; font-size: 14px;">
+        Das PDF wird gedreht und automatisch neu analysiert.
+      </p>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  try {
+    const response = await fetch("/rotate_pdf", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        filename: filename,
+        direction: direction
+      })
+    });
+
+    const data = await response.json();
+
+    if (response.ok && data.success) {
+      console.log(`✅ PDF gedreht: ${direction}`, data);
+
+      // Vorschau neu laden durch Cache-Busting
+      const previewFile = file.filename || file.file;
+      const timestamp = new Date().getTime();
+      const previewContent = `<iframe src="/processed/${encodeURIComponent(previewFile)}?t=${timestamp}#page=1&zoom=fit"></iframe>`;
+      document.getElementById("preview").innerHTML = previewContent;
+
+      // Wenn neu analysiert wurde, aktualisiere die Formularfelder
+      if (data.reanalyzed && data.fields) {
+        console.log('🔄 Aktualisiere Formularfelder mit neuen Analysedaten');
+
+        // Aktualisiere das File-Objekt im Array
+        const fields = data.fields;
+        file.name = fields.name || file.name || "";
+        file.vorname = fields.vorname || file.vorname || "";
+        file.geburtsdatum = fields.geburtsdatum || file.geburtsdatum || "";
+        file.datum = fields.datum || file.datum || "";
+        file.beschreibung1 = fields.beschreibung1 || file.beschreibung1 || "";
+        file.beschreibung2 = fields.beschreibung2 || file.beschreibung2 || "";
+
+        // Aktualisiere die Formularfelder (nur wenn nicht session-locked)
+        if (!sessionData.name.locked) {
+          document.getElementById("name").value = file.name;
+        }
+        if (!sessionData.vorname.locked) {
+          document.getElementById("vorname").value = file.vorname;
+        }
+        if (!sessionData.geburtsdatum.locked) {
+          document.getElementById("geburtsdatum").value = file.geburtsdatum;
+        }
+
+        document.getElementById("datum").value = file.datum;
+        document.getElementById("beschreibung1").value = file.beschreibung1;
+        document.getElementById("beschreibung2").value = file.beschreibung2;
+
+        // Aktualisiere den neuen Dateinamen
+        const newName = buildNewName(file);
+        document.getElementById("newFilename").textContent = "Neu: " + newName;
+
+        if (typeof Notifications !== 'undefined') {
+          Notifications.success("PDF gedreht und neu analysiert ✓");
+        }
+      } else {
+        if (typeof Notifications !== 'undefined') {
+          Notifications.success("PDF erfolgreich gedreht");
+        }
+      }
+    } else {
+      console.error("❌ Fehler beim Drehen:", data.message);
+      if (typeof Notifications !== 'undefined') {
+        Notifications.error("Fehler beim Drehen: " + (data.message || "Unbekannter Fehler"));
+      } else {
+        alert("Fehler beim Drehen: " + (data.message || "Unbekannter Fehler"));
+      }
+    }
+  } catch (error) {
+    console.error("❌ Fehler beim Drehen:", error);
+    if (typeof Notifications !== 'undefined') {
+      Notifications.error("Fehler beim Drehen: " + error.message);
+    } else {
+      alert("Fehler beim Drehen: " + error.message);
+    }
+  } finally {
+    // Entferne Spinner
+    overlay.remove();
+
+    // Buttons wieder aktivieren
+    if (rotateLeftBtn) rotateLeftBtn.disabled = false;
+    if (rotate180Btn) rotate180Btn.disabled = false;
+    if (rotateRightBtn) rotateRightBtn.disabled = false;
+  }
 }
 
 function saveCurrentFileData() {

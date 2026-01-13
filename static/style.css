@@ -381,6 +381,45 @@ input[type="submit"]:hover,
   margin: 0;
 }
 
+/* PDF Rotation Controls - Inline mit Action Buttons */
+.pdf-controls-inline {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.btn-rotate {
+  background: var(--info);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: bold;
+  min-width: 45px;
+  height: 45px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-rotate:hover {
+  background: var(--info-hover);
+  transform: scale(1.05);
+}
+
+.btn-rotate:active {
+  transform: scale(0.95);
+}
+
+.btn-rotate:disabled {
+  background: var(--secondary);
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 /* ============================================ */
 /* FILE LABELS */
 /* ============================================ */
@@ -974,4 +1013,38 @@ input[readonly] {
   width: 12px;
   height: 12px;
   fill: currentColor;
+}
+
+.sort-arrow-disable {
+  background: #dc2626;
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.sort-arrow-disable:hover {
+  background: #b91c1c;
+}
+
+/* Reaktivierungs-Button für deaktivierte Dateien */
+.reactivate-btn {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: none;
+  z-index: 10;
+}
+
+.file-item.processed:hover .reactivate-btn {
+  display: block;
+}
+
+.sort-arrow-reactivate {
+  background: #16a34a;
+  font-weight: bold;
+  font-size: 18px;
+}
+
+.sort-arrow-reactivate:hover {
+  background: #15803d;
 }

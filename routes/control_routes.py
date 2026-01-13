@@ -522,6 +522,150 @@ def split_pdf_route():
         return jsonify(success=False, message=str(e)), 500
 
 
+@control_bp.route("/rotate_pdf", methods=["POST"])
+def rotate_pdf():
+    """Rotiert eine PDF-Datei um 90°, 180° oder -90° und analysiert sie neu."""
+    try:
+        data = request.get_json(force=True) or {}
+        filename = data.get("filename")
+        direction = data.get("direction", "right")  # "right" = 90°, "left" = -90°, "180" = 180°
+
+        if not filename:
+            return jsonify(success=False, message="Kein Dateiname angegeben"), 400
+
+        # Datei im Staging finden
+        file_path = os.path.join(fs.work_dir, filename)
+
+        if not os.path.exists(file_path):
+            log(f"❌ Datei nicht gefunden: {file_path}", level="error")
+            return jsonify(success=False, message="Datei nicht gefunden"), 404
+
+        # Prüfe ob es eine PDF ist
+        if not filename.lower().endswith('.pdf'):
+            return jsonify(success=False, message="Nur PDF-Dateien können gedreht werden"), 400
+
+        # Rotation bestimmen
+        if direction == "180":
+            angle = 180
+        elif direction == "right":
+            angle = 90
+        else:  # left
+            angle = -90
+
+        # PDF öffnen und rotieren
+        doc = fitz.open(file_path)
+        for page in doc:
+            page.set_rotation((page.rotation + angle) % 360)
+
+        # Temporäre Datei für Ausgabe
+        temp_path = file_path + ".tmp"
+        doc.save(temp_path)
+        doc.close()
+
+        # Original ersetzen
+        os.replace(temp_path, file_path)
+
+        log(f"✅ PDF gedreht ({angle}°): {filename}")
+
+        # Neu-Analyse durchführen
+        log(f"🔄 Starte Neu-Analyse nach Rotation: {filename}")
+
+        from services.summarizer import summarize_pdf
+
+        try:
+            # Analysiere gedrehtes PDF neu mit summarize_pdf
+            summary_result = summarize_pdf(file_path, MODEL_LLM1)
+
+            if not summary_result or summary_result.startswith("Fehler") or summary_result.startswith("Unbekannt"):
+                log(f"⚠️ Keine verwertbaren Analysedaten nach Rotation", level="warning")
+                return jsonify(
+                    success=True,
+                    message=f"PDF um {angle}° gedreht (keine Analysedaten)",
+                    filename=filename,
+                    reanalyzed=False
+                )
+
+            # Parse 7-Zeilen-Format von summarize_pdf
+            lines = summary_result.split("\n")
+            if len(lines) < 7:
+                log(f"⚠️ Unvollständige Analysedaten", level="warning")
+                return jsonify(
+                    success=True,
+                    message=f"PDF um {angle}° gedreht (unvollständige Daten)",
+                    filename=filename,
+                    reanalyzed=False
+                )
+
+            # Erstelle fields-Dictionary aus den 7 Zeilen
+            fields = {
+                "name": (lines[0] or "").strip(),
+                "vorname": (lines[1] or "").strip(),
+                "geburtsdatum": (lines[2] or "").strip(),
+                "datum": (lines[3] or "").strip(),
+                "beschreibung1": (lines[4] or "").strip(),
+                "beschreibung2": (lines[5] or "").strip()
+            }
+
+            # Control-JSON aktualisieren
+            session_id = session.get("session_id", "default")
+            json_path = os.path.join(JSON_FOLDER, f"control_{session_id}.json")
+
+            if os.path.exists(json_path):
+                with open(json_path, "r", encoding="utf-8") as f:
+                    control_data = json.load(f)
+
+                # Finde den richtigen Eintrag und aktualisiere die Felder
+                for i, entry in enumerate(control_data):
+                    if entry.get("filename") == filename or entry.get("file") == filename:
+                        # Aktualisiere nur die erkannten Felder, behalte den Rest
+                        entry.update({
+                            "name": fields.get("name", entry.get("name", "")),
+                            "vorname": fields.get("vorname", entry.get("vorname", "")),
+                            "geburtsdatum": fields.get("geburtsdatum", entry.get("geburtsdatum", "")),
+                            "datum": fields.get("datum", entry.get("datum", "")),
+                            "beschreibung1": fields.get("beschreibung1", entry.get("beschreibung1", "")),
+                            "beschreibung2": fields.get("beschreibung2", entry.get("beschreibung2", ""))
+                        })
+                        log(f"✅ Control-JSON aktualisiert für Index {i}")
+                        break
+
+                # JSON speichern
+                with open(json_path, "w", encoding="utf-8") as f:
+                    json.dump(control_data, f, ensure_ascii=False, indent=2)
+
+                log(f"✅ Neu-Analyse abgeschlossen: {filename}")
+                return jsonify(
+                    success=True,
+                    message=f"PDF um {angle}° gedreht und neu analysiert",
+                    filename=filename,
+                    reanalyzed=True,
+                    fields=fields
+                )
+            else:
+                log(f"⚠️ Control-JSON nicht gefunden: {json_path}", level="warning")
+                return jsonify(
+                    success=True,
+                    message=f"PDF um {angle}° gedreht (Metadaten nicht gefunden)",
+                    filename=filename,
+                    reanalyzed=False
+                )
+
+        except Exception as e:
+            log(f"⚠️ Fehler bei Neu-Analyse: {e}", level="warning")
+            # Rotation war erfolgreich, auch wenn Analyse fehlschlug
+            return jsonify(
+                success=True,
+                message=f"PDF um {angle}° gedreht (Analyse fehlgeschlagen)",
+                filename=filename,
+                reanalyzed=False,
+                error=str(e)
+            )
+
+    except Exception as e:
+        log(f"❌ rotate_pdf: {e}", level="error")
+        return jsonify(success=False, message=str(e)), 500
+
+
 @control_bp.route("/mark_files_processed", methods=["POST"])
 def mark_files_processed():
     """Markiert Dateien als verarbeitet."""
