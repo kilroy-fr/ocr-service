@@ -24,6 +24,69 @@ from config import (
 control_bp = Blueprint('control', __name__)
 
 
+def safe_load_json(file_path):
+    """
+    Lädt eine JSON-Datei sicher mit automatischer Fehlerbehandlung.
+
+    Bei Korruption wird versucht, das valide JSON durch Backtracking zu finden.
+    Erstellt automatisch ein Backup der korrupten Datei.
+
+    Args:
+        file_path: Pfad zur JSON-Datei
+
+    Returns:
+        Parsed JSON data (normalerweise ein Array oder Dict)
+
+    Raises:
+        Exception wenn die Datei nicht geladen oder repariert werden kann
+    """
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except json.JSONDecodeError as e:
+        log(f"⚠️ JSON-Korruption erkannt in {file_path}: {e}", level="warning")
+        log(f"🔧 Versuche automatische Reparatur...", level="info")
+
+        # Backup erstellen
+        backup_path = f"{file_path}.corrupt_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                corrupt_content = f.read()
+            with open(backup_path, "w", encoding="utf-8") as f:
+                f.write(corrupt_content)
+            log(f"💾 Backup erstellt: {backup_path}")
+        except Exception as backup_err:
+            log(f"⚠️ Backup-Erstellung fehlgeschlagen: {backup_err}", level="warning")
+
+        # Versuche Reparatur durch Backtracking
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                content = f.read()
+
+            # Finde alle möglichen JSON-Endpunkte (']' oder '}')
+            possible_ends = [i for i, char in enumerate(content) if char in ']}']
+
+            # Teste von hinten nach vorne
+            for end_pos in reversed(possible_ends):
+                test_content = content[:end_pos+1]
+                try:
+                    data = json.loads(test_content)
+                    # Valides JSON gefunden - schreibe reparierte Version
+                    with open(file_path, "w", encoding="utf-8") as f:
+                        json.dump(data, f, ensure_ascii=False, indent=2)
+                    log(f"✅ JSON erfolgreich repariert ({len(data) if isinstance(data, (list, dict)) else 'unknown'} Einträge)")
+                    return data
+                except json.JSONDecodeError:
+                    continue
+
+            # Keine Reparatur möglich
+            raise Exception(f"JSON konnte nicht repariert werden. Backup: {backup_path}")
+
+        except Exception as repair_err:
+            log(f"❌ Reparatur fehlgeschlagen: {repair_err}", level="error")
+            raise
+
+
 @control_bp.route("/control", methods=["GET"])
 def control():
     """Control-Panel Hauptansicht."""
@@ -32,8 +95,7 @@ def control():
     if not os.path.exists(json_path):
         return "❌ Keine Analysedaten gefunden. Bitte führen Sie zuerst eine Analyse durch.", 400
 
-    with open(json_path, "r") as f:
-        control_data = json.load(f)
+    control_data = safe_load_json(json_path)
 
     index = int(request.args.get("index", 0))
     if index < 0 or index >= len(control_data):
@@ -57,9 +119,7 @@ def get_control_data():
         return jsonify(success=False, message="Keine Daten verfügbar"), 404
 
     try:
-        with open(json_path, "r", encoding="utf-8") as f:
-            control_data = json.load(f)
-
+        control_data = safe_load_json(json_path)
         return jsonify(success=True, data=control_data, count=len(control_data))
     except Exception as e:
         log(f"❌ Fehler beim Laden von control.json: {e}", level="error")
@@ -74,8 +134,7 @@ def save_control_data():
     updated = request.get_json()
     index = updated.get("index")
 
-    with open(json_path, "r") as f:
-        data = json.load(f)
+    data = safe_load_json(json_path)
 
     # Aktualisiere den Eintrag
     if 0 <= index < len(data):
@@ -116,8 +175,7 @@ def rename_file():
     if not os.path.exists(json_path):
         return jsonify(success=False, message="Keine Kontroll-Daten vorhanden."), 400
 
-    with open(json_path, "r", encoding="utf-8") as f:
-        control_data = json.load(f)
+    control_data = safe_load_json(json_path)
 
     # Eintrag suchen
     entry = next((e for e in control_data if str(e.get("file", "")) == str(old_rel)), None)
@@ -175,8 +233,7 @@ def finalize_import():
 
     json_path = os.path.join(JSON_FOLDER, f"control_{sid}.json")
     if os.path.exists(json_path):
-        with open(json_path, "r", encoding="utf-8") as f:
-            control_data = json.load(f)
+        control_data = safe_load_json(json_path)
 
         # fs.work_dir ist bereits das Staging-Verzeichnis (.../session_id/staging)
         staging_dir = str(fs.work_dir) if hasattr(fs, 'work_dir') else None
@@ -611,8 +668,7 @@ def rotate_pdf():
             json_path = os.path.join(JSON_FOLDER, f"control_{session_id}.json")
 
             if os.path.exists(json_path):
-                with open(json_path, "r", encoding="utf-8") as f:
-                    control_data = json.load(f)
+                control_data = safe_load_json(json_path)
 
                 # Finde den richtigen Eintrag und aktualisiere die Felder
                 for i, entry in enumerate(control_data):
