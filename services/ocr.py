@@ -50,6 +50,109 @@ def process_medidok_files(file_paths, target_dir_unused):
                 working_input = original_path
                 log(f"📂 Original-Datei gefunden: {filename}")
 
+        # ✅ DOCX-Dateien: Zu PDF konvertieren und direkt analysieren (ohne OCR)
+        if filename.lower().endswith('.docx'):
+            log(f"📝 DOCX-Datei erkannt - konvertiere zu PDF (ohne OCR): {filename}")
+
+            if not working_input:
+                log(f"❌ DOCX-Datei nicht gefunden: {filename}", level="error")
+                continue
+
+            try:
+                from docx import Document
+                import fitz  # PyMuPDF
+
+                # DOCX öffnen und Text extrahieren
+                doc = Document(working_input)
+
+                # Text aus allen Paragraphen sammeln
+                full_text = []
+                for para in doc.paragraphs:
+                    full_text.append(para.text)
+
+                # Text aus Tabellen extrahieren
+                for table in doc.tables:
+                    for row in table.rows:
+                        row_text = []
+                        for cell in row.cells:
+                            row_text.append(cell.text)
+                        full_text.append(" | ".join(row_text))
+
+                docx_content = "\n".join(full_text)
+
+                # PDF erstellen mit PyMuPDF
+                temp_rel = f"{os.path.splitext(filename)[0]}_docx_converted.pdf"
+                temp_pdf = fs.work_dir / temp_rel
+                temp_pdf.parent.mkdir(parents=True, exist_ok=True)
+
+                pdf_doc = fitz.open()
+                page = pdf_doc.new_page(width=595, height=842)  # A4-Format
+
+                text_lines = docx_content.split('\n')
+                y_position = 50
+                line_height = 14
+                max_y = 792
+
+                for line in text_lines:
+                    if y_position + line_height > max_y:
+                        page = pdf_doc.new_page(width=595, height=842)
+                        y_position = 50
+
+                    try:
+                        page.insert_text(
+                            (50, y_position),
+                            line,
+                            fontsize=10,
+                            fontname="helv"
+                        )
+                    except Exception:
+                        try:
+                            ascii_line = line.encode('ascii', 'replace').decode('ascii')
+                            page.insert_text(
+                                (50, y_position),
+                                ascii_line,
+                                fontsize=10,
+                                fontname="helv"
+                            )
+                        except:
+                            pass
+
+                    y_position += line_height
+
+                page_count = len(pdf_doc)
+                pdf_doc.save(str(temp_pdf))
+                pdf_doc.close()
+
+                log(f"✅ DOCX zu PDF konvertiert ({len(text_lines)} Zeilen, {page_count} Seiten): {temp_rel}")
+
+                # PDF analysieren (ohne OCR)
+                summary = summarize_pdf(str(temp_pdf))
+                text = (summary or "").strip()
+                lines = [(s or "").strip() for s in text.split("\n")]
+
+                summary_data = {
+                    "file": filename,
+                    "filename": filename,
+                    "originalFilename": true_original_filename,
+                    "name": safe_line(lines, 0, "Unbekannt"),
+                    "vorname": safe_line(lines, 1, "Unbekannt"),
+                    "geburtsdatum": safe_line(lines, 2, "Unbekannt"),
+                    "datum": safe_line(lines, 3, "Unbekannt"),
+                    "beschreibung1": safe_line(lines, 4, "Kein Arzt erkannt"),
+                    "beschreibung2": safe_line(lines, 5, "Keine Beschreibung verfügbar"),
+                    "categoryID": safe_line(lines, 6, "11"),
+                }
+
+                result = {"summary": summary_data}
+                log(f"✅ DOCX-Datei analysiert: {filename}")
+                log(f"📋 Result: {result}")
+                results.append(result)
+                continue
+
+            except Exception as e:
+                log(f"❌ Fehler bei DOCX-Analyse: {e}", level="error")
+                continue
+
         # ✅ TXT-Dateien: Direkt analysieren ohne OCR
         if filename.lower().endswith('.txt'):
             log(f"📝 TXT-Datei erkannt - überspringe OCR: {filename}")
@@ -161,7 +264,7 @@ def process_medidok_files(file_paths, target_dir_unused):
                 continue
 
         # ✅ Dateien ohne gültige Dateiendung als .jpg behandeln und umbenennen
-        has_valid_extension = filename.lower().endswith(('.pdf', '.jpg', '.jpeg', '.png', '.tif', '.tiff'))
+        has_valid_extension = filename.lower().endswith(('.pdf', '.jpg', '.jpeg', '.png', '.tif', '.tiff', '.docx'))
         if working_input and not has_valid_extension:
             log(f"📝 Datei ohne gültige Endung erkannt: {filename}")
             new_filename = filename + '.jpg'
@@ -185,7 +288,7 @@ def process_medidok_files(file_paths, target_dir_unused):
                 true_original_filename = new_filename
                 log(f"✅ In INPUT_ROOT umbenannt: {filename}")
 
-        if not filename.lower().endswith(('.pdf', '.jpg', '.jpeg', '.png')):
+        if not filename.lower().endswith(('.pdf', '.jpg', '.jpeg', '.png', '.docx')):
             log(f"⏭️ Überspringe Datei (kein unterstütztes Format): {filename}")
             continue
         
@@ -296,6 +399,111 @@ def process_medidok_files_with_model(file_paths, target_dir_unused, model, sessi
             if os.path.exists(original_path):
                 working_input = original_path
                 log(f"📂 Original-Datei gefunden: {filename}")
+
+        # ✅ DOCX-Dateien: Zu PDF konvertieren und direkt analysieren (ohne OCR)
+        if filename.lower().endswith('.docx'):
+            log(f"📝 DOCX-Datei erkannt - konvertiere zu PDF (ohne OCR, Modell: {model}): {filename}")
+
+            if not working_input:
+                log(f"❌ DOCX-Datei nicht gefunden: {filename}", level="error")
+                continue
+
+            try:
+                from docx import Document
+                import fitz  # PyMuPDF
+
+                # DOCX öffnen und Text extrahieren
+                doc = Document(working_input)
+
+                # Text aus allen Paragraphen sammeln
+                full_text = []
+                for para in doc.paragraphs:
+                    full_text.append(para.text)
+
+                # Text aus Tabellen extrahieren
+                for table in doc.tables:
+                    for row in table.rows:
+                        row_text = []
+                        for cell in row.cells:
+                            row_text.append(cell.text)
+                        full_text.append(" | ".join(row_text))
+
+                docx_content = "\n".join(full_text)
+
+                # PDF erstellen mit PyMuPDF
+                temp_rel = f"{os.path.splitext(filename)[0]}_docx_converted.pdf"
+                temp_pdf = fs.work_dir / temp_rel
+                temp_pdf.parent.mkdir(parents=True, exist_ok=True)
+
+                pdf_doc = fitz.open()
+                page = pdf_doc.new_page(width=595, height=842)  # A4-Format
+
+                text_lines = docx_content.split('\n')
+                y_position = 50
+                line_height = 14
+                max_y = 792
+
+                for line in text_lines:
+                    if y_position + line_height > max_y:
+                        page = pdf_doc.new_page(width=595, height=842)
+                        y_position = 50
+
+                    try:
+                        page.insert_text(
+                            (50, y_position),
+                            line,
+                            fontsize=10,
+                            fontname="helv"
+                        )
+                    except Exception:
+                        try:
+                            ascii_line = line.encode('ascii', 'replace').decode('ascii')
+                            page.insert_text(
+                                (50, y_position),
+                                ascii_line,
+                                fontsize=10,
+                                fontname="helv"
+                            )
+                        except:
+                            pass
+
+                    y_position += line_height
+
+                page_count = len(pdf_doc)
+                pdf_doc.save(str(temp_pdf))
+                pdf_doc.close()
+
+                log(f"✅ DOCX zu PDF konvertiert ({len(text_lines)} Zeilen, {page_count} Seiten): {temp_rel}")
+
+                # PDF analysieren (ohne OCR, mit explizitem Modell)
+                summary = summarize_pdf(str(temp_pdf), model=model)
+                text = (summary or "").strip()
+                lines = [(s or "").strip() for s in text.split("\n")]
+
+                summary_data = {
+                    "file": filename,
+                    "filename": filename,
+                    "originalFilename": true_original_filename,
+                    "name": safe_line(lines, 0, "Unbekannt"),
+                    "vorname": safe_line(lines, 1, "Unbekannt"),
+                    "geburtsdatum": safe_line(lines, 2, "Unbekannt"),
+                    "datum": safe_line(lines, 3, "Unbekannt"),
+                    "beschreibung1": safe_line(lines, 4, "Kein Arzt erkannt"),
+                    "beschreibung2": safe_line(lines, 5, "Keine Beschreibung verfügbar"),
+                    "categoryID": safe_line(lines, 6, "11"),
+                }
+
+                result = {"summary": summary_data}
+                log(f"✅ DOCX-Datei analysiert (mit Modell {model}): {filename}")
+                log(f"📋 Result: {result}")
+                results.append(result)
+                continue
+
+            except Exception as e:
+                log(f"❌ Fehler bei DOCX-Analyse: {e}", level="error")
+                import traceback
+                log(traceback.format_exc(), level="error")
+                continue
 
         # ✅ TXT-Dateien: Direkt analysieren ohne OCR
         if filename.lower().endswith('.txt'):
@@ -410,7 +618,7 @@ def process_medidok_files_with_model(file_paths, target_dir_unused, model, sessi
                 continue
 
         # ✅ Dateien ohne gültige Dateiendung als .jpg behandeln und umbenennen
-        has_valid_extension = filename.lower().endswith(('.pdf', '.jpg', '.jpeg', '.png', '.tif', '.tiff'))
+        has_valid_extension = filename.lower().endswith(('.pdf', '.jpg', '.jpeg', '.png', '.tif', '.tiff', '.docx'))
         if working_input and not has_valid_extension:
             log(f"📝 Datei ohne gültige Endung erkannt: {filename}")
             new_filename = filename + '.jpg'
@@ -432,7 +640,7 @@ def process_medidok_files_with_model(file_paths, target_dir_unused, model, sessi
                 true_original_filename = new_filename
                 log(f"✅ In INPUT_ROOT umbenannt: {filename}")
 
-        if not filename.lower().endswith(('.pdf', '.jpg', '.jpeg', '.png')):
+        if not filename.lower().endswith(('.pdf', '.jpg', '.jpeg', '.png', '.docx')):
             log(f"⏭️ Überspringe Datei (kein unterstütztes Format): {filename}")
             continue
 

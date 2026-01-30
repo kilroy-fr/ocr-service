@@ -62,6 +62,26 @@
           <button type="button" class="op-btn ocr-only-btn" id="batchOcrOnly" disabled style="display: none;">
             📄 Nur OCR (ohne Analyse)
           </button>
+
+          <!-- Rotation Buttons -->
+          <div class="rotation-controls" id="mediRotation" style="display: inline-flex; gap: 5px; margin-left: 15px; align-items: center;">
+            <span style="color: #9ca3af; font-size: 0.9em; margin-right: 5px;">Drehen:</span>
+            <button type="button" class="btn-rotate" id="mediRotateLeft" title="90° gegen Uhrzeigersinn" disabled>↶</button>
+            <button type="button" class="btn-rotate" id="mediRotate180" title="180° drehen" disabled>↻</button>
+            <button type="button" class="btn-rotate" id="mediRotateRight" title="90° im Uhrzeigersinn" disabled>↷</button>
+          </div>
+          <div class="rotation-controls" id="einzelRotation" style="display: none; gap: 5px; margin-left: 15px; align-items: center;">
+            <span style="color: #9ca3af; font-size: 0.9em; margin-right: 5px;">Drehen:</span>
+            <button type="button" class="btn-rotate" id="einzelRotateLeft" title="90° gegen Uhrzeigersinn" disabled>↶</button>
+            <button type="button" class="btn-rotate" id="einzelRotate180" title="180° drehen" disabled>↻</button>
+            <button type="button" class="btn-rotate" id="einzelRotateRight" title="90° im Uhrzeigersinn" disabled>↷</button>
+          </div>
+          <div class="rotation-controls" id="batchRotation" style="display: none; gap: 5px; margin-left: 15px; align-items: center;">
+            <span style="color: #9ca3af; font-size: 0.9em; margin-right: 5px;">Drehen:</span>
+            <button type="button" class="btn-rotate" id="batchRotateLeft" title="90° gegen Uhrzeigersinn" disabled>↶</button>
+            <button type="button" class="btn-rotate" id="batchRotate180" title="180° drehen" disabled>↻</button>
+            <button type="button" class="btn-rotate" id="batchRotateRight" title="90° im Uhrzeigersinn" disabled>↷</button>
+          </div>
         </div>
         <p style="margin-top: 10px; font-size: 0.9em; color: #9ca3af;">
           ℹ️ <strong>Hinweis:</strong> Es wird nur mit Kopien gearbeitet.

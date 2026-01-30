@@ -523,6 +523,11 @@ function updateFileOpsButtons(tab) {
     const btn = document.getElementById(id);
     if (btn) btn.style.display = 'none';
   });
+  // Rotations-Controls verstecken
+  ['mediRotation', 'einzelRotation', 'batchRotation'].forEach(id => {
+    const ctrl = document.getElementById(id);
+    if (ctrl) ctrl.style.display = 'none';
+  });
 
   // Buttons für den aktiven Tab anzeigen
   const prefix = tab === 'medidok' ? 'medi' :
@@ -532,10 +537,12 @@ function updateFileOpsButtons(tab) {
   const combineBtn = document.getElementById(`${prefix}Combine`);
   const splitBtn = document.getElementById(`${prefix}Split`);
   const ocrOnlyBtn = document.getElementById(`${prefix}OcrOnly`);
+  const rotationCtrl = document.getElementById(`${prefix}Rotation`);
 
   if (combineBtn) combineBtn.style.display = 'inline-block';
   if (splitBtn) splitBtn.style.display = 'inline-block';
   if (ocrOnlyBtn) ocrOnlyBtn.style.display = 'inline-block';
+  if (rotationCtrl) rotationCtrl.style.display = 'inline-flex';
 }
 
 // ========================================
@@ -1052,38 +1059,142 @@ function updateButtonStates(tab = currentTab) {
   const prefix = tab === 'medidok' ? 'medi' :
                  tab === 'einzel' ? 'einzel' :
                  'batch';
-  
-  const selector = tab === 'medidok' ? 
+
+  const selector = tab === 'medidok' ?
     'input[name="selected_files"]:not(:disabled)' :
     `#${tab === 'einzel' ? 'einzelStagedFiles' : 'batchStagedFiles'} input[type="checkbox"]:not(:disabled)`;
-  
+
   const checkboxes = document.querySelectorAll(selector);
   const submitBtn = document.getElementById(prefix === 'medi' ? 'medidokSubmit' : `${prefix}Analyze`);
   const combineBtn = document.getElementById(`${prefix}Combine`);
   const splitBtn = document.getElementById(`${prefix}Split`);
-  const ocrOnlyBtn = document.getElementById(`${prefix}OcrOnly`); // NEU
-  
+  const ocrOnlyBtn = document.getElementById(`${prefix}OcrOnly`);
+
+  // Rotations-Buttons
+  const rotateLeftBtn = document.getElementById(`${prefix}RotateLeft`);
+  const rotate180Btn = document.getElementById(`${prefix}Rotate180`);
+  const rotateRightBtn = document.getElementById(`${prefix}RotateRight`);
+
   const selected = Array.from(checkboxes).filter(cb => cb.checked);
   const count = selected.length;
-  
+
   if (submitBtn) submitBtn.disabled = count === 0;
   if (combineBtn) combineBtn.disabled = count < 2;
-  
+
   if (splitBtn) {
     const onePdfSelected = count === 1 && selected[0].value.toLowerCase().endsWith('.pdf');
     splitBtn.disabled = !onePdfSelected;
   }
-  
-  // NEU: OCR-Only Button aktivieren wenn mind. 1 Datei ausgewählt
+
+  // OCR-Only Button aktivieren wenn mind. 1 Datei ausgewählt
   if (ocrOnlyBtn) {
     ocrOnlyBtn.disabled = count === 0;
   }
-  
+
+  // Rotations-Buttons aktivieren wenn genau 1 rotierfähige Datei ausgewählt
+  const rotatableExtensions = ['pdf', 'jpg', 'jpeg', 'png'];
+  const oneRotatableSelected = count === 1 &&
+    rotatableExtensions.includes(getExtension(selected[0].value));
+
+  if (rotateLeftBtn) rotateLeftBtn.disabled = !oneRotatableSelected;
+  if (rotate180Btn) rotate180Btn.disabled = !oneRotatableSelected;
+  if (rotateRightBtn) rotateRightBtn.disabled = !oneRotatableSelected;
+
   // Master-Checkbox aktualisieren
   if (tab === 'medidok') {
     updateMasterCheckbox('medidok');
   } else if (tab === 'batch') {
     updateMasterCheckbox('batch');
+  }
+}
+
+// ========================================
+// ROTATIONS-FUNKTIONEN (VOR ANALYSE)
+// ========================================
+
+async function rotateFile(direction, tab = currentTab) {
+  const prefix = tab === 'medidok' ? 'medi' :
+                 tab === 'einzel' ? 'einzel' :
+                 'batch';
+
+  const selector = tab === 'medidok' ?
+    'input[name="selected_files"]:checked:not(:disabled)' :
+    `#${tab === 'einzel' ? 'einzelStagedFiles' : 'batchStagedFiles'} input[type="checkbox"]:checked:not(:disabled)`;
+
+  const selected = Array.from(document.querySelectorAll(selector));
+  if (selected.length !== 1) {
+    Notifications.warning("Bitte genau eine Datei zum Drehen auswählen.");
+    return;
+  }
+
+  const filename = selected[0].value;
+  const ext = getExtension(filename);
+
+  if (!['pdf', 'jpg', 'jpeg', 'png'].includes(ext)) {
+    Notifications.warning("Nur PDF und Bilddateien (JPG, PNG) können gedreht werden.");
+    return;
+  }
+
+  // Buttons deaktivieren während Rotation
+  const rotateLeftBtn = document.getElementById(`${prefix}RotateLeft`);
+  const rotate180Btn = document.getElementById(`${prefix}Rotate180`);
+  const rotateRightBtn = document.getElementById(`${prefix}RotateRight`);
+
+  if (rotateLeftBtn) rotateLeftBtn.disabled = true;
+  if (rotate180Btn) rotate180Btn.disabled = true;
+  if (rotateRightBtn) rotateRightBtn.disabled = true;
+
+  showSpinner(true);
+
+  try {
+    const res = await fetch('/rotate_file', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filename, direction })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+      Notifications.error('Fehler beim Drehen: ' + (data.message || `HTTP ${res.status}`));
+      return;
+    }
+
+    // Erfolg
+    const angleText = direction === 'left' ? '90° links' :
+                      direction === 'right' ? '90° rechts' : '180°';
+    Notifications.success(`Datei um ${angleText} gedreht`);
+
+    // Vorschau aktualisieren mit Cache-Busting
+    const previewId = tab === 'medidok' ? 'preview' :
+                      tab === 'einzel' ? 'einzelPreview' :
+                      'batchPreview';
+    const preview = document.getElementById(previewId);
+
+    if (preview) {
+      const timestamp = new Date().getTime();
+
+      if (ext === 'pdf') {
+        preview.innerHTML = `<iframe src="/preview/${encodeURIComponent(filename)}?t=${timestamp}#page=1&zoom=fit" scrolling="no"></iframe>`;
+      } else {
+        preview.innerHTML = `<img src="/preview/${encodeURIComponent(filename)}?t=${timestamp}" alt="Bildvorschau">`;
+      }
+    }
+
+    // Bei Medidok: Staging-Liste aktualisieren (falls Datei kopiert wurde)
+    if (tab === 'medidok') {
+      await loadStagedFiles('medidok');
+    }
+
+    console.log(`✅ Datei gedreht: ${filename} (${direction})`);
+
+  } catch (err) {
+    console.error('[rotate_file] Fehler:', err);
+    Notifications.error('Netzwerk-/JS-Fehler: ' + err);
+  } finally {
+    showSpinner(false);
+    // Buttons wieder aktivieren
+    updateButtonStates(tab);
   }
 }
 
@@ -1381,6 +1492,50 @@ window.addEventListener("DOMContentLoaded", async () => {
   const batchOcrOnly = document.getElementById("batchOcrOnly");
   if (batchOcrOnly) {
     batchOcrOnly.addEventListener("click", handleBatchOcrOnly);
+  }
+
+  // ===== ROTATIONS-BUTTONS =====
+
+  // Medidok Rotation
+  const mediRotateLeft = document.getElementById("mediRotateLeft");
+  if (mediRotateLeft) {
+    mediRotateLeft.addEventListener("click", () => rotateFile("left", "medidok"));
+  }
+  const mediRotate180 = document.getElementById("mediRotate180");
+  if (mediRotate180) {
+    mediRotate180.addEventListener("click", () => rotateFile("180", "medidok"));
+  }
+  const mediRotateRight = document.getElementById("mediRotateRight");
+  if (mediRotateRight) {
+    mediRotateRight.addEventListener("click", () => rotateFile("right", "medidok"));
+  }
+
+  // Einzel Rotation
+  const einzelRotateLeft = document.getElementById("einzelRotateLeft");
+  if (einzelRotateLeft) {
+    einzelRotateLeft.addEventListener("click", () => rotateFile("left", "einzel"));
+  }
+  const einzelRotate180 = document.getElementById("einzelRotate180");
+  if (einzelRotate180) {
+    einzelRotate180.addEventListener("click", () => rotateFile("180", "einzel"));
+  }
+  const einzelRotateRight = document.getElementById("einzelRotateRight");
+  if (einzelRotateRight) {
+    einzelRotateRight.addEventListener("click", () => rotateFile("right", "einzel"));
+  }
+
+  // Batch Rotation
+  const batchRotateLeft = document.getElementById("batchRotateLeft");
+  if (batchRotateLeft) {
+    batchRotateLeft.addEventListener("click", () => rotateFile("left", "batch"));
+  }
+  const batchRotate180 = document.getElementById("batchRotate180");
+  if (batchRotate180) {
+    batchRotate180.addEventListener("click", () => rotateFile("180", "batch"));
+  }
+  const batchRotateRight = document.getElementById("batchRotateRight");
+  if (batchRotateRight) {
+    batchRotateRight.addEventListener("click", () => rotateFile("right", "batch"));
   }
 
   // ===== MODELL-VERWALTUNG =====

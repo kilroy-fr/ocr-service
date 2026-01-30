@@ -60,6 +60,7 @@ function initFileSorting(containerId) {
  */
 function setupSortingForItems(container) {
   const items = container.querySelectorAll('.file-item:not(.processed)');
+  const processedItems = container.querySelectorAll('.file-item.processed');
 
   items.forEach((item, index) => {
     // Drag & Drop nur einmal einrichten
@@ -70,6 +71,11 @@ function setupSortingForItems(container) {
 
     // Pfeile hinzufügen/aktualisieren
     updateSortArrows(item, index, items.length);
+  });
+
+  // Reaktivierungs-Button für deaktivierte Dateien hinzufügen
+  processedItems.forEach(item => {
+    updateReactivateButton(item);
   });
 }
 
@@ -183,6 +189,17 @@ function updateSortArrows(item, index, totalCount) {
     moveItem(item, -1);
   });
 
+  // Deaktivierungs-Button (rotes Kreuz)
+  const disableBtn = document.createElement('button');
+  disableBtn.className = 'sort-arrow sort-arrow-disable';
+  disableBtn.innerHTML = '✕';
+  disableBtn.title = 'Datei deaktivieren/ausblenden';
+  disableBtn.type = 'button';
+  disableBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    disableFile(item);
+  });
+
   // Abwärts-Pfeil
   const downBtn = document.createElement('button');
   downBtn.className = 'sort-arrow sort-arrow-down';
@@ -196,6 +213,7 @@ function updateSortArrows(item, index, totalCount) {
   });
 
   arrowsDiv.appendChild(upBtn);
+  arrowsDiv.appendChild(disableBtn);
   arrowsDiv.appendChild(downBtn);
   item.appendChild(arrowsDiv);
 }
@@ -229,6 +247,121 @@ function moveItem(item, direction) {
 
   // Pfeile für alle Items aktualisieren
   setupSortingForItems(container);
+}
+
+/**
+ * Deaktiviert eine Datei (markiert sie als "processed" und blendet sie aus)
+ * @param {HTMLElement} item - Das zu deaktivierende Element
+ */
+function disableFile(item) {
+  // Checkbox deaktivieren
+  const checkbox = item.querySelector('input[type="checkbox"]');
+  if (checkbox) {
+    checkbox.checked = false;
+    checkbox.disabled = true;
+  }
+
+  // Item als "processed" markieren (verwendet dieselbe Logik wie zusammengefasste/getrennte Dateien)
+  item.classList.add('processed');
+
+  // Markiere als manuell deaktiviert (nicht durch Merge/Split)
+  item.setAttribute('data-manually-disabled', 'true');
+
+  // Container für Event-Listener (z.B. Master-Checkbox aktualisieren)
+  const container = item.parentNode;
+
+  // Master-Checkbox-Status aktualisieren falls vorhanden
+  if (window.updateMasterCheckbox) {
+    window.updateMasterCheckbox();
+  }
+
+  // Pfeile für alle Items aktualisieren
+  setupSortingForItems(container);
+
+  // Optional: Event auslösen für andere Komponenten
+  const event = new CustomEvent('fileDisabled', {
+    detail: {
+      filename: item.getAttribute('data-filename'),
+      item: item
+    }
+  });
+  document.dispatchEvent(event);
+}
+
+/**
+ * Reaktiviert eine deaktivierte Datei
+ * @param {HTMLElement} item - Das zu reaktivierende Element
+ */
+function reactivateFile(item) {
+  // Nur manuell deaktivierte Dateien können reaktiviert werden
+  if (!item.hasAttribute('data-manually-disabled')) {
+    return;
+  }
+
+  // Checkbox wieder aktivieren
+  const checkbox = item.querySelector('input[type="checkbox"]');
+  if (checkbox) {
+    checkbox.disabled = false;
+    checkbox.checked = false; // Bleibt unchecked, Nutzer kann selbst auswählen
+  }
+
+  // "processed" Klasse entfernen
+  item.classList.remove('processed');
+  item.removeAttribute('data-manually-disabled');
+
+  // Container für Event-Listener
+  const container = item.parentNode;
+
+  // Master-Checkbox-Status aktualisieren falls vorhanden
+  if (window.updateMasterCheckbox) {
+    window.updateMasterCheckbox();
+  }
+
+  // Pfeile für alle Items aktualisieren
+  setupSortingForItems(container);
+
+  // Optional: Event auslösen für andere Komponenten
+  const event = new CustomEvent('fileReactivated', {
+    detail: {
+      filename: item.getAttribute('data-filename'),
+      item: item
+    }
+  });
+  document.dispatchEvent(event);
+}
+
+/**
+ * Fügt Reaktivierungs-Button zu deaktivierten Dateien hinzu
+ * @param {HTMLElement} item - Das deaktivierte Element
+ */
+function updateReactivateButton(item) {
+  // Nur für manuell deaktivierte Dateien
+  if (!item.hasAttribute('data-manually-disabled')) {
+    return;
+  }
+
+  // Vorhandenen Button entfernen
+  const existingBtn = item.querySelector('.reactivate-btn');
+  if (existingBtn) {
+    existingBtn.remove();
+  }
+
+  // Reaktivierungs-Button erstellen
+  const btnDiv = document.createElement('div');
+  btnDiv.className = 'reactivate-btn';
+
+  const reactivateBtn = document.createElement('button');
+  reactivateBtn.className = 'sort-arrow sort-arrow-reactivate';
+  reactivateBtn.innerHTML = '↻';
+  reactivateBtn.title = 'Datei wieder aktivieren';
+  reactivateBtn.type = 'button';
+  reactivateBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    reactivateFile(item);
+  });
+
+  btnDiv.appendChild(reactivateBtn);
+  item.appendChild(btnDiv);
 }
 
 /**

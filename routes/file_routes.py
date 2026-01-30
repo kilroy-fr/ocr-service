@@ -45,7 +45,7 @@ def upload_files():
             is_tiff = magic_bytes[:4] in (b'II*\x00', b'MM\x00*')  # TIFF Little/Big Endian
 
             # ✅ Dateien ohne gültige Dateiendung behandeln
-            has_valid_extension = filename.lower().endswith(('.pdf', '.jpg', '.jpeg', '.png', '.tif', '.tiff', '.txt'))
+            has_valid_extension = filename.lower().endswith(('.pdf', '.jpg', '.jpeg', '.png', '.tif', '.tiff', '.txt', '.docx'))
 
             if not has_valid_extension:
                 if is_tiff:
@@ -162,7 +162,7 @@ def upload_folder():
         safe_name = secure_filename(filename)
 
         # Nur unterstützte Formate
-        if not safe_name.lower().endswith(('.pdf', '.jpg', '.jpeg', '.png', '.tif', '.tiff', '.txt')):
+        if not safe_name.lower().endswith(('.pdf', '.jpg', '.jpeg', '.png', '.tif', '.tiff', '.txt', '.docx')):
             log(f"⏭️ Überspringe Datei (nicht unterstützt): {safe_name}")
             continue
 
@@ -264,6 +264,64 @@ def preview_file(filename):
     if not file_path:
         log(f"⚠️ Vorschau-Datei nicht gefunden: {filename}", level="warning")
         return f"<div style='padding:20px;text-align:center;color:#999;'><h3>❌ Datei nicht gefunden</h3><p>{filename}</p></div>", 404
+
+    # ✅ DOCX-Dateien als HTML mit formatiertem Text zurückgeben
+    if filename.lower().endswith('.docx'):
+        try:
+            from docx import Document
+
+            doc = Document(file_path)
+
+            # Text aus allen Paragraphen sammeln
+            paragraphs = []
+            for para in doc.paragraphs:
+                if para.text.strip():
+                    paragraphs.append(escape(para.text))
+
+            # Text aus Tabellen extrahieren
+            for table in doc.tables:
+                table_html = ["<table style='border-collapse: collapse; margin: 10px 0;'>"]
+                for row in table.rows:
+                    table_html.append("<tr>")
+                    for cell in row.cells:
+                        cell_text = escape(cell.text)
+                        table_html.append(f"<td style='border: 1px solid #555; padding: 5px;'>{cell_text}</td>")
+                    table_html.append("</tr>")
+                table_html.append("</table>")
+                paragraphs.append("".join(table_html))
+
+            content_html = "<br><br>".join(paragraphs)
+
+            html = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>{escape(filename)}</title>
+                <style>
+                    body {{
+                        margin: 0;
+                        padding: 20px;
+                        font-family: Arial, sans-serif;
+                        background: #1e1e1e;
+                        color: #e0e0e0;
+                        line-height: 1.6;
+                    }}
+                    table {{
+                        width: 100%;
+                    }}
+                </style>
+            </head>
+            <body>
+                {content_html}
+            </body>
+            </html>
+            """
+            log(f"✅ DOCX-Vorschau generiert: {filename}")
+            return html, 200, {'Content-Type': 'text/html; charset=utf-8'}
+        except Exception as e:
+            log(f"❌ Fehler beim Lesen der DOCX-Datei: {e}", level="error")
+            return f"<div style='padding:20px;text-align:center;color:#999;'><h3>❌ Fehler beim Lesen</h3><p>{escape(str(e))}</p></div>", 500
 
     # ✅ TXT-Dateien als HTML mit <pre> zurückgeben
     if filename.lower().endswith('.txt'):
@@ -386,6 +444,106 @@ def serve_processed_file(filename):
 
     # Gib einen 404 HTML-Response statt JSON zurück
     return f"<div style='padding:20px;text-align:center;color:#999;'><h3>❌ Datei nicht gefunden</h3><p>{filename}</p><p style='font-size:0.8em;margin-top:20px;'>Staging: {os.path.join(fs.work_dir, filename) if fs.session_id else 'keine Session'}<br>Output: {output}</p></div>", 404
+
+
+@file_bp.route("/rotate_file", methods=["POST"])
+def rotate_file():
+    """
+    Rotiert eine Datei (PDF oder Bild) vor der Analyse.
+    Unterstützt 90°, 180° und 270° (-90°) Rotation.
+    """
+    try:
+        data = request.get_json(force=True) or {}
+        filename = data.get("filename")
+        direction = data.get("direction", "right")  # "right" = 90°, "left" = -90°, "180" = 180°
+
+        if not filename:
+            return jsonify(success=False, message="Kein Dateiname angegeben"), 400
+
+        # Datei im Staging oder INPUT_ROOT finden
+        file_path = None
+        in_staging = False
+
+        # Zuerst im Staging suchen
+        if fs.session_id:
+            staged = os.path.join(fs.work_dir, filename)
+            if os.path.exists(staged):
+                file_path = staged
+                in_staging = True
+
+        # Dann im INPUT_ROOT suchen
+        if not file_path:
+            original = os.path.join(INPUT_ROOT, filename)
+            if os.path.exists(original):
+                # Kopiere Datei ins Staging vor der Rotation
+                ensure_staging()
+                import shutil
+                staged_path = os.path.join(fs.work_dir, filename)
+                shutil.copy2(original, staged_path)
+                file_path = staged_path
+                in_staging = True
+                log(f"📋 Datei fürs Rotieren ins Staging kopiert: {filename}")
+
+        if not file_path:
+            log(f"❌ Datei nicht gefunden: {filename}", level="error")
+            return jsonify(success=False, message="Datei nicht gefunden"), 404
+
+        # Rotation bestimmen
+        if direction == "180":
+            angle = 180
+        elif direction == "right":
+            angle = 90
+        else:  # left
+            angle = -90
+
+        ext = filename.lower().split('.')[-1] if '.' in filename else ''
+
+        # PDF rotieren
+        if ext == 'pdf':
+            import fitz
+            doc = fitz.open(file_path)
+            for page in doc:
+                page.set_rotation((page.rotation + angle) % 360)
+
+            temp_path = file_path + ".tmp"
+            doc.save(temp_path)
+            doc.close()
+            os.replace(temp_path, file_path)
+            log(f"✅ PDF rotiert ({angle}°): {filename}")
+
+        # Bilder rotieren (JPG, JPEG, PNG)
+        elif ext in ['jpg', 'jpeg', 'png']:
+            from PIL import Image
+            img = Image.open(file_path)
+
+            # PIL rotiert gegen den Uhrzeigersinn, wir wollen im Uhrzeigersinn
+            # Also: 90° rechts = -90° in PIL
+            pil_angle = -angle
+            rotated = img.rotate(pil_angle, expand=True)
+
+            # Format beibehalten
+            if ext == 'png':
+                rotated.save(file_path, 'PNG')
+            else:
+                # EXIF-Daten entfernen, da Rotation jetzt physisch ist
+                rotated.save(file_path, 'JPEG', quality=95)
+
+            img.close()
+            rotated.close()
+            log(f"✅ Bild rotiert ({angle}°): {filename}")
+
+        else:
+            return jsonify(success=False, message=f"Dateityp '{ext}' kann nicht rotiert werden"), 400
+
+        return jsonify(
+            success=True,
+            message=f"Datei um {angle}° gedreht",
+            filename=filename
+        )
+
+    except Exception as e:
+        log(f"❌ rotate_file: {e}", level="error")
+        return jsonify(success=False, message=str(e)), 500
 
 
 @file_bp.route("/list_staged_files", methods=["GET"])

@@ -163,7 +163,7 @@ def ocr_only():
             staging_path = os.path.join(fs.work_dir, name)
             if os.path.exists(staging_path):
                 # ✅ Dateien ohne gültige Dateiendung als .jpg behandeln und umbenennen
-                has_valid_extension = name.lower().endswith(('.pdf', '.jpg', '.jpeg', '.png', '.tif', '.tiff'))
+                has_valid_extension = name.lower().endswith(('.pdf', '.jpg', '.jpeg', '.png', '.tif', '.tiff', '.docx'))
                 if not has_valid_extension:
                     log(f"📝 Datei ohne gültige Endung erkannt: {name}")
                     new_name = name + '.jpg'
@@ -181,7 +181,7 @@ def ocr_only():
             abs_path = os.path.join(INPUT_ROOT, name)
             if os.path.exists(abs_path):
                 # ✅ Dateien ohne gültige Dateiendung als .jpg behandeln und umbenennen
-                has_valid_extension = name.lower().endswith(('.pdf', '.jpg', '.jpeg', '.png', '.tif', '.tiff'))
+                has_valid_extension = name.lower().endswith(('.pdf', '.jpg', '.jpeg', '.png', '.tif', '.tiff', '.docx'))
                 if not has_valid_extension:
                     log(f"📝 Datei ohne gültige Endung erkannt: {name}")
                     new_name = name + '.jpg'
@@ -205,7 +205,7 @@ def ocr_only():
             base_no_ext = os.path.splitext(filename)[0]
 
             # Bilder zu PDF konvertieren
-            if filename.lower().endswith(('.jpg', '.jpeg', '.png', '.tif', '.tiff')):
+            if filename.lower().endswith(('.jpg', '.jpeg', '.png', '.tif', '.tiff')) and not filename.lower().endswith('.docx'):
                 temp_rel = f"{base_no_ext}_converted.pdf"
                 temp_pdf = os.path.join(fs.work_dir, temp_rel)
 

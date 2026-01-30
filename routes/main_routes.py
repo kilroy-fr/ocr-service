@@ -97,7 +97,7 @@ def index():
             # Alle unterstützten Dateien sammeln (inkl. TIF, TXT)
             supported_files = [
                 f for f in all_files
-                if f.lower().endswith(('.pdf', '.jpg', '.jpeg', '.png', '.tif', '.tiff', '.txt'))
+                if f.lower().endswith(('.pdf', '.jpg', '.jpeg', '.png', '.tif', '.tiff', '.txt', '.docx'))
             ]
 
             medidok_files = []
