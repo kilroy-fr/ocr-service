@@ -5,7 +5,7 @@ import subprocess
 import img2pdf
 import json
 from .summarizer import summarize_pdf
-from .file_utils import fs, to_rel_under_input, safe_line, handle_successful_processing
+from .file_utils import fs, to_rel_under_input, safe_line, handle_successful_processing, build_absender
 from .logger import log
 from config import INPUT_ROOT, FAIL_DIR_MEDIDOK, JSON_FOLDER
 from flask import render_template, session
@@ -130,6 +130,22 @@ def process_medidok_files(file_paths, target_dir_unused):
                 text = (summary or "").strip()
                 lines = [(s or "").strip() for s in text.split("\n")]
 
+                # Neue 8-Zeilen-Logik
+                log(f"🔍 [DEBUG] LLM-Ausgabe hat {len(lines)} Zeilen")
+                for i, line in enumerate(lines[:8]):
+                    log(f"   Zeile {i+1}: '{line}'")
+
+                fachrichtung = safe_line(lines, 4, "")
+                name_absender = safe_line(lines, 5, "")
+                category = safe_line(lines, 7, "11")
+                absender = build_absender(fachrichtung, name_absender, category)
+
+                log(f"📋 [DEBUG] Extrahiert:")
+                log(f"   Fachrichtung: '{fachrichtung}'")
+                log(f"   Name: '{name_absender}'")
+                log(f"   Kategorie: '{category}'")
+                log(f"   → Absender: '{absender}'")
+
                 summary_data = {
                     "file": filename,
                     "filename": filename,
@@ -138,9 +154,9 @@ def process_medidok_files(file_paths, target_dir_unused):
                     "vorname": safe_line(lines, 1, "Unbekannt"),
                     "geburtsdatum": safe_line(lines, 2, "Unbekannt"),
                     "datum": safe_line(lines, 3, "Unbekannt"),
-                    "beschreibung1": safe_line(lines, 4, "Kein Arzt erkannt"),
-                    "beschreibung2": safe_line(lines, 5, "Keine Beschreibung verfügbar"),
-                    "categoryID": safe_line(lines, 6, "11"),
+                    "beschreibung1": absender,
+                    "beschreibung2": safe_line(lines, 6, "Keine Beschreibung verfügbar"),
+                    "categoryID": category,
                 }
 
                 result = {"summary": summary_data}
@@ -240,6 +256,22 @@ def process_medidok_files(file_paths, target_dir_unused):
                 text = (summary or "").strip()
                 lines = [(s or "").strip() for s in text.split("\n")]
 
+                # Neue 8-Zeilen-Logik
+                log(f"🔍 [DEBUG] LLM-Ausgabe hat {len(lines)} Zeilen")
+                for i, line in enumerate(lines[:8]):
+                    log(f"   Zeile {i+1}: '{line}'")
+
+                fachrichtung = safe_line(lines, 4, "")
+                name_absender = safe_line(lines, 5, "")
+                category = safe_line(lines, 7, "11")
+                absender = build_absender(fachrichtung, name_absender, category)
+
+                log(f"📋 [DEBUG] Extrahiert:")
+                log(f"   Fachrichtung: '{fachrichtung}'")
+                log(f"   Name: '{name_absender}'")
+                log(f"   Kategorie: '{category}'")
+                log(f"   → Absender: '{absender}'")
+
                 summary_data = {
                     "file": filename,
                     "filename": filename,
@@ -248,9 +280,9 @@ def process_medidok_files(file_paths, target_dir_unused):
                     "vorname": safe_line(lines, 1, "Unbekannt"),
                     "geburtsdatum": safe_line(lines, 2, "Unbekannt"),
                     "datum": safe_line(lines, 3, "Unbekannt"),
-                    "beschreibung1": safe_line(lines, 4, "Kein Arzt erkannt"),
-                    "beschreibung2": safe_line(lines, 5, "Keine Beschreibung verfügbar"),
-                    "categoryID": safe_line(lines, 6, "11"),
+                    "beschreibung1": absender,
+                    "beschreibung2": safe_line(lines, 6, "Keine Beschreibung verfügbar"),
+                    "categoryID": category,
                 }
 
                 result = {"summary": summary_data}
@@ -327,7 +359,23 @@ def process_medidok_files(file_paths, target_dir_unused):
         summary = summarize_pdf(staged_out)
         text = (summary or "").strip()
         lines = [(s or "").strip() for s in text.split("\n")]
-        
+
+        # Neue 8-Zeilen-Logik
+        log(f"🔍 [DEBUG] LLM-Ausgabe hat {len(lines)} Zeilen")
+        for i, line in enumerate(lines[:8]):
+            log(f"   Zeile {i+1}: '{line}'")
+
+        fachrichtung = safe_line(lines, 4, "")
+        name_absender = safe_line(lines, 5, "")
+        category = safe_line(lines, 7, "11")
+        absender = build_absender(fachrichtung, name_absender, category)
+
+        log(f"📋 [DEBUG] Extrahiert:")
+        log(f"   Fachrichtung: '{fachrichtung}'")
+        log(f"   Name: '{name_absender}'")
+        log(f"   Kategorie: '{category}'")
+        log(f"   → Absender: '{absender}'")
+
         summary_data = {
             "file": out_rel,  # ✅ Relativer Pfad für Frontend
             "filename": os.path.basename(staged_out),
@@ -336,9 +384,9 @@ def process_medidok_files(file_paths, target_dir_unused):
             "vorname": safe_line(lines, 1, "Unbekannt"),
             "geburtsdatum": safe_line(lines, 2, "Unbekannt"),
             "datum": safe_line(lines, 3, "Unbekannt"),
-            "beschreibung1": safe_line(lines, 4, "Kein Arzt erkannt"),
-            "beschreibung2": safe_line(lines, 5, "Keine Beschreibung verfügbar"),
-            "categoryID": safe_line(lines, 6, "11"),
+            "beschreibung1": absender,
+            "beschreibung2": safe_line(lines, 6, "Keine Beschreibung verfügbar"),
+            "categoryID": category,
         }
         
         create_control_json_from_summaries([summary_data])
@@ -480,6 +528,22 @@ def process_medidok_files_with_model(file_paths, target_dir_unused, model, sessi
                 text = (summary or "").strip()
                 lines = [(s or "").strip() for s in text.split("\n")]
 
+                # Neue 8-Zeilen-Logik
+                log(f"🔍 [DEBUG] LLM-Ausgabe hat {len(lines)} Zeilen")
+                for i, line in enumerate(lines[:8]):
+                    log(f"   Zeile {i+1}: '{line}'")
+
+                fachrichtung = safe_line(lines, 4, "")
+                name_absender = safe_line(lines, 5, "")
+                category = safe_line(lines, 7, "11")
+                absender = build_absender(fachrichtung, name_absender, category)
+
+                log(f"📋 [DEBUG] Extrahiert:")
+                log(f"   Fachrichtung: '{fachrichtung}'")
+                log(f"   Name: '{name_absender}'")
+                log(f"   Kategorie: '{category}'")
+                log(f"   → Absender: '{absender}'")
+
                 summary_data = {
                     "file": filename,
                     "filename": filename,
@@ -488,9 +552,9 @@ def process_medidok_files_with_model(file_paths, target_dir_unused, model, sessi
                     "vorname": safe_line(lines, 1, "Unbekannt"),
                     "geburtsdatum": safe_line(lines, 2, "Unbekannt"),
                     "datum": safe_line(lines, 3, "Unbekannt"),
-                    "beschreibung1": safe_line(lines, 4, "Kein Arzt erkannt"),
-                    "beschreibung2": safe_line(lines, 5, "Keine Beschreibung verfügbar"),
-                    "categoryID": safe_line(lines, 6, "11"),
+                    "beschreibung1": absender,
+                    "beschreibung2": safe_line(lines, 6, "Keine Beschreibung verfügbar"),
+                    "categoryID": category,
                 }
 
                 result = {"summary": summary_data}
@@ -592,6 +656,22 @@ def process_medidok_files_with_model(file_paths, target_dir_unused, model, sessi
                 text = (summary or "").strip()
                 lines = [(s or "").strip() for s in text.split("\n")]
 
+                # Neue 8-Zeilen-Logik
+                log(f"🔍 [DEBUG] LLM-Ausgabe hat {len(lines)} Zeilen")
+                for i, line in enumerate(lines[:8]):
+                    log(f"   Zeile {i+1}: '{line}'")
+
+                fachrichtung = safe_line(lines, 4, "")
+                name_absender = safe_line(lines, 5, "")
+                category = safe_line(lines, 7, "11")
+                absender = build_absender(fachrichtung, name_absender, category)
+
+                log(f"📋 [DEBUG] Extrahiert:")
+                log(f"   Fachrichtung: '{fachrichtung}'")
+                log(f"   Name: '{name_absender}'")
+                log(f"   Kategorie: '{category}'")
+                log(f"   → Absender: '{absender}'")
+
                 summary_data = {
                     "file": filename,
                     "filename": filename,
@@ -600,9 +680,9 @@ def process_medidok_files_with_model(file_paths, target_dir_unused, model, sessi
                     "vorname": safe_line(lines, 1, "Unbekannt"),
                     "geburtsdatum": safe_line(lines, 2, "Unbekannt"),
                     "datum": safe_line(lines, 3, "Unbekannt"),
-                    "beschreibung1": safe_line(lines, 4, "Kein Arzt erkannt"),
-                    "beschreibung2": safe_line(lines, 5, "Keine Beschreibung verfügbar"),
-                    "categoryID": safe_line(lines, 6, "11"),
+                    "beschreibung1": absender,
+                    "beschreibung2": safe_line(lines, 6, "Keine Beschreibung verfügbar"),
+                    "categoryID": category,
                 }
 
                 result = {"summary": summary_data}
@@ -676,7 +756,23 @@ def process_medidok_files_with_model(file_paths, target_dir_unused, model, sessi
         summary = summarize_pdf(staged_out, model=model)
         text = (summary or "").strip()
         lines = [(s or "").strip() for s in text.split("\n")]
-        
+
+        # Neue 8-Zeilen-Logik
+        log(f"🔍 [DEBUG] LLM-Ausgabe hat {len(lines)} Zeilen")
+        for i, line in enumerate(lines[:8]):
+            log(f"   Zeile {i+1}: '{line}'")
+
+        fachrichtung = safe_line(lines, 4, "")
+        name_absender = safe_line(lines, 5, "")
+        category = safe_line(lines, 7, "11")
+        absender = build_absender(fachrichtung, name_absender, category)
+
+        log(f"📋 [DEBUG] Extrahiert:")
+        log(f"   Fachrichtung: '{fachrichtung}'")
+        log(f"   Name: '{name_absender}'")
+        log(f"   Kategorie: '{category}'")
+        log(f"   → Absender: '{absender}'")
+
         summary_data = {
             "file": out_rel,
             "filename": os.path.basename(staged_out),
@@ -685,9 +781,9 @@ def process_medidok_files_with_model(file_paths, target_dir_unused, model, sessi
             "vorname": safe_line(lines, 1, "Unbekannt"),
             "geburtsdatum": safe_line(lines, 2, "Unbekannt"),
             "datum": safe_line(lines, 3, "Unbekannt"),
-            "beschreibung1": safe_line(lines, 4, "Kein Arzt erkannt"),
-            "beschreibung2": safe_line(lines, 5, "Keine Beschreibung verfügbar"),
-            "categoryID": safe_line(lines, 6, "11"),
+            "beschreibung1": absender,
+            "beschreibung2": safe_line(lines, 6, "Keine Beschreibung verfügbar"),
+            "categoryID": category,
         }
 
         result = handle_successful_processing(
@@ -763,20 +859,34 @@ def create_control_json_from_summaries(summaries, *, overwrite=False, dedupe=Tru
 def ocr_to_staging(input_pdf_path: str, output_rel: str):
     output_basename = os.path.basename(output_rel)
     staged_out = os.path.join(fs.work_dir, output_basename)
-    
+
     os.makedirs(os.path.dirname(staged_out), exist_ok=True)
+
+    log(f"🔍 [DEBUG] OCR-Start: {os.path.basename(input_pdf_path)} → {output_basename}")
 
     try:
         result = subprocess.run(
-            ['ocrmypdf', '-l', 'deu', '--force-ocr', '--invalidate-digital-signatures', input_pdf_path, staged_out],
-            check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            ['ocrmypdf', '-l', 'deu', '--force-ocr', '--deskew', '--rotate-pages', '--clean', '-O', '0', '--invalidate-digital-signatures', input_pdf_path, staged_out],
+            check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=300
         )
+        log(f"✅ [DEBUG] OCR erfolgreich: {output_basename}")
+
+        # Log STDOUT und STDERR für Debugging
+        if result.stdout:
+            log(f"📝 [DEBUG] OCR stdout: {result.stdout.decode()[:200]}")
+        if result.stderr:
+            log(f"📝 [DEBUG] OCR stderr: {result.stderr.decode()[:200]}")
+
+        # Prüfe Dateigröße
+        if os.path.exists(staged_out):
+            file_size = os.path.getsize(staged_out)
+            log(f"📊 [DEBUG] OCR-Ausgabe: {file_size} Bytes")
     except subprocess.CalledProcessError as e:
-        log(f"❌ OCR-Fehler bei {input_pdf_path}: {e.stderr.decode()}")
+        log(f"❌ OCR-Fehler bei {input_pdf_path}: {e.stderr.decode()}", level="error")
         return None
 
     if not os.path.exists(staged_out):
-        log(f"❌ OCR-Zieldatei fehlt: {staged_out}")
+        log(f"❌ OCR-Zieldatei fehlt: {staged_out}", level="error")
         return None
 
     return staged_out

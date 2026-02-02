@@ -77,14 +77,20 @@ def summarize_pdf(pdf_path, model=None):
 
     # 4) Erste-Seite-Textextrakt (toleranter)
     first_page_text = (doc[0].get_text() or "").strip()
+    log(f"📄 [DEBUG] PDF: {os.path.basename(real_path)} - Seiten: {num_pages}, Text Seite 1: {len(first_page_text)} Zeichen")
+
     if len(first_page_text) < 10:
         if num_pages > 1:
             first_two = "\n".join((doc[0].get_text() or "", doc[1].get_text() or "")).strip()
             first_page_text = first_two
+            log(f"📄 [DEBUG] Erweitert auf Seite 1+2: {len(first_page_text)} Zeichen")
+
         if len(first_page_text) < 10:
+            log(f"⚠️ [DEBUG] Zu wenig Text gefunden ({len(first_page_text)} Zeichen) - Fallback auf 'Unbekannt'", level="warning")
+            log(f"⚠️ [DEBUG] Textinhalt: '{first_page_text[:100]}'", level="warning")
             return "\n".join([
                 "Unbekannt", "Unbekannt", "Unbekannt", "Unbekannt",
-                "Kein Arzt erkannt", "Keine Beschreibung verfügbar", "11"
+                "", "", "Keine Beschreibung verfügbar", "11"
             ])
 
     # 5) Kurzanalyse mit explizitem Modell
@@ -98,11 +104,11 @@ def summarize_pdf(pdf_path, model=None):
         if result is None:
             return "\n".join([
                 "Unbekannt", "Unbekannt", "Unbekannt", "Unbekannt",
-                "Kein Arzt erkannt", "Keine Beschreibung verfügbar", "11"
+                "", "", "Keine Beschreibung verfügbar", "11"
             ])
 
-    # Ergebnis auf 7 Zeilen normieren
+    # Ergebnis auf 8 Zeilen normieren
     lines = [(s or "").strip() for s in (result or "").splitlines()]
-    while len(lines) < 7:
+    while len(lines) < 8:
         lines.append("")
-    return "\n".join(lines[:7])
+    return "\n".join(lines[:8])
