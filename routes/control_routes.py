@@ -5,6 +5,7 @@ import os
 import json
 import time
 import fitz
+import img2pdf
 from datetime import datetime
 from flask import Blueprint, request, jsonify, session, render_template, redirect, url_for
 
@@ -219,6 +220,7 @@ def finalize_import():
         return jsonify(success=False, message="Keine Dateien übergeben."), 400
 
     sid = session.get("session_id")
+    log(f"📦 finalize_import gestartet - Session-ID (Flask): {sid}, Session-ID (fs): {getattr(fs, 'session_id', None)}")
 
     # TRASH-Verzeichnis mit Zeitstempel erstellen
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -236,7 +238,13 @@ def finalize_import():
         control_data = safe_load_json(json_path)
 
         # fs.work_dir ist bereits das Staging-Verzeichnis (.../session_id/staging)
-        staging_dir = str(fs.work_dir) if hasattr(fs, 'work_dir') else None
+        # WICHTIG: Prüfe erst ob session_id existiert, bevor auf work_dir zugegriffen wird
+        staging_dir = None
+        if fs.session_id:
+            try:
+                staging_dir = str(fs.work_dir)
+            except Exception as e:
+                log(f"⚠️ Fehler beim Zugriff auf work_dir: {e}", level="warning")
 
         if staging_dir and os.path.exists(staging_dir):
             # Liste alle Dateien im Staging
@@ -279,10 +287,16 @@ def finalize_import():
 
     # 1) Commit durchführen
     try:
-        fs.commit()
-        log(f"✅ Commit erfolgreich für Session: {sid}")
+        # Prüfe ob Session aktiv ist
+        if not fs.session_id:
+            log(f"⚠️ Keine aktive Staging-Session gefunden. Überspringe Commit.", level="warning")
+        else:
+            fs.commit()
+            log(f"✅ Commit erfolgreich für Session: {sid}")
     except Exception as e:
         log(f"❌ Commit fehlgeschlagen: {e}", level="error")
+        import traceback
+        log(traceback.format_exc(), level="error")
         return jsonify(success=False, message=f"Commit fehlgeschlagen: {e}"), 500
 
     # 2) Dateien sequenziell über ImportQueue nach IMPORT_MEDIDOK verschieben
@@ -427,11 +441,23 @@ def combine_medidok_route():
                             img.seek(frame_idx)
                             frame = img.convert('RGB')
 
-                            # Temporäres PDF für diese Seite
+                            # Temporäres JPG speichern (für img2pdf)
+                            with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp_img:
+                                temp_img_path = tmp_img.name
+                                frame.save(temp_img_path, 'JPEG', quality=95, dpi=(300, 300))
+
+                            # Mit img2pdf zu PDF konvertieren (bessere Qualität für OCR)
                             with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as tmp:
                                 temp_pdf_path = tmp.name
                                 temp_pdfs.append(temp_pdf_path)
-                                frame.save(temp_pdf_path, 'PDF', resolution=100.0)
+                                with open(temp_pdf_path, 'wb') as f:
+                                    f.write(img2pdf.convert(temp_img_path))
+
+                            # Temporäres JPG löschen
+                            try:
+                                os.unlink(temp_img_path)
+                            except:
+                                pass
 
                             # Ins kombinierte PDF einfügen
                             with fitz.open(temp_pdf_path) as pdf:
@@ -439,15 +465,27 @@ def combine_medidok_route():
 
                         log(f"✅ Multi-Page TIFF hinzugefügt ({img.n_frames} Seiten): {os.path.basename(path)}")
                     else:
-                        # Einzelbild zu RGB konvertieren
+                        # Einzelbild zu RGB konvertieren und temporär speichern
                         if img.mode not in ('RGB', 'L'):
                             img = img.convert('RGB')
 
-                        # Temporäres PDF erstellen
+                        # Temporäres JPG speichern (für img2pdf)
+                        with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp_img:
+                            temp_img_path = tmp_img.name
+                            img.save(temp_img_path, 'JPEG', quality=95, dpi=(300, 300))
+
+                        # Mit img2pdf zu PDF konvertieren (bessere Qualität für OCR)
                         with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as tmp:
                             temp_pdf_path = tmp.name
                             temp_pdfs.append(temp_pdf_path)
-                            img.save(temp_pdf_path, 'PDF', resolution=100.0)
+                            with open(temp_pdf_path, 'wb') as f:
+                                f.write(img2pdf.convert(temp_img_path))
+
+                        # Temporäres JPG löschen
+                        try:
+                            os.unlink(temp_img_path)
+                        except:
+                            pass
 
                         # Ins kombinierte PDF einfügen
                         with fitz.open(temp_pdf_path) as pdf:
@@ -462,9 +500,10 @@ def combine_medidok_route():
             else:
                 log(f"⚠️ Nicht unterstütztes Dateiformat übersprungen: {os.path.basename(path)}", level="warning")
 
-        # Ausgabedateiname
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        out_name = f"combined_{timestamp}.pdf"
+        # Ausgabedateiname: comb_[Name der ersten Datei].pdf
+        first_file = os.path.basename(selected_files[0])
+        first_file_base = os.path.splitext(first_file)[0]
+        out_name = f"comb_{first_file_base}.pdf"
         out_path = os.path.join(fs.work_dir, out_name)
 
         combined_pdf.save(out_path)

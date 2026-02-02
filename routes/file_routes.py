@@ -237,13 +237,21 @@ def preview_file(filename):
     filename = unquote(filename)
 
     log(f"🔍 [DEBUG] Preview-Request für: {filename}")
-    log(f"🔍 [DEBUG] Session-ID: {fs.session_id}")
-    log(f"🔍 [DEBUG] work_dir: {fs.work_dir}")
+    log(f"🔍 [DEBUG] Session-ID: {fs.session_id if hasattr(fs, 'session_id') else 'keine'}")
+
+    # Sicherer Zugriff auf work_dir
+    work_dir_str = None
+    if fs.session_id:
+        try:
+            work_dir_str = str(fs.work_dir)
+            log(f"🔍 [DEBUG] work_dir: {work_dir_str}")
+        except Exception as e:
+            log(f"⚠️ Fehler beim Zugriff auf work_dir: {e}", level="warning")
 
     # Pfad zur Datei finden
     file_path = None
-    if fs.session_id:
-        staged = os.path.join(fs.work_dir, filename)
+    if work_dir_str:
+        staged = os.path.join(work_dir_str, filename)
         log(f"🔍 [DEBUG] Suche in Staging: {staged}")
         log(f"🔍 [DEBUG] Datei existiert: {os.path.exists(staged)}")
 
@@ -392,6 +400,7 @@ def preview_file(filename):
 def serve_processed_file(filename):
     """Liefert verarbeitete Dateien aus Staging oder Output."""
     from config import OUTPUT_ROOT
+    from flask import make_response
 
     filename = unquote(filename)
 
@@ -399,25 +408,41 @@ def serve_processed_file(filename):
     log(f"🔍 [DEBUG] /processed angefordert: {filename}")
     log(f"🔍 [DEBUG] Session-ID: {fs.session_id if hasattr(fs, 'session_id') else 'keine'}")
 
+    # Sicherer Zugriff auf work_dir
+    work_dir_str = None
     if fs.session_id:
-        staged = os.path.join(fs.work_dir, filename)
+        try:
+            work_dir_str = str(fs.work_dir)
+        except Exception as e:
+            log(f"⚠️ Fehler beim Zugriff auf work_dir: {e}", level="warning")
+
+    if work_dir_str:
+        staged = os.path.join(work_dir_str, filename)
         log(f"🔍 [DEBUG] Prüfe Staging: {staged}")
         log(f"🔍 [DEBUG] Staging existiert: {os.path.exists(staged)}")
 
         if os.path.exists(staged):
             log(f"✅ Datei gefunden in Staging: {filename}")
-            return send_from_directory(fs.work_dir, filename)
+            # PDF inline anzeigen statt herunterladen
+            response = make_response(send_from_directory(work_dir_str, filename))
+            if filename.lower().endswith('.pdf'):
+                response.headers['Content-Disposition'] = 'inline'
+            return response
 
         # Prüfe auch, ob Datei direkt im work_dir liegt (ohne Unterordner)
         base_name = os.path.basename(filename)
         if base_name != filename:
-            staged_base = os.path.join(fs.work_dir, base_name)
+            staged_base = os.path.join(work_dir_str, base_name)
             log(f"🔍 [DEBUG] Prüfe Staging (nur Dateiname): {staged_base}")
             log(f"🔍 [DEBUG] Staging (Dateiname) existiert: {os.path.exists(staged_base)}")
 
             if os.path.exists(staged_base):
                 log(f"✅ Datei gefunden in Staging (Dateiname): {base_name}")
-                return send_from_directory(fs.work_dir, base_name)
+                # PDF inline anzeigen statt herunterladen
+                response = make_response(send_from_directory(work_dir_str, base_name))
+                if base_name.lower().endswith('.pdf'):
+                    response.headers['Content-Disposition'] = 'inline'
+                return response
 
     output = os.path.join(OUTPUT_ROOT, filename)
     log(f"🔍 [DEBUG] Prüfe Output: {output}")
@@ -425,7 +450,11 @@ def serve_processed_file(filename):
 
     if os.path.exists(output):
         log(f"✅ Datei gefunden in Output: {filename}")
-        return send_from_directory(OUTPUT_ROOT, filename)
+        # PDF inline anzeigen statt herunterladen
+        response = make_response(send_from_directory(OUTPUT_ROOT, filename))
+        if filename.lower().endswith('.pdf'):
+            response.headers['Content-Disposition'] = 'inline'
+        return response
 
     # Auch im Output nur nach Dateinamen suchen
     base_name = os.path.basename(filename)
@@ -436,14 +465,19 @@ def serve_processed_file(filename):
 
         if os.path.exists(output_base):
             log(f"✅ Datei gefunden in Output (Dateiname): {base_name}")
-            return send_from_directory(OUTPUT_ROOT, base_name)
+            # PDF inline anzeigen statt herunterladen
+            response = make_response(send_from_directory(OUTPUT_ROOT, base_name))
+            if base_name.lower().endswith('.pdf'):
+                response.headers['Content-Disposition'] = 'inline'
+            return response
 
     log(f"❌ Verarbeitete Datei nicht gefunden: {filename}", level="error")
-    log(f"   Gesucht in Staging: {os.path.join(fs.work_dir, filename) if fs.session_id else 'keine Session'}", level="error")
+    staging_path = os.path.join(work_dir_str, filename) if work_dir_str else 'keine Session'
+    log(f"   Gesucht in Staging: {staging_path}", level="error")
     log(f"   Gesucht in Output: {output}", level="error")
 
     # Gib einen 404 HTML-Response statt JSON zurück
-    return f"<div style='padding:20px;text-align:center;color:#999;'><h3>❌ Datei nicht gefunden</h3><p>{filename}</p><p style='font-size:0.8em;margin-top:20px;'>Staging: {os.path.join(fs.work_dir, filename) if fs.session_id else 'keine Session'}<br>Output: {output}</p></div>", 404
+    return f"<div style='padding:20px;text-align:center;color:#999;'><h3>❌ Datei nicht gefunden</h3><p>{filename}</p><p style='font-size:0.8em;margin-top:20px;'>Staging: {staging_path}<br>Output: {output}</p></div>", 404
 
 
 @file_bp.route("/rotate_file", methods=["POST"])

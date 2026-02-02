@@ -9,7 +9,7 @@ from flask import Blueprint, request, jsonify, session
 
 from services.logger import log
 from services.session_manager import ensure_staging
-from services.ollama_client import warmup_ollama
+from services.ollama_client import warmup_ollama, check_ollama_health
 from services.ocr import process_medidok_files, create_control_json_from_summaries
 from services.background_tasks import (
     background_analyze_files,
@@ -41,6 +41,15 @@ def copy_and_analyze_progressive():
     # Modell aus Session holen (jetzt, solange wir im Request-Context sind)
     current_model = session.get("selected_model", MODEL_LLM1)
     log(f"🤖 Verwende Modell: {current_model}")
+
+    # Prüfe ob Ollama erreichbar ist
+    ollama_ok, error_msg = check_ollama_health()
+    if not ollama_ok:
+        return jsonify(
+            success=False,
+            message=f"LLM-Service nicht erreichbar: {error_msg}",
+            error_type="ollama_unreachable"
+        ), 503
 
     warmup_ollama()
 

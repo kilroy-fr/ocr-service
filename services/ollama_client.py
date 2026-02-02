@@ -3,6 +3,40 @@ from config import MODEL_LLM1, OLLAMA_URL
 from flask import session
 from .logger import log
 
+
+def check_ollama_health():
+    """
+    Prüft, ob Ollama erreichbar ist.
+
+    Returns:
+        tuple: (bool, str) - (Erfolg, Fehlermeldung falls nicht erreichbar)
+    """
+    try:
+        # Versuche das Tags-Endpoint zu erreichen (leichtgewichtig)
+        tags_url = OLLAMA_URL.replace('/api/generate', '/api/tags')
+        response = requests.get(tags_url, timeout=5)
+
+        if response.ok:
+            log("✅ Ollama Health-Check erfolgreich")
+            return True, None
+        else:
+            msg = f"Ollama ist nicht erreichbar (HTTP {response.status_code})"
+            log(f"❌ {msg}", level="error")
+            return False, msg
+    except requests.exceptions.Timeout:
+        msg = "Ollama ist nicht erreichbar (Timeout nach 5 Sekunden)"
+        log(f"❌ {msg}", level="error")
+        return False, msg
+    except requests.exceptions.ConnectionError:
+        msg = "Ollama ist nicht erreichbar (Verbindung fehlgeschlagen). Bitte starten Sie Ollama: 'docker-compose up ollama -d'"
+        log(f"❌ {msg}", level="error")
+        return False, msg
+    except Exception as e:
+        msg = f"Ollama Health-Check fehlgeschlagen: {str(e)}"
+        log(f"❌ {msg}", level="error")
+        return False, msg
+
+
 def warmup_ollama():
     dummy_prompt = "Dies ist ein Dummy-Text zur Initialisierung. Bitte ignoriere diesen Text."
     

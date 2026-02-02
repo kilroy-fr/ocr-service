@@ -599,6 +599,14 @@ input[readonly] {
   padding: 20px;
   margin-bottom: 30px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  transition: box-shadow 0.3s ease;
+}
+
+.file-ops-section.scrolled {
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
 }
 
 .file-ops-section h3 {
@@ -638,6 +646,50 @@ input[readonly] {
   cursor: not-allowed;
   transform: none;
   filter: grayscale(0.5);
+}
+
+/* ============================================ */
+/* FLOATING ANALYSE BUTTON */
+/* ============================================ */
+.floating-analyze-btn {
+  position: fixed;
+  right: 30px;
+  bottom: 30px;
+  width: 70px;
+  height: 70px;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
+  border: none;
+  border-radius: 50%;
+  color: #022c22;
+  font-size: 32px;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  font-weight: bold;
+}
+
+.floating-analyze-btn:hover:not(:disabled) {
+  transform: scale(1.1) translateY(-5px);
+  box-shadow: 0 10px 30px rgba(16, 185, 129, 0.7);
+}
+
+.floating-analyze-btn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.floating-analyze-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.floating-analyze-btn.hidden {
+  display: none;
 }
 
 /* ============================================ */
@@ -949,6 +1001,115 @@ input[readonly] {
 .session-checkbox-cell {
   text-align: center;
   vertical-align: middle;
+}
+
+/* ============================================ */
+/* MEDIDOK TOGGLE BUTTONS */
+/* ============================================ */
+.medidok-section {
+  padding: 20px;
+  background: linear-gradient(135deg, #3f1a1a 0%, #5a2323 100%);
+  border: 2px solid #dc8e46;
+  border-radius: 10px;
+  margin: 10px 0;
+}
+
+.medidok-label {
+  display: block;
+  color: #fbbf24;
+  font-weight: bold;
+  font-size: 1.1em;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.medidok-toggle {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  align-items: center;
+}
+
+.medidok-toggle input[type="radio"] {
+  display: none;
+}
+
+.toggle-option {
+  flex: 1;
+  max-width: 200px;
+  padding: 20px 30px;
+  border: 3px solid transparent;
+  border-radius: 12px;
+  cursor: pointer;
+  text-align: center;
+  font-weight: bold;
+  font-size: 1.1em;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  background: #374151;
+  color: #9ca3af;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
+.toggle-icon {
+  font-size: 2.5em;
+  display: block;
+  transition: transform 0.3s ease;
+}
+
+.toggle-text {
+  font-size: 1.2em;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.toggle-option:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+}
+
+/* Ja-Button Styling */
+.toggle-yes {
+  border-color: #10b981;
+}
+
+.medidok-toggle input[type="radio"]:checked + .toggle-yes {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border-color: #10b981;
+  color: #022c22;
+  transform: scale(1.05);
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.6);
+}
+
+.medidok-toggle input[type="radio"]:checked + .toggle-yes .toggle-icon {
+  transform: scale(1.2);
+  animation: bounce 0.5s ease;
+}
+
+/* Nein-Button Styling */
+.toggle-no {
+  border-color: #ef4444;
+}
+
+.medidok-toggle input[type="radio"]:checked + .toggle-no {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  border-color: #ef4444;
+  color: white;
+  transform: scale(1.05);
+  box-shadow: 0 8px 24px rgba(239, 68, 68, 0.6);
+}
+
+.medidok-toggle input[type="radio"]:checked + .toggle-no .toggle-icon {
+  transform: scale(1.2);
+  animation: bounce 0.5s ease;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: scale(1.2); }
+  50% { transform: scale(1.4); }
 }
 
 /* ============================================ */

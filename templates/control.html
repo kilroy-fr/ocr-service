@@ -120,14 +120,24 @@
             </tr>
 
             <tr>
-              <td>
-                <div>
-                  <label style="color: #d32f2f; font-weight: bold;">⚠️ In Medidok übernehmen</label>
-                  <label><input type="radio" name="includeOption" value="true"> ✅ ja</label>
-                  <label><input type="radio" name="includeOption" value="false"> ❌ nein</label>
+              <td colspan="2">
+                <div class="medidok-section">
+                  <label class="medidok-label">⚠️ In Medidok übernehmen</label>
+                  <div class="medidok-toggle">
+                    <input type="radio" id="includeYes" name="includeOption" value="true">
+                    <label for="includeYes" class="toggle-option toggle-yes">
+                      <span class="toggle-icon">✅</span>
+                      <span class="toggle-text">Ja</span>
+                    </label>
+
+                    <input type="radio" id="includeNo" name="includeOption" value="false">
+                    <label for="includeNo" class="toggle-option toggle-no">
+                      <span class="toggle-icon">❌</span>
+                      <span class="toggle-text">Nein</span>
+                    </label>
+                  </div>
                 </div>
               </td>
-              <td></td>
             </tr>
           </tbody>
         </table>

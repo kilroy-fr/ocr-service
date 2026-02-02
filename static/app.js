@@ -176,26 +176,29 @@ function updateButtonStates(tab = currentTab) {
   const prefix = tab === 'medidok' ? 'medi' :
                  tab === 'einzel' ? 'einzel' :
                  'batch';
-  
-  const selector = tab === 'medidok' ? 
+
+  const selector = tab === 'medidok' ?
     'input[name="selected_files"]:not(:disabled)' :
     `#${tab === 'einzel' ? 'einzelStagedFiles' : 'batchStagedFiles'} input[type="checkbox"]:not(:disabled)`;
-  
+
   const checkboxes = document.querySelectorAll(selector);
   const submitBtn = document.getElementById(prefix === 'medi' ? 'medidokSubmit' : `${prefix}Analyze`);
   const combineBtn = document.getElementById(`${prefix}Combine`);
   const splitBtn = document.getElementById(`${prefix}Split`);
-  
+
   const selected = Array.from(checkboxes).filter(cb => cb.checked);
   const count = selected.length;
-  
+
   if (submitBtn) submitBtn.disabled = count === 0;
   if (combineBtn) combineBtn.disabled = count < 2;
   if (splitBtn) {
     const onePdfSelected = count === 1 && selected[0].value.toLowerCase().endsWith('.pdf');
     splitBtn.disabled = !onePdfSelected;
   }
-  
+
+  // Floating Analyse Button aktualisieren
+  updateFloatingAnalyzeButton(count > 0);
+
   // Master-Checkbox aktualisieren
   if (tab === 'medidok') {
     updateMasterCheckbox('medidok');
@@ -550,6 +553,42 @@ function updateFileOpsButtons(tab) {
 // ========================================
 
 
+/**
+ * Verschiebt die kombinierte Datei direkt unter die erste ausgeblendete Datei.
+ * @param {string} containerId - ID des Containers (z.B. 'stagedFiles')
+ * @param {string} combinedFilename - Name der kombinierten Datei
+ * @param {Array<string>} processedFilesList - Liste der verarbeiteten Dateinamen
+ */
+function repositionCombinedFile(containerId, combinedFilename, processedFilesList) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  const allItems = Array.from(container.querySelectorAll('.file-item'));
+
+  // Finde die kombinierte Datei
+  const combinedItem = allItems.find(item =>
+    item.getAttribute('data-filename') === combinedFilename
+  );
+
+  if (!combinedItem) {
+    console.warn(`Kombinierte Datei "${combinedFilename}" nicht gefunden`);
+    return;
+  }
+
+  // Finde die erste ausgeblendete Datei (processed)
+  const firstProcessedItem = allItems.find(item =>
+    processedFilesList.includes(item.getAttribute('data-filename'))
+  );
+
+  if (firstProcessedItem) {
+    // Füge die kombinierte Datei direkt nach der ersten ausgeblendeten Datei ein
+    firstProcessedItem.insertAdjacentElement('afterend', combinedItem);
+    console.log(`✅ Kombinierte Datei "${combinedFilename}" direkt unter "${firstProcessedItem.getAttribute('data-filename')}" verschoben`);
+  } else {
+    console.warn('Keine ausgeblendete Datei gefunden');
+  }
+}
+
 async function handleMedidokCombine() {
   // Sortierte Reihenfolge aus der Dateiliste holen
   const sortedFiles = window.FileSorting ? window.FileSorting.getOrder('fileList') : [];
@@ -589,6 +628,9 @@ async function handleMedidokCombine() {
 
     await loadStagedFiles('medidok');
     updateFileListUI('medidok');  // UI nach Laden aktualisieren
+
+    // Positioniere die kombinierte Datei direkt unter den ausgeblendeten Dateien
+    repositionCombinedFile('stagedFiles', data.combined, data.processed_files || []);
 
     const preview = document.getElementById("preview");
     const iframe = `<iframe src="/processed/${encodeURIComponent(data.combined)}#page=1&zoom=fit" scrolling="no"></iframe>`;
@@ -701,9 +743,12 @@ async function handleEinzelCombine() {
     await loadStagedFiles('einzel');
     updateFileListUI('einzel');  // UI nach Laden aktualisieren
 
+    // Positioniere die kombinierte Datei direkt unter den ausgeblendeten Dateien
+    repositionCombinedFile('einzelStagedFiles', data.combined, data.processed_files || []);
+
     const preview = document.getElementById('einzelPreview');
     preview.innerHTML = `<iframe src="/processed/${encodeURIComponent(data.combined)}#page=1&zoom=fit" scrolling="no"></iframe>`;
-    
+
   } catch (err) {
     console.error('[einzel combine] Fehler:', err);
     Notifications.error('Fehler: ' + err);
@@ -812,9 +857,12 @@ async function handleBatchCombine() {
     await loadStagedFiles('batch');
     updateFileListUI('batch');  // UI nach Laden aktualisieren
 
+    // Positioniere die kombinierte Datei direkt unter den ausgeblendeten Dateien
+    repositionCombinedFile('batchStagedFiles', data.combined, data.processed_files || []);
+
     const preview = document.getElementById('batchPreview');
     preview.innerHTML = `<iframe src="/processed/${encodeURIComponent(data.combined)}#page=1&zoom=fit" scrolling="no"></iframe>`;
-    
+
   } catch (err) {
     console.error('[batch combine] Fehler:', err);
     Notifications.error('Fehler: ' + err);
@@ -1100,6 +1148,9 @@ function updateButtonStates(tab = currentTab) {
   if (rotate180Btn) rotate180Btn.disabled = !oneRotatableSelected;
   if (rotateRightBtn) rotateRightBtn.disabled = !oneRotatableSelected;
 
+  // Floating Analyse Button aktualisieren
+  updateFloatingAnalyzeButton(count > 0);
+
   // Master-Checkbox aktualisieren
   if (tab === 'medidok') {
     updateMasterCheckbox('medidok');
@@ -1199,6 +1250,52 @@ async function rotateFile(direction, tab = currentTab) {
 }
 
 // ========================================
+// FLOATING ANALYSE BUTTON
+// ========================================
+
+function updateFloatingAnalyzeButton(hasSelection) {
+  const floatingBtn = document.getElementById('floatingAnalyzeBtn');
+  if (!floatingBtn) return;
+
+  if (hasSelection) {
+    floatingBtn.classList.remove('hidden');
+    floatingBtn.disabled = false;
+  } else {
+    floatingBtn.classList.add('hidden');
+    floatingBtn.disabled = true;
+  }
+}
+
+function handleFloatingAnalyze() {
+  const tab = currentTab;
+
+  if (tab === 'medidok') {
+    handleMedidokAnalyze();
+  } else if (tab === 'einzel') {
+    handleEinzelAnalyze();
+  } else if (tab === 'batch') {
+    handleBatchAnalyze();
+  }
+}
+
+// ========================================
+// STICKY HEADER SCROLL EFFECT
+// ========================================
+
+function handleFileOpsScroll() {
+  const fileOpsSection = document.querySelector('.file-ops-section');
+  if (!fileOpsSection) return;
+
+  const scrollTop = window.scrollY || document.documentElement.scrollTop;
+
+  if (scrollTop > 50) {
+    fileOpsSection.classList.add('scrolled');
+  } else {
+    fileOpsSection.classList.remove('scrolled');
+  }
+}
+
+// ========================================
 // INITIALISIERUNG
 // ========================================
 
@@ -1241,6 +1338,16 @@ window.addEventListener("DOMContentLoaded", async () => {
       location.reload();
     });
   }
+
+  // Floating Analyse Button Event-Listener
+  const floatingAnalyzeBtn = document.getElementById('floatingAnalyzeBtn');
+  if (floatingAnalyzeBtn) {
+    floatingAnalyzeBtn.addEventListener('click', handleFloatingAnalyze);
+  }
+
+  // Scroll Event für Sticky Header Effekt
+  window.addEventListener('scroll', handleFileOpsScroll);
+  handleFileOpsScroll(); // Initial check
 
   // Logging via SSE
   try {
