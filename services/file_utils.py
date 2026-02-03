@@ -268,51 +268,19 @@ def safe_line(lines, index, fallback):
     line = str(line).strip()
     return line if line else fallback
 
-def build_absender(fachrichtung: str, name: str, category: str) -> str:
-    """
-    Baut die Absender-Zeile basierend auf Kategorie zusammen.
-
-    Args:
-        fachrichtung: Fachrichtung (z.B. "Psychiater" oder "Psychiatrie")
-        name: Name (Arztname bei Praxis, Einrichtungsname bei Krankenhaus)
-        category: Kategorie ("5" = Praxis, "6" = Krankenhaus)
-
-    Returns:
-        Zusammengesetzte Absender-Zeile
-    """
+def build_absender(fachrichtung: str, name: str) -> str:
+    """Baut Absender immer als [Fachrichtung] [Name]."""
     fachrichtung = fachrichtung.strip()
     name = name.strip()
 
-    # Wenn beide leer: Fallback
-    if not fachrichtung and not name:
-        return "Kein Arzt erkannt"
-
-    # Kategorie 5 = Praxis: "Fachrichtung Nachname"
-    if category == "5":
-        if fachrichtung and name:
-            return f"{fachrichtung} {name}"
-        elif name:
-            return name
-        else:
-            return fachrichtung
-
-    # Kategorie 6 = Krankenhaus: "Einrichtung Fachrichtung"
-    elif category == "6":
-        if name and fachrichtung:
-            return f"{name} {fachrichtung}"
-        elif name:
-            return name
-        else:
-            return fachrichtung
-
-    # Fallback bei unbekannter Kategorie
+    if fachrichtung and name:
+        return f"{fachrichtung} {name}"
+    elif fachrichtung:
+        return fachrichtung
+    elif name:
+        return name
     else:
-        if fachrichtung and name:
-            return f"{fachrichtung} {name}"
-        elif name:
-            return name
-        else:
-            return fachrichtung
+        return "Kein Arzt erkannt"
 
 def handle_successful_processing(summary_data, original_path, target_dir):
     feld1 = sanitize_filename(summary_data.get("name", "Unbekannt"))

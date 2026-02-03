@@ -10,9 +10,9 @@ AUSGABEFORMAT (genau in dieser Reihenfolge):
 4. Briefdatum (TT.MM.JJJJ)
 5. Fachrichtung (z.B. Psychiater, Kardiologie, Labor)
 6. Name Absender - NUR KERNNAME ohne Titel/Zusätze
-   Praxis: Nur Nachname (z.B. "Schmidt" statt "Dr. med. Schmidt")
-   Labor: Kurz (z.B. "Labor Enders" statt "Labormedizin Prof. Dr. Enders & Kollegen MVZ")
-   Klinik: Kurzform (z.B. "Uniklinik Würzburg" statt vollständiger Name)
+   Bei Arzt: Nur Nachname (z.B. "Schmidt" statt "Dr. med. Schmidt")
+   Bei Klinik/Krankenhaus: Kurzform (z.B. "Uni Würzburg" statt vollständiger Name)
+   Bei Labor: Laborname kurz (z.B. "Labor Enders")
 7. Hauptbefund
 8. Kategorie (nur die Zahl: 5=Praxis, 6=Krankenhaus)
 
@@ -31,8 +31,8 @@ Meier
 Anna
 12.05.1975
 20.01.2026
-Kardiologie
-Uniklinik Würzburg
+Psychiatrie
+Uni Würzburg
 Herzinsuffizienz
 6
 

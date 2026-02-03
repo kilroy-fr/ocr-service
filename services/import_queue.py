@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from services.logger import log
+from services.file_utils import _os_rename_original
 
 
 @dataclass
@@ -183,10 +184,8 @@ class ImportQueueService:
                     self.current_task = task
                     self.current_file_path = destination
             else:
-                # Verwende echte OS-Funktionen (nicht gepatched)
-                import os as _os_real
-
-                _os_real.rename(task.source_path, str(destination))
+                # Verwende gespeicherte Originalfunktion (vor OS-Patching in app.py)
+                _os_rename_original(task.source_path, str(destination))
                 log(f"✅ Datei verschoben nach IMPORT: {task.filename}")
 
                 with self._lock:

@@ -432,6 +432,11 @@ function updateUI() {
   document.getElementById("beschreibung2").value = file.beschreibung2 || "";
   document.getElementById("categoryID").value = file.categoryID || "11";
 
+  // Datums-Felder formatieren (auch wenn Wert vom Backend kommt)
+  document.querySelectorAll(".date-input").forEach(el => {
+    if (el.value) el.value = formatDateString(el.value);
+  });
+
   // Include-Option initial NICHT vorbelegt
   document.querySelectorAll('input[name="includeOption"]').forEach(r => r.checked = false);
 
@@ -920,6 +925,74 @@ function showQueueMonitor(finalizeData) {
   }, 500);
 }
 
+// Dialog: Import erfolgreich – auto-redirect nach 5s wenn keine Aktion
+function showImportCompleteDialog(count) {
+  return new Promise((resolve) => {
+    let resolved = false;
+    let secondsLeft = 5;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'notification-modal-overlay';
+
+    const modal = document.createElement('div');
+    modal.className = 'notification-modal';
+
+    modal.innerHTML = `
+      <div class="notification-modal-content">
+        <div class="notification-modal-icon">✅</div>
+        <div class="notification-modal-message">
+          Alle ${count} Dateien wurden erfolgreich importiert.<br><br>
+          Zur Startseite zurückkehren?
+        </div>
+        <div class="notification-modal-buttons">
+          <button class="notification-btn notification-btn-cancel" id="importDialogStay">Hier bleiben</button>
+          <button class="notification-btn notification-btn-confirm" id="importDialogGo">Zur Startseite (5)</button>
+        </div>
+      </div>
+    `;
+
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+
+    setTimeout(() => {
+      overlay.classList.add('notification-modal-show');
+      modal.classList.add('notification-modal-show');
+    }, 10);
+
+    function dismiss(result) {
+      if (resolved) return;
+      resolved = true;
+      clearInterval(countdown);
+      document.removeEventListener('keydown', handleEsc);
+      overlay.classList.remove('notification-modal-show');
+      modal.classList.remove('notification-modal-show');
+      setTimeout(() => {
+        overlay.remove();
+        resolve(result);
+      }, 200);
+    }
+
+    const countdown = setInterval(() => {
+      secondsLeft--;
+      const goBtn = document.getElementById('importDialogGo');
+      if (goBtn) {
+        goBtn.textContent = secondsLeft > 0 ? `Zur Startseite (${secondsLeft})` : 'Zur Startseite';
+      }
+      if (secondsLeft <= 0) {
+        dismiss(true);
+      }
+    }, 1000);
+
+    document.getElementById('importDialogGo').addEventListener('click', () => dismiss(true));
+    document.getElementById('importDialogStay').addEventListener('click', () => dismiss(false));
+
+    function handleEsc(e) {
+      if (e.key === 'Escape') dismiss(false);
+    }
+    document.addEventListener('keydown', handleEsc);
+  });
+}
+
 function monitorQueueCompletion() {
   let hasSeenActivity = false;  // Flag um zu wissen ob Queue aktiv war
 
@@ -944,11 +1017,7 @@ function monitorQueueCompletion() {
 
           // Zeige Success-Message mit Verzögerung
           setTimeout(async () => {
-            const proceed = await Notifications.confirm(
-              `✅ Alle ${total_processed} Dateien wurden erfolgreich importiert!\n\nZur Startseite zurückkehren?`,
-              "Zur Startseite",
-              "Hier bleiben"
-            );
+            const proceed = await showImportCompleteDialog(total_processed);
 
             if (proceed) {
               // Fallback für undefined/null HOME_URL
@@ -1120,14 +1189,65 @@ function setupSessionCheckboxes() {
   });
 }
 
+// --- Datums-Formatierung (dd.mm.yyyy) ---
+function formatDateString(raw) {
+  // Aus einem beliebigen String nur Ziffern extrahieren und formatieren
+  const digits = (raw || "").replace(/\D/g, "").slice(0, 8);
+  if (digits.length >= 5) return digits.slice(0, 2) + "." + digits.slice(2, 4) + "." + digits.slice(4);
+  if (digits.length >= 3) return digits.slice(0, 2) + "." + digits.slice(2);
+  return digits;
+}
+
+function isValidDate(value) {
+  const m = value.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+  if (!m) return false;
+  const day = parseInt(m[1], 10), month = parseInt(m[2], 10), year = parseInt(m[3], 10);
+  if (month < 1 || month > 12 || day < 1 || day > 31) return false;
+  // Exakte Prüfung über Date-Objekt (behandelt z.B. 31.02. oder Schaltjahre)
+  const d = new Date(year, month - 1, day);
+  return d.getFullYear() === year && d.getMonth() === month - 1 && d.getDate() === day;
+}
+
+function setupDateInput(inputEl) {
+  inputEl.addEventListener("input", function () {
+    this.value = formatDateString(this.value);
+    // Cursor ans Ende setzen
+    const pos = this.value.length;
+    this.setSelectionRange(pos, pos);
+  });
+
+  inputEl.addEventListener("blur", function () {
+    const value = this.value.trim();
+    if (value === "") {
+      this.classList.remove("date-invalid");
+      return;
+    }
+    if (isValidDate(value)) {
+      this.classList.remove("date-invalid");
+    } else {
+      this.classList.add("date-invalid");
+    }
+  });
+
+  // Beim Fokus: wenn schon ein Wert vorhanden, auch formatieren (z.B. vom Backend)
+  inputEl.addEventListener("focus", function () {
+    if (this.value) {
+      this.value = formatDateString(this.value);
+    }
+  });
+}
+
 // Init
 window.addEventListener("DOMContentLoaded", () => {
   console.log(`Initialisierung: ${files.length} Dateien geladen`);
-  
+
   if (!files || files.length === 0) {
     document.getElementById("preview").innerHTML = `<p>Keine Dateien vorhanden.</p>`;
     return;
   }
+
+  // Datums-Felder initialisieren
+  document.querySelectorAll(".date-input").forEach(setupDateInput);
 
   // Erste Datei anzeigen
   updateUI();

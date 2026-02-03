@@ -138,7 +138,7 @@ def process_medidok_files(file_paths, target_dir_unused):
                 fachrichtung = safe_line(lines, 4, "")
                 name_absender = safe_line(lines, 5, "")
                 category = safe_line(lines, 7, "11")
-                absender = build_absender(fachrichtung, name_absender, category)
+                absender = build_absender(fachrichtung, name_absender)
 
                 log(f"📋 [DEBUG] Extrahiert:")
                 log(f"   Fachrichtung: '{fachrichtung}'")
@@ -264,7 +264,7 @@ def process_medidok_files(file_paths, target_dir_unused):
                 fachrichtung = safe_line(lines, 4, "")
                 name_absender = safe_line(lines, 5, "")
                 category = safe_line(lines, 7, "11")
-                absender = build_absender(fachrichtung, name_absender, category)
+                absender = build_absender(fachrichtung, name_absender)
 
                 log(f"📋 [DEBUG] Extrahiert:")
                 log(f"   Fachrichtung: '{fachrichtung}'")
@@ -368,7 +368,7 @@ def process_medidok_files(file_paths, target_dir_unused):
         fachrichtung = safe_line(lines, 4, "")
         name_absender = safe_line(lines, 5, "")
         category = safe_line(lines, 7, "11")
-        absender = build_absender(fachrichtung, name_absender, category)
+        absender = build_absender(fachrichtung, name_absender)
 
         log(f"📋 [DEBUG] Extrahiert:")
         log(f"   Fachrichtung: '{fachrichtung}'")
@@ -536,7 +536,7 @@ def process_medidok_files_with_model(file_paths, target_dir_unused, model, sessi
                 fachrichtung = safe_line(lines, 4, "")
                 name_absender = safe_line(lines, 5, "")
                 category = safe_line(lines, 7, "11")
-                absender = build_absender(fachrichtung, name_absender, category)
+                absender = build_absender(fachrichtung, name_absender)
 
                 log(f"📋 [DEBUG] Extrahiert:")
                 log(f"   Fachrichtung: '{fachrichtung}'")
@@ -664,7 +664,7 @@ def process_medidok_files_with_model(file_paths, target_dir_unused, model, sessi
                 fachrichtung = safe_line(lines, 4, "")
                 name_absender = safe_line(lines, 5, "")
                 category = safe_line(lines, 7, "11")
-                absender = build_absender(fachrichtung, name_absender, category)
+                absender = build_absender(fachrichtung, name_absender)
 
                 log(f"📋 [DEBUG] Extrahiert:")
                 log(f"   Fachrichtung: '{fachrichtung}'")
@@ -765,7 +765,7 @@ def process_medidok_files_with_model(file_paths, target_dir_unused, model, sessi
         fachrichtung = safe_line(lines, 4, "")
         name_absender = safe_line(lines, 5, "")
         category = safe_line(lines, 7, "11")
-        absender = build_absender(fachrichtung, name_absender, category)
+        absender = build_absender(fachrichtung, name_absender)
 
         log(f"📋 [DEBUG] Extrahiert:")
         log(f"   Fachrichtung: '{fachrichtung}'")

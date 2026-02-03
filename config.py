@@ -10,8 +10,8 @@ PROMPT_TEMPLATE     = os.path.join(BASE_DIR, "prompt.txt")
 # Medidok – Hauptverzeichnisse
 INPUT_ROOT          = "/app/medidok"           # Originale (Netzlaufwerk M:)
 WORK_ROOT           = "/app/medidok/work"      # Staging pro Session
-OUTPUT_ROOT         = "/app/medidok/in"        # Finalisierte Dateien (= Import)
-IMPORT_MEDIDOK      = "/app/medidok/in"        # Import für externen Dienst (gleich wie OUTPUT_ROOT)
+OUTPUT_ROOT         = "/app/medidok/out"       # Zwischenlager nach Commit, vor Import
+IMPORT_MEDIDOK      = "/app/medidok/in"        # Import für externen Dienst (wird vom ImportQueueService bestückt)
 TRASH_DIR           = "/app/medidok/trash"     # Papierkorb
 FAIL_DIR_MEDIDOK    = "/app/medidok/fail"      # Fehlerfälle
 LOGGING_FOLDER      = "/app/medidok/logs"      # Logs

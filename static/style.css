@@ -129,6 +129,15 @@ input[type="text"], select {
   color: var(--text);
 }
 
+.date-input::placeholder {
+  color: #6b7280;
+}
+
+.date-input.date-invalid {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.3);
+}
+
 input[type="submit"], .btn, .button {
   display: inline-block;
   padding: 10px 20px;
@@ -718,6 +727,13 @@ input[readonly] {
   background-color: #1f2937 !important;
   cursor: not-allowed;
   border: 2px dashed #7f1d1d !important;
+}
+
+.file-item input[type="checkbox"] {
+  width: 1.5em;
+  height: 1.5em;
+  vertical-align: middle;
+  cursor: pointer;
 }
 
 .file-item.processed input[type="checkbox"] {
