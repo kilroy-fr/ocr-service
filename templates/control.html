@@ -19,7 +19,7 @@
     </div>
   </div>
 
-  <main class="container">
+  <main class="container control-layout">
     <section class="left section">
       <!-- Info-Box für Session-Funktion -->
       <div class="session-info">
@@ -175,6 +175,10 @@
     <div class="progress-container">
       <div class="progress-info">
         <span id="progressText">Datei 1 von X</span>
+        <label class="filter-undecided-label" title="Nur Dokumente anzeigen, bei denen Medidok noch nicht entschieden wurde">
+          <input type="checkbox" id="filterUndecidedCheckbox">
+          <span class="filter-undecided-text">Nur unbearbeitet</span>
+        </label>
         <span id="progressPercent">0%</span>
       </div>
       <div class="progress-bar-wrapper">
@@ -193,6 +197,10 @@
       </button>
     </div>
   </section>
+
+  <!-- Side navigation overlays (sichtbar wenn control-actions aus dem Viewport scrollt) -->
+  <button id="prevOverlay" class="nav-overlay nav-overlay-left" title="Vorheriges Dokument">◀</button>
+  <button id="nextOverlay" class="nav-overlay nav-overlay-right" title="Nächstes Dokument">▶</button>
 
   <script>
     // Files-Variable wird vom Server generiert

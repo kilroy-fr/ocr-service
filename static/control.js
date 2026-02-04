@@ -97,6 +97,7 @@ window.addEventListener("DOMContentLoaded", () => {
   lastKnownCount = files.length;
   updateUI();
   setupSessionCheckboxes();
+  setupFilterToggle();
 
   document.getElementById("prevBtn").addEventListener("click", prevFile);
   document.getElementById("nextBtn").addEventListener("click", nextFile);
@@ -355,6 +356,7 @@ window.addEventListener('beforeunload', () => {
 // files-Variable wird von control.html übergeben
 let currentIndex = 0;
 const visited = new Set();
+let filterUndecided = false;
 const SESSION_FIELDS = ["name", "vorname", "geburtsdatum"];
 
 // Session-Daten (werden beim Sperren eines Feldes gesetzt)
@@ -605,14 +607,75 @@ function updateProgress() {
   console.log(`Progress: ${current}/${total}, visited: ${visitedCount}, decided: ${decidedCount}, percent: ${percent}%`);
 }
 
+// Nächsten/vorherigen unentschiedenen Index finden (direction: +1 oder -1)
+function getNextUndecidedIndex(fromIndex, direction) {
+  let idx = fromIndex + direction;
+  while (idx >= 0 && idx < files.length) {
+    if (files[idx].include !== true && files[idx].include !== false) {
+      return idx;
+    }
+    idx += direction;
+  }
+  return -1;
+}
+
+// Zum nächsten unentschiedenen Dokument springen (vorwärts bevorzugt)
+function advanceToNextUndecided() {
+  let next = getNextUndecidedIndex(currentIndex, 1);
+  if (next === -1) next = getNextUndecidedIndex(currentIndex, -1);
+  if (next !== -1) {
+    currentIndex = next;
+    updateUI();
+  }
+}
+
+function setupFilterToggle() {
+  const checkbox = document.getElementById('filterUndecidedCheckbox');
+  if (!checkbox || checkbox._filterSetup) return;
+  checkbox._filterSetup = true;
+
+  const label = checkbox.closest('label');
+
+  checkbox.addEventListener('change', () => {
+    filterUndecided = checkbox.checked;
+    if (label) label.classList.toggle('active', filterUndecided);
+
+    if (filterUndecided) {
+      // Falls aktuelle Datei bereits entschieden → zum nächsten unentschiedenen springen
+      const f = files[currentIndex];
+      if (f && (f.include === true || f.include === false)) {
+        advanceToNextUndecided();
+      }
+    }
+  });
+
+  // Nach einer Ja/Nein-Entscheidung automatisch zum nächsten unentschiedenen springen
+  document.addEventListener('change', (e) => {
+    if (e.target.name === 'includeOption' && filterUndecided) {
+      // Kurze Verzögerung damit saveCurrentFileData() in den bestehenden Handlern läuft
+      setTimeout(() => advanceToNextUndecided(), 50);
+    }
+  });
+}
+
 function prevFile() {
   saveCurrentFileData();
-  if (currentIndex > 0) { currentIndex--; updateUI(); }
+  if (filterUndecided) {
+    const prev = getNextUndecidedIndex(currentIndex, -1);
+    if (prev !== -1) { currentIndex = prev; updateUI(); }
+  } else {
+    if (currentIndex > 0) { currentIndex--; updateUI(); }
+  }
 }
 
 function nextFile() {
   saveCurrentFileData();
-  if (currentIndex < files.length - 1) { currentIndex++; updateUI(); }
+  if (filterUndecided) {
+    const next = getNextUndecidedIndex(currentIndex, 1);
+    if (next !== -1) { currentIndex = next; updateUI(); }
+  } else {
+    if (currentIndex < files.length - 1) { currentIndex++; updateUI(); }
+  }
 }
 
 async function rotatePDF(direction) {
@@ -925,7 +988,7 @@ function showQueueMonitor(finalizeData) {
   }, 500);
 }
 
-// Dialog: Import erfolgreich – auto-redirect nach 5s wenn keine Aktion
+// Dialog: Import erfolgreich – auto-redirect nach 5s
 function showImportCompleteDialog(count) {
   return new Promise((resolve) => {
     let resolved = false;
@@ -941,12 +1004,10 @@ function showImportCompleteDialog(count) {
       <div class="notification-modal-content">
         <div class="notification-modal-icon">✅</div>
         <div class="notification-modal-message">
-          Alle ${count} Dateien wurden erfolgreich importiert.<br><br>
-          Zur Startseite zurückkehren?
+          Alle ${count} Dateien wurden erfolgreich importiert.
         </div>
         <div class="notification-modal-buttons">
-          <button class="notification-btn notification-btn-cancel" id="importDialogStay">Hier bleiben</button>
-          <button class="notification-btn notification-btn-confirm" id="importDialogGo">Zur Startseite (5)</button>
+          <button class="notification-btn notification-btn-cancel" id="importDialogGo">Zur Startseite (5)</button>
         </div>
       </div>
     `;
@@ -959,16 +1020,15 @@ function showImportCompleteDialog(count) {
       modal.classList.add('notification-modal-show');
     }, 10);
 
-    function dismiss(result) {
+    function dismiss() {
       if (resolved) return;
       resolved = true;
       clearInterval(countdown);
-      document.removeEventListener('keydown', handleEsc);
       overlay.classList.remove('notification-modal-show');
       modal.classList.remove('notification-modal-show');
       setTimeout(() => {
         overlay.remove();
-        resolve(result);
+        resolve();
       }, 200);
     }
 
@@ -979,17 +1039,11 @@ function showImportCompleteDialog(count) {
         goBtn.textContent = secondsLeft > 0 ? `Zur Startseite (${secondsLeft})` : 'Zur Startseite';
       }
       if (secondsLeft <= 0) {
-        dismiss(true);
+        dismiss();
       }
     }, 1000);
 
-    document.getElementById('importDialogGo').addEventListener('click', () => dismiss(true));
-    document.getElementById('importDialogStay').addEventListener('click', () => dismiss(false));
-
-    function handleEsc(e) {
-      if (e.key === 'Escape') dismiss(false);
-    }
-    document.addEventListener('keydown', handleEsc);
+    document.getElementById('importDialogGo').addEventListener('click', () => dismiss());
   });
 }
 
@@ -1017,32 +1071,13 @@ function monitorQueueCompletion() {
 
           // Zeige Success-Message mit Verzögerung
           setTimeout(async () => {
-            const proceed = await showImportCompleteDialog(total_processed);
+            await showImportCompleteDialog(total_processed);
 
-            if (proceed) {
-              // Fallback für undefined/null HOME_URL
-              let targetUrl = "/";
-              if (typeof HOME_URL !== 'undefined' && HOME_URL && HOME_URL !== 'undefined') {
-                targetUrl = HOME_URL;
-              }
-              console.log(`🔄 Weiterleitung zu: ${targetUrl} (HOME_URL type: ${typeof HOME_URL}, value: ${HOME_URL})`);
-              window.location.href = targetUrl;
-            } else {
-              // Wenn Benutzer "Hier bleiben" wählt, blende Fortschritt-Fenster aus
-              // und zeige Hauptformular wieder
-              const queueSection = document.getElementById('queue-status-section');
-              if (queueSection) {
-                queueSection.style.display = 'none';
-              }
-              const container = document.querySelector('.container');
-              if (container) {
-                container.style.display = 'block';
-              }
-              const filenameSection = document.querySelector('.filename-section');
-              if (filenameSection) {
-                filenameSection.style.display = 'block';
-              }
+            let targetUrl = "/";
+            if (typeof HOME_URL !== 'undefined' && HOME_URL && HOME_URL !== 'undefined') {
+              targetUrl = HOME_URL;
             }
+            window.location.href = targetUrl;
           }, 1000); // 1 Sekunde Verzögerung
         }
       }
@@ -1189,6 +1224,25 @@ function setupSessionCheckboxes() {
   });
 }
 
+// --- Side-Overlay Navigation (fixierte ◀ ▶ wenn control-actions aus dem Viewport scrollt) ---
+function setupSideOverlays() {
+  const controlActions = document.querySelector('.control-actions');
+  const prevOverlay = document.getElementById('prevOverlay');
+  const nextOverlay = document.getElementById('nextOverlay');
+  if (!controlActions || !prevOverlay || !nextOverlay) return;
+
+  prevOverlay.addEventListener('click', prevFile);
+  nextOverlay.addEventListener('click', nextFile);
+
+  const observer = new IntersectionObserver((entries) => {
+    const visible = entries[0].isIntersecting;
+    prevOverlay.classList.toggle('visible', !visible);
+    nextOverlay.classList.toggle('visible', !visible);
+  }, { threshold: 0 });
+
+  observer.observe(controlActions);
+}
+
 // --- Datums-Formatierung (dd.mm.yyyy) ---
 function formatDateString(raw) {
   // Aus einem beliebigen String nur Ziffern extrahieren und formatieren
@@ -1253,12 +1307,14 @@ window.addEventListener("DOMContentLoaded", () => {
   updateUI();
 
   setupSessionCheckboxes();
+  setupFilterToggle();
+  setupSideOverlays();
 
   document.getElementById("prevBtn").addEventListener("click", prevFile);
   document.getElementById("nextBtn").addEventListener("click", nextFile);
   document.getElementById("finalizeBtn").addEventListener("click", finalizeAnalysis);
   document.getElementById("abortBtn").addEventListener("click", abortAll);
-  
+
   // Auto-save bei Änderungen in Feldern
   const autoSaveFields = ['name', 'vorname', 'geburtsdatum', 'datum', 'beschreibung1', 'beschreibung2', 'categoryID'];
   autoSaveFields.forEach(fieldId => {
@@ -1272,7 +1328,7 @@ window.addEventListener("DOMContentLoaded", () => {
       });
     }
   });
-  
+
   // Auto-save bei Radio-Button Änderung + checkFinalizeReady
   document.querySelectorAll('input[name="includeOption"]').forEach(radio => {
     radio.addEventListener('change', () => {

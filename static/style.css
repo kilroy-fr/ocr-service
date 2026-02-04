@@ -514,6 +514,23 @@ input[type="submit"]:hover,
 }
 
 /* ============================================ */
+/* CONTROL LAYOUT: Zwei-Spalten ohne Umbruch */
+/* ============================================ */
+.control-layout {
+  flex-wrap: nowrap;
+}
+
+.control-layout .left {
+  flex: 0 1 50%;
+  max-width: 600px;
+  min-width: 0;
+}
+
+.control-layout .right {
+  flex: 1 1 0%;
+  min-width: 0;
+}
+
 /* ============================================ */
 /* CONTROL ACTIONS (control.html) */
 /* ============================================ */
@@ -575,6 +592,53 @@ input[type="submit"]:hover,
 
 .nav-arrow-right {
   order: 1;
+}
+
+/* ============================================ */
+/* SIDE NAVIGATION OVERLAYS (scrollt auf) */
+/* ============================================ */
+.nav-overlay {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 72px;
+  background: rgba(16, 185, 129, 0.82);
+  color: #022c22;
+  border: none;
+  cursor: pointer;
+  font-size: 20px;
+  font-weight: bold;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 500;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+  transition: background 0.2s, width 0.2s, box-shadow 0.2s;
+}
+
+.nav-overlay.visible {
+  display: flex;
+}
+
+.nav-overlay-left {
+  left: 0;
+  border-radius: 0 10px 10px 0;
+}
+
+.nav-overlay-right {
+  right: 0;
+  border-radius: 10px 0 0 10px;
+}
+
+.nav-overlay:hover {
+  background: rgba(16, 185, 129, 0.95);
+  width: 48px;
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.45);
+}
+
+.nav-overlay:active {
+  transform: translateY(-50%) scale(0.93);
 }
 
 /* PRINT STYLES */
@@ -979,11 +1043,49 @@ input[readonly] {
 }
 
 /* ============================================ */
+/* FILTER: NUR UNBEARBEITETE DATEIEN           */
+/* ============================================ */
+.filter-undecided-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+  margin-top: 0;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid #4b5563;
+  background: #374151;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.filter-undecided-label:hover {
+  border-color: #6b7280;
+}
+
+.filter-undecided-label.active {
+  border-color: var(--primary);
+  background: rgba(16, 185, 129, 0.2);
+}
+
+.filter-undecided-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary);
+  cursor: pointer;
+  margin: 0;
+}
+
+.filter-undecided-text {
+  font-size: 0.9em;
+}
+
+/* ============================================ */
 /* SESSION INFO BOX (fÃ¼r control.html) */
 /* ============================================ */
 .session-info {
-  background: linear-gradient(135deg, #3f1a1a 0%, #5a2323 100%);
-  border: 2px solid #dc8e46;
+  background: linear-gradient(135deg, #1a3f3a 0%, #235a50 100%);
+  border: 2px solid #46dcb8;
   border-radius: 8px;
   padding: 15px;
   margin-bottom: 20px;
@@ -991,7 +1093,7 @@ input[readonly] {
 
 .session-info h4 {
   margin-top: 0;
-  color: #fbbf24;
+  color: #5eead4;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1009,8 +1111,8 @@ input[readonly] {
 }
 
 .session-locked {
-  background: #3f1a1a !important;
-  border: 2px solid #dc8e46 !important;
+  background: #1a3f3a !important;
+  border: 2px solid #46dcb8 !important;
   font-weight: 600;
 }
 
@@ -1024,15 +1126,15 @@ input[readonly] {
 /* ============================================ */
 .medidok-section {
   padding: 20px;
-  background: linear-gradient(135deg, #3f1a1a 0%, #5a2323 100%);
-  border: 2px solid #dc8e46;
+  background: linear-gradient(135deg, #1a3f3a 0%, #235a50 100%);
+  border: 2px solid #46dcb8;
   border-radius: 10px;
   margin: 10px 0;
 }
 
 .medidok-label {
   display: block;
-  color: #fbbf24;
+  color: #5eead4;
   font-weight: bold;
   font-size: 1.1em;
   margin-bottom: 15px;
@@ -1041,7 +1143,7 @@ input[readonly] {
 
 .medidok-toggle {
   display: flex;
-  gap: 15px;
+  gap: 11px;
   justify-content: center;
   align-items: center;
 }
@@ -1052,19 +1154,19 @@ input[readonly] {
 
 .toggle-option {
   flex: 1;
-  max-width: 200px;
-  padding: 20px 30px;
+  max-width: 150px;
+  padding: 15px 22px;
   border: 3px solid transparent;
   border-radius: 12px;
   cursor: pointer;
   text-align: center;
   font-weight: bold;
-  font-size: 1.1em;
+  font-size: 0.83em;
   transition: all 0.3s ease;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   background: #374151;
   color: #9ca3af;
   box-shadow: 0 4px 8px rgba(0,0,0,0.3);
