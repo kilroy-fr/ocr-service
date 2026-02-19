@@ -69,77 +69,7 @@ function hideCopySpinner() {
   }
 }
 
-// Beim Laden prüfen ob progressive Analyse aktiv
-window.addEventListener("DOMContentLoaded", () => {
-  // Files aus HTML-inline-Script prüfen
-  console.log("Geladene Files:", files);
-  if (files && files.length > 0) {
-    files.forEach((f, i) => console.log(`File ${i}: originalFilename=${f.originalFilename}`));
-  }
-  
-  // URL-Parameter auslesen
-  const urlParams = new URLSearchParams(window.location.search);
-  isProgressiveMode = urlParams.get('progressive') === 'true';
-  
-  if (isProgressiveMode) {
-    console.log('Progressive Analyse-Modus aktiviert');
-    setupProgressiveMode();
-  }
-  
-  // Rest der bisherigen Initialisierung...
-  console.log(`Initialisierung: ${files.length} Dateien geladen`);
-  
-  if (!files || files.length === 0) {
-    document.getElementById("preview").innerHTML = `<p>Keine Dateien vorhanden.</p>`;
-    return;
-  }
-
-  lastKnownCount = files.length;
-  updateUI();
-  setupSessionCheckboxes();
-  setupFilterToggle();
-
-  document.getElementById("prevBtn").addEventListener("click", prevFile);
-  document.getElementById("nextBtn").addEventListener("click", nextFile);
-  document.getElementById("finalizeBtn").addEventListener("click", finalizeAnalysis);
-  document.getElementById("abortBtn").addEventListener("click", abortAll);
-
-  // PDF Rotation Buttons
-  const rotateLeftBtn = document.getElementById("rotateLeftBtn");
-  const rotate180Btn = document.getElementById("rotate180Btn");
-  const rotateRightBtn = document.getElementById("rotateRightBtn");
-  if (rotateLeftBtn) {
-    rotateLeftBtn.addEventListener("click", () => rotatePDF("left"));
-  }
-  if (rotate180Btn) {
-    rotate180Btn.addEventListener("click", () => rotatePDF("180"));
-  }
-  if (rotateRightBtn) {
-    rotateRightBtn.addEventListener("click", () => rotatePDF("right"));
-  }
-
-  // Auto-save Setup
-  const autoSaveFields = ['name', 'vorname', 'geburtsdatum', 'datum', 'beschreibung1', 'beschreibung2', 'categoryID'];
-  autoSaveFields.forEach(fieldId => {
-    const field = document.getElementById(fieldId);
-    if (field) {
-      field.addEventListener('change', () => {
-        saveCurrentFileData();
-        const newName = buildNewName(files[currentIndex]);
-        document.getElementById("newFilename").textContent = "Neu: " + newName;
-        updateProgress();
-      });
-    }
-  });
-  
-  document.querySelectorAll('input[name="includeOption"]').forEach(radio => {
-    radio.addEventListener('change', () => {
-      saveCurrentFileData();
-      updateProgress();
-      checkFinalizeReady();
-    });
-  });
-});
+// Initialisierung erfolgt im zweiten DOMContentLoaded-Handler unten
 
 function setupProgressiveMode() {
   // Status-Banner als transparente Overlay-Anzeige rechts oben erstellen
@@ -376,12 +306,92 @@ function buildNewName(f) {
     f.vorname || "Unbekannt",
     f.geburtsdatum || "Unbekannt",
     f.datum || "Unbekannt",
-    f.beschreibung1 || "Kein Arzt erkannt",
+    (f.beschreibung1 || "Kein Arzt erkannt").substring(0, 30),
     f.beschreibung2 || "Keine Beschreibung verfügbar",
     f.categoryID || "11"
   ].map(sanitizeBase);
 
+  // Windows-Pfadlängen-Limit: f:\MDok\import\Dateiname.pdf
+  // Max 115 Zeichen für Dateiname (inkl. .pdf) - optimiertes Limit
+  const MAX_FILENAME_LENGTH = 115;
+
+  // Berechne Länge aller Teile außer p[5] (Befund)
+  const prefix = `${p[0]}_${p[1]}_${p[2]}_${p[3]}_${p[4]}, `;
+  const suffix = `_${p[6]}.pdf`;
+  const prefixSuffixLength = prefix.length + suffix.length;
+
+  // Berechne maximale Länge für Befund
+  let maxBefundLength = MAX_FILENAME_LENGTH - prefixSuffixLength;
+
+  // Stelle sicher, dass mindestens 10 Zeichen für Befund bleiben
+  if (maxBefundLength < 10) {
+    maxBefundLength = 10;
+  }
+
+  // Kürze Befund auf verfügbare Länge
+  p[5] = p[5].substring(0, maxBefundLength);
+
   return `${p[0]}_${p[1]}_${p[2]}_${p[3]}_${p[4]}, ${p[5]}_${p[6]}.pdf`;
+}
+
+function updateFilenameLengthDisplay(filename) {
+  const lengthElement = document.getElementById("filenameLength");
+  if (!lengthElement) return;
+
+  const MAX_LENGTH = 115;
+  const currentLength = filename.length;
+
+  lengthElement.textContent = currentLength;
+
+  // Entferne alte Klassen
+  lengthElement.classList.remove("length-warning", "length-error");
+
+  // Setze Farbe basierend auf Länge
+  if (currentLength > MAX_LENGTH) {
+    lengthElement.classList.add("length-error");
+  } else if (currentLength > MAX_LENGTH - 10) {
+    lengthElement.classList.add("length-warning");
+  }
+}
+
+function enforceFilenameLimit() {
+  const MAX_LENGTH = 115;
+  const file = files[currentIndex];
+  if (!file) return;
+
+  // Berechne alle Teile des Dateinamens (wie buildNewName, aber vor der Kürzung)
+  const p = [
+    file.name || "Unbekannt",
+    file.vorname || "Unbekannt",
+    file.geburtsdatum || "Unbekannt",
+    file.datum || "Unbekannt",
+    (file.beschreibung1 || "Kein Arzt erkannt").substring(0, 30),
+    file.beschreibung2 || "Keine Beschreibung verfügbar",
+    file.categoryID || "11"
+  ].map(sanitizeBase);
+
+  // Berechne Länge ohne Befund (p[5])
+  const prefix = `${p[0]}_${p[1]}_${p[2]}_${p[3]}_${p[4]}, `;
+  const suffix = `_${p[6]}.pdf`;
+  const prefixSuffixLength = prefix.length + suffix.length;
+
+  // Maximale Länge für Befund
+  let maxBefundLength = MAX_LENGTH - prefixSuffixLength;
+  if (maxBefundLength < 10) maxBefundLength = 10;
+
+  // Kürze Befund-Feld wenn nötig
+  const befundField = document.getElementById("beschreibung2");
+  if (befundField && p[5].length > maxBefundLength) {
+    // Schneide am ursprünglichen Wert (vor sanitize)
+    const originalValue = befundField.value;
+    befundField.value = originalValue.substring(0, maxBefundLength);
+    file.beschreibung2 = befundField.value;
+
+    // Aktualisiere Anzeige sofort
+    const newName = buildNewName(file);
+    document.getElementById("newFilename").textContent = "Neu: " + newName;
+    updateFilenameLengthDisplay(newName);
+  }
 }
 
 function extOf(p) {
@@ -439,6 +449,9 @@ function updateUI() {
     if (el.value) el.value = formatDateString(el.value);
   });
 
+  // Initiale Kürzung anwenden (falls Daten vom Backend zu lang sind)
+  enforceFilenameLimit();
+
   // Include-Option initial NICHT vorbelegt
   document.querySelectorAll('input[name="includeOption"]').forEach(r => r.checked = false);
 
@@ -449,6 +462,7 @@ function updateUI() {
 
   const newName = buildNewName(file);
   document.getElementById("newFilename").textContent = "Neu: " + newName;
+  updateFilenameLengthDisplay(newName);
   document.getElementById("originalFilename").textContent = "Original: " + (file.filename || "");
 
   // Fortschrittsanzeige aktualisieren
@@ -471,7 +485,7 @@ function updateUI() {
   if (["jpg","jpeg","png"].includes(ext)) {
     previewContent = `<img src="/processed/${encodeURIComponent(previewFile)}" alt="Bildvorschau">`;
   } else if (ext === "pdf") {
-    previewContent = `<iframe src="/processed/${encodeURIComponent(previewFile)}#page=1&zoom=fit"></iframe>`;
+    previewContent = `<embed src="/processed/${encodeURIComponent(previewFile)}#page=1&zoom=fit" type="application/pdf">`;
   } else if (ext === "txt") {
     previewContent = `<iframe src="/preview/${encodeURIComponent(previewFile)}" scrolling="auto" style="background: #1e1e1e;"></iframe>`;
   } else {
@@ -549,6 +563,7 @@ async function saveData() {
     f.file = effectiveRel;
     f.new_filename = newName;
     document.getElementById("newFilename").textContent = "Neu: " + newName;
+    updateFilenameLengthDisplay(newName);
     updateUI();
   }
 
@@ -753,7 +768,7 @@ async function rotatePDF(direction) {
       // Vorschau neu laden durch Cache-Busting
       const previewFile = file.filename || file.file;
       const timestamp = new Date().getTime();
-      const previewContent = `<iframe src="/processed/${encodeURIComponent(previewFile)}?t=${timestamp}#page=1&zoom=fit"></iframe>`;
+      const previewContent = `<embed src="/processed/${encodeURIComponent(previewFile)}?t=${timestamp}#page=1&zoom=fit" type="application/pdf">`;
       document.getElementById("preview").innerHTML = previewContent;
 
       // Wenn neu analysiert wurde, aktualisiere die Formularfelder
@@ -787,6 +802,7 @@ async function rotatePDF(direction) {
         // Aktualisiere den neuen Dateinamen
         const newName = buildNewName(file);
         document.getElementById("newFilename").textContent = "Neu: " + newName;
+        updateFilenameLengthDisplay(newName);
 
         if (typeof Notifications !== 'undefined') {
           Notifications.success("PDF gedreht und neu analysiert ✓");
@@ -980,12 +996,21 @@ function showQueueMonitor(finalizeData) {
   // Kleine Verzögerung vor Start damit Alert geschlossen werden kann
   setTimeout(() => {
     console.log('🚀 Starte Queue-Monitor...');
-    // Starte Queue-Monitor
-    QueueMonitor.start('queue-status');
-
-    // Überwache Abschluss
-    monitorQueueCompletion();
+    QueueMonitor.start('queue-status', onQueueComplete);
   }, 500);
+}
+
+// Wird von QueueMonitor aufgerufen wenn alle Dateien verarbeitet sind
+function onQueueComplete(processedCount) {
+  setTimeout(async () => {
+    await showImportCompleteDialog(processedCount);
+
+    let targetUrl = "/";
+    if (typeof HOME_URL !== 'undefined' && HOME_URL && HOME_URL !== 'undefined') {
+      targetUrl = HOME_URL;
+    }
+    window.location.href = targetUrl;
+  }, 1000);
 }
 
 // Dialog: Import erfolgreich – auto-redirect nach 5s
@@ -1045,46 +1070,6 @@ function showImportCompleteDialog(count) {
 
     document.getElementById('importDialogGo').addEventListener('click', () => dismiss());
   });
-}
-
-function monitorQueueCompletion() {
-  let hasSeenActivity = false;  // Flag um zu wissen ob Queue aktiv war
-
-  // Prüfe alle 3 Sekunden ob Queue leer ist (schneller für besseres UX)
-  const checkInterval = setInterval(async () => {
-    try {
-      const response = await fetch('/import_queue_status');
-      const data = await response.json();
-
-      if (data.success && data.stats) {
-        const { current_queue_size, total_processed, total_queued } = data.stats;
-
-        // Merke dass Queue aktiv war/ist
-        if (total_queued > 0 || current_queue_size > 0) {
-          hasSeenActivity = true;
-        }
-
-        // Wenn Queue leer und alle verarbeitet UND wir haben Aktivität gesehen
-        if (hasSeenActivity && current_queue_size === 0 && total_processed > 0 && total_processed === total_queued) {
-          clearInterval(checkInterval);
-          QueueMonitor.stop();
-
-          // Zeige Success-Message mit Verzögerung
-          setTimeout(async () => {
-            await showImportCompleteDialog(total_processed);
-
-            let targetUrl = "/";
-            if (typeof HOME_URL !== 'undefined' && HOME_URL && HOME_URL !== 'undefined') {
-              targetUrl = HOME_URL;
-            }
-            window.location.href = targetUrl;
-          }, 1000); // 1 Sekunde Verzögerung
-        }
-      }
-    } catch (error) {
-      console.error('Fehler beim Überwachen der Queue:', error);
-    }
-  }, 3000); // Alle 3 Sekunden prüfen (war 5)
 }
 
 // Event-Listener für "Monitoring beenden" Button
@@ -1195,6 +1180,7 @@ function setupSessionCheckboxes() {
         // Aktualisiere den Dateinamen für die aktuelle Datei
         const newName = buildNewName(files[currentIndex]);
         document.getElementById("newFilename").textContent = "Neu: " + newName;
+        updateFilenameLengthDisplay(newName);
         
         // Speichere die Änderungen
         saveCurrentFileData();
@@ -1214,7 +1200,8 @@ function setupSessionCheckboxes() {
         // Aktualisiere den Dateinamen nach dem Entsperren
         const newName = buildNewName(files[currentIndex]);
         document.getElementById("newFilename").textContent = "Neu: " + newName;
-        
+        updateFilenameLengthDisplay(newName);
+
         // Speichere die Änderungen
         saveCurrentFileData();
         updateProgress();
@@ -1293,6 +1280,19 @@ function setupDateInput(inputEl) {
 
 // Init
 window.addEventListener("DOMContentLoaded", () => {
+  console.log("Geladene Files:", files);
+  if (files && files.length > 0) {
+    files.forEach((f, i) => console.log(`File ${i}: originalFilename=${f.originalFilename}`));
+  }
+
+  // Progressive Analyse prüfen
+  const urlParams = new URLSearchParams(window.location.search);
+  isProgressiveMode = urlParams.get('progressive') === 'true';
+  if (isProgressiveMode) {
+    console.log('Progressive Analyse-Modus aktiviert');
+    setupProgressiveMode();
+  }
+
   console.log(`Initialisierung: ${files.length} Dateien geladen`);
 
   if (!files || files.length === 0) {
@@ -1300,12 +1300,12 @@ window.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
+  lastKnownCount = files.length;
+
   // Datums-Felder initialisieren
   document.querySelectorAll(".date-input").forEach(setupDateInput);
 
-  // Erste Datei anzeigen
   updateUI();
-
   setupSessionCheckboxes();
   setupFilterToggle();
   setupSideOverlays();
@@ -1315,15 +1315,31 @@ window.addEventListener("DOMContentLoaded", () => {
   document.getElementById("finalizeBtn").addEventListener("click", finalizeAnalysis);
   document.getElementById("abortBtn").addEventListener("click", abortAll);
 
+  // PDF Rotation Buttons
+  const rotateLeftBtn = document.getElementById("rotateLeftBtn");
+  const rotate180Btn = document.getElementById("rotate180Btn");
+  const rotateRightBtn = document.getElementById("rotateRightBtn");
+  if (rotateLeftBtn) rotateLeftBtn.addEventListener("click", () => rotatePDF("left"));
+  if (rotate180Btn) rotate180Btn.addEventListener("click", () => rotatePDF("180"));
+  if (rotateRightBtn) rotateRightBtn.addEventListener("click", () => rotatePDF("right"));
+
   // Auto-save bei Änderungen in Feldern
   const autoSaveFields = ['name', 'vorname', 'geburtsdatum', 'datum', 'beschreibung1', 'beschreibung2', 'categoryID'];
   autoSaveFields.forEach(fieldId => {
     const field = document.getElementById(fieldId);
     if (field) {
+      // Input Event: Echtzeit-Validierung und Längenbeschränkung
+      field.addEventListener('input', () => {
+        files[currentIndex][fieldId] = field.value;
+        enforceFilenameLimit();
+      });
+
+      // Change Event: Speichern und UI-Update
       field.addEventListener('change', () => {
         saveCurrentFileData();
         const newName = buildNewName(files[currentIndex]);
         document.getElementById("newFilename").textContent = "Neu: " + newName;
+        updateFilenameLengthDisplay(newName);
         updateProgress();
       });
     }
@@ -1345,7 +1361,6 @@ window.addEventListener("DOMContentLoaded", () => {
   const queueSection = document.getElementById('queue-status-section');
   if (queueSection && queueSection.style.display !== 'none') {
     console.log('📦 Import-Fortschritt-Sektion ist sichtbar - starte Queue-Monitor sofort');
-    QueueMonitor.start('queue-status');
-    monitorQueueCompletion();
+    QueueMonitor.start('queue-status', onQueueComplete);
   }
 });

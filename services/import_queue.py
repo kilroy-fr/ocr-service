@@ -1,5 +1,5 @@
 """
-Import Queue Service - Sequenzielle Dateiverarbeitung für IMPORT_MEDIDOK
+Import Queue Service - Sequenzielle Dateiverarbeitung für IMPORT_QUEUE_DIR
 
 Dieser Service stellt sicher, dass Dateien nacheinander dem externen Dienst
 präsentiert werden. Erst wenn eine Datei vom Dienst gelöscht wurde, wird die
@@ -14,8 +14,26 @@ from typing import Dict, List, Optional
 from dataclasses import dataclass
 from datetime import datetime
 
+import shutil
+
 from services.logger import log
-from services.file_utils import _os_rename_original
+from services.file_utils import _os_rename_original, _os_remove_original
+
+
+def _safe_move(src: str, dst: str):
+    """
+    Verschiebt eine Datei sicher – funktioniert auch auf CIFS/SMB-Shares.
+
+    os.rename scheitert auf CIFS häufig (cross-device / SMB-Eigenheiten).
+    Fallback: copy2 + unlink, nutzt jeweils die originalen (un-gepatchten)
+    os-Funktionen.
+    """
+    try:
+        _os_rename_original(src, dst)
+    except OSError as e:
+        log(f"⚠️ os.rename fehlgeschlagen ({e}) – fallback auf copy2+delete")
+        shutil.copy2(src, dst)
+        _os_remove_original(src)
 
 
 @dataclass
@@ -33,11 +51,11 @@ class ImportTask:
 
 class ImportQueueService:
     """
-    Verwaltet die sequenzielle Verarbeitung von Dateien für IMPORT_MEDIDOK.
+    Verwaltet die sequenzielle Verarbeitung von Dateien für IMPORT_QUEUE_DIR.
 
     Funktionsweise:
     1. Dateien werden in eine Queue eingereiht
-    2. Die erste Datei wird sofort in IMPORT_MEDIDOK verschoben
+    2. Die erste Datei wird sofort in IMPORT_QUEUE_DIR verschoben
     3. Ein FileWatcher überwacht das Verzeichnis
     4. Wenn die Datei gelöscht wurde, wird die nächste verschoben
     """
@@ -45,7 +63,7 @@ class ImportQueueService:
     def __init__(self, import_dir: str, check_interval: float = 2.0):
         """
         Args:
-            import_dir: Pfad zum IMPORT_MEDIDOK Verzeichnis
+            import_dir: Pfad zum IMPORT_QUEUE_DIR Verzeichnis
             check_interval: Intervall in Sekunden für FileWatcher-Checks
         """
         self.import_dir = Path(import_dir)
@@ -158,7 +176,7 @@ class ImportQueueService:
         """
         Verarbeitet eine einzelne Import-Aufgabe.
 
-        1. Verschiebt Datei nach IMPORT_MEDIDOK (oder überspringt wenn bereits dort)
+        1. Verschiebt Datei nach IMPORT_QUEUE_DIR (oder überspringt wenn bereits dort)
         2. Wartet auf Löschung durch externen Dienst
         3. Signalisiert Erfolg/Fehler
         """
@@ -184,8 +202,7 @@ class ImportQueueService:
                     self.current_task = task
                     self.current_file_path = destination
             else:
-                # Verwende gespeicherte Originalfunktion (vor OS-Patching in app.py)
-                _os_rename_original(task.source_path, str(destination))
+                _safe_move(task.source_path, str(destination))
                 log(f"✅ Datei verschoben nach IMPORT: {task.filename}")
 
                 with self._lock:
@@ -196,6 +213,7 @@ class ImportQueueService:
             log(f"❌ Fehler beim Verschieben von {task.filename}: {e}", level="error")
             with self._lock:
                 self.stats['total_failed'] += 1
+                self.stats['total_processed'] += 1  # Auch bei Fehler als "bearbeitet" zählen
             return
 
         # Warte auf Löschung durch externen Dienst
@@ -213,7 +231,7 @@ class ImportQueueService:
         log(f"⏳ Warte auf Löschung durch externen Dienst: {task.filename}")
 
         start_time = time.time()
-        last_log_time = start_time
+        last_log_time = 0  # Relativ zu start_time (Sekunden)
 
         while not self._stop_event.is_set():
             # Prüfe ob Datei noch existiert
@@ -249,6 +267,14 @@ class ImportQueueService:
 
             # Kurze Pause vor nächstem Check
             time.sleep(self.check_interval)
+
+        # _stop_event wurde gesetzt – sauber aufräumen
+        log(f"⚠️ Verarbeitung von {task.filename} durch Stop unterbrochen", level="warning")
+        with self._lock:
+            self.current_task = None
+            self.current_file_path = None
+            self.stats['total_processed'] += 1
+            self.stats['total_failed'] += 1
 
     def get_stats(self) -> Dict:
         """Gibt aktuelle Statistiken zurück."""

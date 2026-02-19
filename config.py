@@ -4,16 +4,15 @@ BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
 # Upload & Arbeitsordner
 UPLOAD_FOLDER       = "/app/uploads"           # Temporäre Uploads
-DATA_FOLDER         = os.path.join(BASE_DIR, "data")
 PROMPT_TEMPLATE     = os.path.join(BASE_DIR, "prompt.txt")
 
 # Medidok – Hauptverzeichnisse
 INPUT_ROOT          = "/app/medidok"           # Originale (Netzlaufwerk M:)
-WORK_ROOT           = "/app/medidok/work"      # Staging pro Session
-OUTPUT_ROOT         = "/app/medidok/out"       # Zwischenlager nach Commit, vor Import
-IMPORT_MEDIDOK      = "/app/medidok/in"        # Import für externen Dienst (wird vom ImportQueueService bestückt)
+WORK_ROOT           = "/app/medidok/staging"   # Staging pro Session
+OUTPUT_ROOT         = "/app/medidok/output"    # Zwischenlager nach Commit, vor Import
+IMPORT_QUEUE_DIR    = "/app/medidok/import"    # Import-Warteschlange für externen Dienst
 TRASH_DIR           = "/app/medidok/trash"     # Papierkorb
-FAIL_DIR_MEDIDOK    = "/app/medidok/fail"      # Fehlerfälle
+ERRORS_DIR          = "/app/medidok/errors"    # Fehlerfälle
 LOGGING_FOLDER      = "/app/medidok/logs"      # Logs
 
 # Metadaten

@@ -19,7 +19,7 @@ from services.ollama_client import warmup_ollama
 from services.import_queue import get_import_queue_service
 from config import (
     JSON_FOLDER, INPUT_ROOT, OUTPUT_ROOT, WORK_ROOT,
-    IMPORT_MEDIDOK, TRASH_DIR, MODEL_LLM1, HOME_URL
+    IMPORT_QUEUE_DIR, TRASH_DIR, MODEL_LLM1, HOME_URL
 )
 
 control_bp = Blueprint('control', __name__)
@@ -189,8 +189,26 @@ def rename_file():
     feld3 = sanitize_filename(entry.get("geburtsdatum", "Unbekannt"))
     feld4 = sanitize_filename(entry.get("datum", "Unbekannt"))
     feld5 = sanitize_filename(entry.get("beschreibung1", "Unbekannt"))[:30]
-    feld6 = sanitize_filename(entry.get("beschreibung2", "Unbekannt"))[:120]
     feld7 = sanitize_filename(entry.get("categoryID", "11"))
+
+    # Windows-Pfadlängen-Limit: f:\MDok\import\Dateiname.pdf
+    # Max 115 Zeichen für Dateiname (inkl. .pdf) - finales Limit
+    MAX_FILENAME_LENGTH = 115
+
+    # Berechne Länge aller Teile außer feld6 (Befund)
+    prefix = f"{feld1}_{feld2}_{feld3}_{feld4}_{feld5}, "
+    suffix = f"_{feld7}.pdf"
+    prefix_suffix_length = len(prefix) + len(suffix)
+
+    # Berechne maximale Länge für feld6 (Befund)
+    max_feld6_length = MAX_FILENAME_LENGTH - prefix_suffix_length
+
+    # Stelle sicher, dass mindestens 10 Zeichen für Befund bleiben
+    if max_feld6_length < 10:
+        max_feld6_length = 10
+
+    # Kürze feld6 auf verfügbare Länge
+    feld6 = sanitize_filename(entry.get("beschreibung2", "Unbekannt"))[:max_feld6_length]
 
     new_base = f"{feld1}_{feld2}_{feld3}_{feld4}_{feld5}, {feld6}_{feld7}.pdf"
     # WICHTIG: sanitize_filename NICHT auf new_base anwenden, da die Unterstriche Trennzeichen sind!
@@ -213,7 +231,7 @@ def rename_file():
 
 @control_bp.route("/finalize_import", methods=["POST"])
 def finalize_import():
-    """Finalisiert Import: Commit + Verschieben nach IMPORT_MEDIDOK."""
+    """Finalisiert Import: Commit + Verschieben nach IMPORT_QUEUE_DIR."""
     payload = request.get_json(force=True) or {}
     entries = payload.get("files", [])
     if not entries:
@@ -299,8 +317,8 @@ def finalize_import():
         log(traceback.format_exc(), level="error")
         return jsonify(success=False, message=f"Commit fehlgeschlagen: {e}"), 500
 
-    # 2) Dateien sequenziell über ImportQueue nach IMPORT_MEDIDOK verschieben
-    os.makedirs(IMPORT_MEDIDOK, exist_ok=True)
+    # 2) Dateien sequenziell über ImportQueue nach IMPORT_QUEUE_DIR verschieben
+    os.makedirs(IMPORT_QUEUE_DIR, exist_ok=True)
     moved = 0
     queued = 0
     trashed = 0
@@ -312,7 +330,7 @@ def finalize_import():
     log(f"📄 Starte sequenziellen Import von {total_files} Dateien...")
 
     # ImportQueue-Service holen
-    import_queue = get_import_queue_service(IMPORT_MEDIDOK)
+    import_queue = get_import_queue_service(IMPORT_QUEUE_DIR)
 
     for idx, entry in enumerate(files_to_copy, 1):
         rel_name = entry.get("file")
@@ -361,14 +379,64 @@ def finalize_import():
         else:
             log(f"[WARN] Original nicht gefunden in INPUT_ROOT: {original_filename}")
 
-    # 4) Session aufräumen
+    # 4) Staging-Verzeichnisse aufräumen (nach erfolgreichem Import)
+    staging_cleaned = False
+    output_cleaned = False
+
+    if sid and fs.session_id:
+        try:
+            from pathlib import Path
+            from services.file_utils import _rmtree_cifs
+
+            # Staging-Verzeichnis löschen (WORK_ROOT/session_id)
+            staging_session_dir = Path(WORK_ROOT) / sid
+            if staging_session_dir.exists():
+                log(f"🧹 Lösche Staging-Verzeichnis: {staging_session_dir}")
+                if _rmtree_cifs(staging_session_dir, verbose=True):
+                    staging_cleaned = True
+                    log(f"✅ Staging-Verzeichnis gelöscht: {staging_session_dir}")
+                else:
+                    log(f"⚠️ Staging-Verzeichnis konnte nicht vollständig gelöscht werden: {staging_session_dir}", level="warning")
+                    # Zeige verbleibende Einträge
+                    try:
+                        if staging_session_dir.exists():
+                            remaining = list(staging_session_dir.rglob('*'))
+                            log(f"   ℹ️ Verbleibende Einträge: {len(remaining)}", level="warning")
+                    except:
+                        pass
+
+            # Output-Verzeichnis der Session löschen (falls noch vorhanden)
+            output_session_dir = Path(OUTPUT_ROOT) / sid
+            if output_session_dir.exists():
+                log(f"🧹 Lösche Output-Verzeichnis: {output_session_dir}")
+                if _rmtree_cifs(output_session_dir, verbose=True):
+                    output_cleaned = True
+                    log(f"✅ Output-Verzeichnis gelöscht: {output_session_dir}")
+                else:
+                    log(f"⚠️ Output-Verzeichnis konnte nicht vollständig gelöscht werden: {output_session_dir}", level="warning")
+                    # Zeige verbleibende Einträge
+                    try:
+                        if output_session_dir.exists():
+                            remaining = list(output_session_dir.rglob('*'))
+                            log(f"   ℹ️ Verbleibende Einträge: {len(remaining)}", level="warning")
+                    except:
+                        pass
+
+        except Exception as e:
+            log(f"⚠️ Fehler beim Löschen der Staging-Verzeichnisse: {e}", level="warning")
+
+    # 5) Session aufräumen
     if sid:
         registry.unregister(sid)
         log(f"🧹 Session nach Finalisierung aufgeräumt: {sid}")
 
     session.clear()
 
-    log(f"📊 Zusammenfassung: {queued} Dateien in Queue eingereiht, {trashed} Originale in TRASH verschoben")
+    cleanup_msg = ""
+    if staging_cleaned or output_cleaned:
+        cleanup_msg = f" Staging-Verzeichnisse aufgeräumt: {staging_cleaned}, Output: {output_cleaned}."
+
+    log(f"📊 Zusammenfassung: {queued} Dateien in Queue eingereiht, {trashed} Originale in TRASH verschoben.{cleanup_msg}")
     log(f"ℹ️ Die Dateien werden nun sequenziell verarbeitet. Nutzen Sie /import_queue_status zur Überwachung.")
 
     return jsonify(
@@ -377,6 +445,8 @@ def finalize_import():
         moved=moved,
         trashed=trashed,
         trash_location=trash_session_dir,
+        staging_cleaned=staging_cleaned,
+        output_cleaned=output_cleaned,
         message=f"{queued} Dateien werden sequenziell importiert. Der externe Dienst erhält jeweils nur eine Datei."
     )
 
@@ -858,7 +928,7 @@ def import_queue_status():
     Ermöglicht Überwachung des sequenziellen Import-Prozesses.
     """
     try:
-        import_queue = get_import_queue_service(IMPORT_MEDIDOK)
+        import_queue = get_import_queue_service(IMPORT_QUEUE_DIR)
         stats = import_queue.get_stats()
 
         return jsonify(
@@ -867,4 +937,114 @@ def import_queue_status():
         )
     except Exception as e:
         log(f"❌ Fehler beim Abrufen des Queue-Status: {e}", level="error")
+        return jsonify(success=False, message=str(e)), 500
+
+
+@control_bp.route("/cleanup_old_staging", methods=["POST"])
+def cleanup_old_staging():
+    """
+    Räumt alte Staging-Verzeichnisse auf.
+
+    Löscht alle Session-Verzeichnisse im WORK_ROOT, die älter sind als die
+    angegebene Zeitspanne (in Minuten, Standard: 60).
+    """
+    try:
+        from pathlib import Path
+        from services.file_utils import _rmtree_cifs
+
+        data = request.get_json(force=True) or {}
+        max_age_minutes = data.get("max_age_minutes", 60)
+
+        work_root = Path(WORK_ROOT)
+        if not work_root.exists():
+            return jsonify(success=False, message="WORK_ROOT existiert nicht"), 404
+
+        current_time = time.time()
+        cutoff_time = current_time - (max_age_minutes * 60)
+
+        deleted_dirs = []
+        failed_dirs = []
+        skipped_dirs = []
+
+        # Durchsuche alle Verzeichnisse im WORK_ROOT
+        for item in work_root.iterdir():
+            if not item.is_dir():
+                continue
+
+            # Überspringe das aktuelle Session-Verzeichnis
+            current_session = session.get("session_id")
+            if current_session and item.name == current_session:
+                skipped_dirs.append(item.name)
+                log(f"⏭️ Überspringe aktive Session: {item.name}")
+                continue
+
+            # Prüfe ob Verzeichnis in der Session-Registry ist
+            active_sessions = registry.get_active_sessions(timeout_minutes=max_age_minutes)
+            if item.name in active_sessions:
+                skipped_dirs.append(item.name)
+                log(f"⏭️ Überspringe aktive Session (Registry): {item.name}")
+                continue
+
+            # Prüfe Änderungszeitpunkt des Verzeichnisses
+            try:
+                mtime = item.stat().st_mtime
+                if mtime > cutoff_time:
+                    skipped_dirs.append(item.name)
+                    log(f"⏭️ Überspringe zu neues Verzeichnis: {item.name} ({int((current_time - mtime) / 60)} Minuten alt)")
+                    continue
+            except Exception as e:
+                log(f"⚠️ Fehler beim Prüfen von {item.name}: {e}", level="warning")
+                failed_dirs.append(item.name)
+                continue
+
+            # Verzeichnis löschen
+            log(f"🗑️ Lösche altes Staging-Verzeichnis: {item.name} ({int((current_time - mtime) / 60)} Minuten alt)")
+
+            # Prüfe ob Verzeichnis leer ist
+            try:
+                items_in_dir = list(item.iterdir())
+                if items_in_dir:
+                    log(f"   📂 Verzeichnis enthält {len(items_in_dir)} Einträge", level="debug")
+            except Exception as e:
+                log(f"   ⚠️ Fehler beim Auflisten des Verzeichnisses: {e}", level="warning")
+
+            # Versuche zu löschen (mit detailliertem Logging)
+            if _rmtree_cifs(item, verbose=True):
+                deleted_dirs.append(item.name)
+                log(f"✅ Verzeichnis gelöscht: {item.name}")
+            else:
+                failed_dirs.append(item.name)
+                log(f"❌ Fehler beim Löschen: {item.name}", level="error")
+
+                # Zusätzliche Diagnose
+                try:
+                    if item.exists():
+                        log(f"   ℹ️ Verzeichnis existiert noch: {item}", level="error")
+                        remaining_items = list(item.rglob('*'))
+                        if remaining_items:
+                            log(f"   ℹ️ Verbleibende Einträge: {len(remaining_items)}", level="error")
+                            for idx, remaining in enumerate(remaining_items[:5]):  # Zeige max. 5
+                                log(f"     - {remaining.relative_to(item)}", level="error")
+                            if len(remaining_items) > 5:
+                                log(f"     ... und {len(remaining_items) - 5} weitere", level="error")
+                except Exception as diag_err:
+                    log(f"   ⚠️ Fehler bei Diagnose: {diag_err}", level="warning")
+
+        log(f"🧹 Cleanup abgeschlossen: {len(deleted_dirs)} gelöscht, {len(skipped_dirs)} übersprungen, {len(failed_dirs)} fehlgeschlagen")
+
+        return jsonify(
+            success=True,
+            deleted_count=len(deleted_dirs),
+            deleted_dirs=deleted_dirs,
+            skipped_count=len(skipped_dirs),
+            skipped_dirs=skipped_dirs,
+            failed_count=len(failed_dirs),
+            failed_dirs=failed_dirs,
+            message=f"{len(deleted_dirs)} alte Staging-Verzeichnisse gelöscht"
+        )
+
+    except Exception as e:
+        log(f"❌ Fehler beim Cleanup alter Staging-Verzeichnisse: {e}", level="error")
+        import traceback
+        log(traceback.format_exc(), level="error")
         return jsonify(success=False, message=str(e)), 500

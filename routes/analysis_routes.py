@@ -213,8 +213,55 @@ def ocr_only():
             filename = os.path.basename(input_path)
             base_no_ext = os.path.splitext(filename)[0]
 
+            # DOCX zu PDF konvertieren
+            if filename.lower().endswith('.docx'):
+                try:
+                    from docx import Document
+                    import fitz
+
+                    temp_rel = f"{base_no_ext}_docx_converted.pdf"
+                    temp_pdf = os.path.join(fs.work_dir, temp_rel)
+
+                    doc = Document(input_path)
+                    full_text = []
+                    for para in doc.paragraphs:
+                        full_text.append(para.text)
+                    for table in doc.tables:
+                        for row in table.rows:
+                            full_text.append(" | ".join(cell.text for cell in row.cells))
+
+                    text_lines = "\n".join(full_text).split('\n')
+
+                    pdf_doc = fitz.open()
+                    page = pdf_doc.new_page(width=595, height=842)
+                    y_position = 50
+                    line_height = 14
+                    max_y = 792
+
+                    for line in text_lines:
+                        if y_position + line_height > max_y:
+                            page = pdf_doc.new_page(width=595, height=842)
+                            y_position = 50
+                        try:
+                            page.insert_text((50, y_position), line, fontsize=10, fontname="helv")
+                        except Exception:
+                            try:
+                                page.insert_text((50, y_position), line.encode('ascii', 'replace').decode('ascii'), fontsize=10, fontname="helv")
+                            except Exception:
+                                pass
+                        y_position += line_height
+
+                    pdf_doc.save(temp_pdf)
+                    pdf_doc.close()
+                    input_path = temp_pdf
+                    log(f"📝 DOCX zu PDF konvertiert: {temp_rel}")
+                except Exception as e:
+                    log(f"❌ Fehler bei DOCX-Konvertierung {filename}: {e}", level="error")
+                    results.append({"original": filename, "success": False, "error": str(e)})
+                    continue
+
             # Bilder zu PDF konvertieren
-            if filename.lower().endswith(('.jpg', '.jpeg', '.png', '.tif', '.tiff')) and not filename.lower().endswith('.docx'):
+            elif filename.lower().endswith(('.jpg', '.jpeg', '.png', '.tif', '.tiff')):
                 temp_rel = f"{base_no_ext}_converted.pdf"
                 temp_pdf = os.path.join(fs.work_dir, temp_rel)
 

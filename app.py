@@ -1,5 +1,6 @@
 import sys
 import os
+from pathlib import Path
 
 # Fix für Windows-Netzlaufwerk Encoding
 if sys.platform.startswith('linux'):
@@ -24,7 +25,7 @@ from services.file_utils import fs, to_rel_under_input, cleanup_old_json_files, 
 from services.import_queue import get_import_queue_service, shutdown_import_queue_service
 from config import (
     UPLOAD_FOLDER, INPUT_ROOT, OUTPUT_ROOT, WORK_ROOT,
-    IMPORT_MEDIDOK, FAIL_DIR_MEDIDOK, LOGGING_FOLDER, JSON_FOLDER,
+    IMPORT_QUEUE_DIR, ERRORS_DIR, LOGGING_FOLDER, JSON_FOLDER,
     TRASH_DIR, MODEL_LLM1
 )
 
@@ -38,6 +39,21 @@ app.config['JSONIFY_PRETTYPRINT_REGULAR'] = True
 
 # Jinja2 Templates UTF-8
 app.jinja_env.globals.update(str=str)
+
+
+# Version aus VERSION-Datei lesen und in alle Templates injizieren
+def _get_version():
+    version_file = Path(__file__).parent / "VERSION"
+    try:
+        if version_file.exists():
+            return version_file.read_text(encoding='utf-8').strip()
+    except Exception:
+        pass
+    return "0.9.0"
+
+@app.context_processor
+def inject_version():
+    return {"version": _get_version()}
 
 # Verzeichnisse erstellen
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -122,8 +138,8 @@ def ensure_directories():
     local_dirs = [
         UPLOAD_FOLDER,
         WORK_ROOT,
-        IMPORT_MEDIDOK,
-        FAIL_DIR_MEDIDOK,
+        IMPORT_QUEUE_DIR,
+        ERRORS_DIR,
         LOGGING_FOLDER,
         JSON_FOLDER
     ]
@@ -186,7 +202,9 @@ def startup_cleanup():
 
         # 2. SessionRegistry komplett zurücksetzen
         if registry.registry_path.exists():
-            registry.registry_path.unlink()
+            # Verwende unpatchte OS-Funktion, um Staging-System zu umgehen
+            # (beim Startup gibt es keine aktive Session für das Staging)
+            _os_remove_real(str(registry.registry_path))
             log("🗑️ Alte Session-Registry gelöscht (Server-Neustart)")
             registry._save({})
 
@@ -222,7 +240,7 @@ if __name__ == '__main__':
     # ImportQueue-Service initialisieren und starten
     log("🔄 Initialisiere ImportQueue-Service...")
     try:
-        import_queue = get_import_queue_service(IMPORT_MEDIDOK)
+        import_queue = get_import_queue_service(IMPORT_QUEUE_DIR)
         log("✅ ImportQueue-Service gestartet")
     except Exception as e:
         log(f"❌ Fehler beim Starten des ImportQueue-Service: {e}", level="error")

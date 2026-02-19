@@ -11,7 +11,7 @@ from services.logger import log, ui_log_queue
 from services.session_manager import ensure_staging, registry
 from services.file_utils import fs, cleanup_orphaned_files
 from config import (
-    DATA_FOLDER, INPUT_ROOT, JSON_FOLDER, MODEL_LLM1
+    INPUT_ROOT, JSON_FOLDER, MODEL_LLM1
 )
 
 main_bp = Blueprint('main', __name__)
@@ -76,10 +76,6 @@ def index():
     error_msg = None
     if error_code == "keine_datei":
         error_msg = "⚠️ Bitte mindestens eine Datei auswählen."
-
-    # Subdirs scannen (falls benötigt)
-    subdirs = [os.path.relpath(os.path.join(dp, d), DATA_FOLDER)
-               for dp, dn, _ in os.walk(DATA_FOLDER) for d in dn]
 
     # Medidok-Dateien laden
     medidok_files = []
@@ -161,7 +157,6 @@ def index():
         "index.html",
         error=error_msg,
         medidok_files=medidok_files,
-        subdirs=subdirs,
         llm=current_model,
         current_model=current_model,
         med_src=public_src,

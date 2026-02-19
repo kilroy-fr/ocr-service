@@ -13,6 +13,34 @@ try {
   console.error('❌ Fehler beim Parsen der Server-Daten:', e);
 }
 
+// Tab-spezifische Konfiguration (Selektoren, IDs, Sortier-Container)
+const TAB_CONFIG = {
+  medidok: {
+    prefix: 'medi',
+    checkboxSelector: 'input[name="selected_files"]:not(:disabled)',
+    checkedSelector: 'input[name="selected_files"]:checked:not(:disabled)',
+    previewId: 'preview',
+    stagedContainerId: 'stagedFiles',
+    sortContainers: ['fileList', 'stagedFiles']
+  },
+  einzel: {
+    prefix: 'einzel',
+    checkboxSelector: '#einzelStagedFiles input[type="checkbox"]:not(:disabled)',
+    checkedSelector: '#einzelStagedFiles input[type="checkbox"]:checked:not(:disabled)',
+    previewId: 'einzelPreview',
+    stagedContainerId: 'einzelStagedFiles',
+    sortContainers: ['einzelStagedFiles']
+  },
+  batch: {
+    prefix: 'batch',
+    checkboxSelector: '#batchStagedFiles input[type="checkbox"]:not(:disabled)',
+    checkedSelector: '#batchStagedFiles input[type="checkbox"]:checked:not(:disabled)',
+    previewId: 'batchPreview',
+    stagedContainerId: 'batchStagedFiles',
+    sortContainers: ['batchStagedFiles']
+  }
+};
+
 function showSpinner(on = true) {
   const el = document.getElementById("spinnerOverlay");
   if (el) el.style.display = on ? "flex" : "none";
@@ -78,9 +106,7 @@ function updateFileListUI(tab = currentTab) {
 }
 
 function setupPreview(tab) {
-  const previewId = tab === 'medidok' ? 'preview' :
-                    tab === 'einzel' ? 'einzelPreview' :
-                    'batchPreview';
+  const previewId = TAB_CONFIG[tab].previewId;
 
   document.addEventListener('click', (e) => {
     const label = e.target.closest('.file-label');
@@ -131,9 +157,7 @@ async function loadStagedFiles(tab = 'medidok') {
 
     console.log(`📋 loadStagedFiles(${tab}) - Server-Response:`, data);
 
-    const containerId = tab === 'medidok' ? 'stagedFiles' :
-                        tab === 'einzel' ? 'einzelStagedFiles' :
-                        'batchStagedFiles';
+    const containerId = TAB_CONFIG[tab].stagedContainerId;
 
     const container = document.getElementById(containerId);
     if (!container) return;
@@ -172,41 +196,6 @@ async function loadStagedFiles(tab = 'medidok') {
   }
 }
 
-function updateButtonStates(tab = currentTab) {
-  const prefix = tab === 'medidok' ? 'medi' :
-                 tab === 'einzel' ? 'einzel' :
-                 'batch';
-
-  const selector = tab === 'medidok' ?
-    'input[name="selected_files"]:not(:disabled)' :
-    `#${tab === 'einzel' ? 'einzelStagedFiles' : 'batchStagedFiles'} input[type="checkbox"]:not(:disabled)`;
-
-  const checkboxes = document.querySelectorAll(selector);
-  const submitBtn = document.getElementById(prefix === 'medi' ? 'medidokSubmit' : `${prefix}Analyze`);
-  const combineBtn = document.getElementById(`${prefix}Combine`);
-  const splitBtn = document.getElementById(`${prefix}Split`);
-
-  const selected = Array.from(checkboxes).filter(cb => cb.checked);
-  const count = selected.length;
-
-  if (submitBtn) submitBtn.disabled = count === 0;
-  if (combineBtn) combineBtn.disabled = count < 2;
-  if (splitBtn) {
-    const onePdfSelected = count === 1 && selected[0].value.toLowerCase().endsWith('.pdf');
-    splitBtn.disabled = !onePdfSelected;
-  }
-
-  // Floating Analyse Button aktualisieren
-  updateFloatingAnalyzeButton(count > 0);
-
-  // Master-Checkbox aktualisieren
-  if (tab === 'medidok') {
-    updateMasterCheckbox('medidok');
-  } else if (tab === 'batch') {
-    updateMasterCheckbox('batch');
-  }
-}
-
 function updateMasterCheckbox(tab) {
   const config = {
     medidok: {
@@ -214,6 +203,12 @@ function updateMasterCheckbox(tab) {
       label: 'masterCheckboxLabel',
       count: 'selectionCount',
       selector: 'input[name="selected_files"]:not(:disabled)'
+    },
+    einzel: {
+      checkbox: 'einzelMasterCheckbox',
+      label: 'einzelMasterCheckboxLabel',
+      count: 'einzelSelectionCount',
+      selector: '#einzelStagedFiles input[type="checkbox"]:not(:disabled)'
     },
     batch: {
       checkbox: 'batchMasterCheckbox',
@@ -261,6 +256,10 @@ function setupMasterCheckbox(tab) {
       checkbox: 'masterCheckbox',
       selector: 'input[name="selected_files"]:not(:disabled)'
     },
+    einzel: {
+      checkbox: 'einzelMasterCheckbox',
+      selector: '#einzelStagedFiles input[type="checkbox"]:not(:disabled)'
+    },
     batch: {
       checkbox: 'batchMasterCheckbox',
       selector: '#batchStagedFiles input[type="checkbox"]:not(:disabled)'
@@ -282,12 +281,12 @@ function setupMasterCheckbox(tab) {
 }
 
 // ========================================
-// PROGRESSIVE ANALYSE - FUNKTIONEN
+// ANALYSE
 // ========================================
 
-async function handleMedidokAnalyze() {
-  const selected = Array.from(document.querySelectorAll('input[name="selected_files"]:checked:not(:disabled)'))
-    .map(cb => cb.value);
+async function handleAnalyze(tab) {
+  const cfg = TAB_CONFIG[tab];
+  const selected = Array.from(document.querySelectorAll(cfg.checkedSelector)).map(cb => cb.value);
 
   if (selected.length === 0) {
     Notifications.warning("Bitte mindestens eine Datei auswählen.");
@@ -295,109 +294,28 @@ async function handleMedidokAnalyze() {
   }
 
   showSpinner(true);
-
   try {
     const res = await fetch("/copy_and_analyze", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ files: selected })
     });
-
     const data = await res.json().catch(() => ({}));
 
     if (!res.ok || !data.success) {
       Notifications.error("Fehler beim Analysieren: " + (data.message || `HTTP ${res.status}`));
       return;
     }
-    
-    // ✅ PROGRESSIVE ANALYSE: Sofort zu control.html weiterleiten
+
     if (data.progressive) {
       console.log(`📊 Progressive Analyse: ${data.completed}/${data.total} Dateien fertig`);
       console.log(`🔄 ${data.total - data.completed} Dateien werden im Hintergrund analysiert`);
     }
-    
-    // Immer zu control.html weiterleiten (auch bei nur einer Datei)
+
     window.location.href = "/control?index=0&progressive=" + (data.progressive ? "true" : "false");
-    
   } catch (err) {
-    console.error("[medidok analyze] Fehler:", err);
+    console.error(`[${tab} analyze] Fehler:`, err);
     Notifications.error("Netzwerk-/JS-Fehler: " + err);
-  } finally {
-    showSpinner(false);
-  }
-}
-
-async function handleEinzelAnalyze() {
-  // NUR ausgewählte (checked) UND nicht-verarbeitete Dateien
-  const selected = Array.from(document.querySelectorAll('#einzelStagedFiles input[type="checkbox"]:checked:not(:disabled)'))
-    .map(cb => cb.value);
-
-  if (selected.length === 0) {
-    Notifications.warning('Bitte mindestens eine Datei auswählen.');
-    return;
-  }
-
-  showSpinner(true);
-
-  try {
-    const res = await fetch("/copy_and_analyze", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ files: selected })
-    });
-
-    const data = await res.json().catch(() => ({}));
-
-    if (!res.ok || !data.success) {
-      Notifications.error("Fehler beim Analysieren: " + (data.message || `HTTP ${res.status}`));
-      return;
-    }
-
-    // Progressive Analyse
-    const progressive = data.progressive ? "true" : "false";
-    window.location.href = `/control?index=0&progressive=${progressive}`;
-
-  } catch (err) {
-    console.error('[einzel analyze] Fehler:', err);
-    Notifications.error('Netzwerk-/JS-Fehler: ' + err);
-  } finally {
-    showSpinner(false);
-  }
-}
-
-async function handleBatchAnalyze() {
-  // NUR ausgewählte (checked) UND nicht-verarbeitete Dateien
-  const selected = Array.from(document.querySelectorAll('#batchStagedFiles input[type="checkbox"]:checked:not(:disabled)'))
-    .map(cb => cb.value);
-
-  if (selected.length === 0) {
-    Notifications.warning('Bitte mindestens eine Datei auswählen.');
-    return;
-  }
-
-  showSpinner(true);
-
-  try {
-    const res = await fetch("/copy_and_analyze", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ files: selected })
-    });
-
-    const data = await res.json().catch(() => ({}));
-
-    if (!res.ok || !data.success) {
-      Notifications.error("Fehler beim Analysieren: " + (data.message || `HTTP ${res.status}`));
-      return;
-    }
-
-    // Progressive Analyse
-    const progressive = data.progressive ? "true" : "false";
-    window.location.href = `/control?index=0&progressive=${progressive}`;
-
-  } catch (err) {
-    console.error('[batch analyze] Fehler:', err);
-    Notifications.error('Netzwerk-/JS-Fehler: ' + err);
   } finally {
     showSpinner(false);
   }
@@ -513,39 +431,16 @@ function switchTab(tabName) {
 }
 
 function updateFileOpsButtons(tab) {
-  // Alle Buttons verstecken
-  ['mediCombine', 'einzelCombine', 'batchCombine'].forEach(id => {
-    const btn = document.getElementById(id);
-    if (btn) btn.style.display = 'none';
+  ['medidok', 'einzel', 'batch'].forEach(t => {
+    const p = TAB_CONFIG[t].prefix;
+    const isActive = t === tab;
+    ['Combine', 'Split', 'OcrOnly', 'Download'].forEach(type => {
+      const btn = document.getElementById(`${p}${type}`);
+      if (btn) btn.style.display = isActive ? 'inline-block' : 'none';
+    });
+    const rotCtrl = document.getElementById(`${p}Rotation`);
+    if (rotCtrl) rotCtrl.style.display = isActive ? 'inline-flex' : 'none';
   });
-  ['mediSplit', 'einzelSplit', 'batchSplit'].forEach(id => {
-    const btn = document.getElementById(id);
-    if (btn) btn.style.display = 'none';
-  });
-  ['mediOcrOnly', 'einzelOcrOnly', 'batchOcrOnly'].forEach(id => {
-    const btn = document.getElementById(id);
-    if (btn) btn.style.display = 'none';
-  });
-  // Rotations-Controls verstecken
-  ['mediRotation', 'einzelRotation', 'batchRotation'].forEach(id => {
-    const ctrl = document.getElementById(id);
-    if (ctrl) ctrl.style.display = 'none';
-  });
-
-  // Buttons für den aktiven Tab anzeigen
-  const prefix = tab === 'medidok' ? 'medi' :
-                 tab === 'einzel' ? 'einzel' :
-                 'batch';
-
-  const combineBtn = document.getElementById(`${prefix}Combine`);
-  const splitBtn = document.getElementById(`${prefix}Split`);
-  const ocrOnlyBtn = document.getElementById(`${prefix}OcrOnly`);
-  const rotationCtrl = document.getElementById(`${prefix}Rotation`);
-
-  if (combineBtn) combineBtn.style.display = 'inline-block';
-  if (splitBtn) splitBtn.style.display = 'inline-block';
-  if (ocrOnlyBtn) ocrOnlyBtn.style.display = 'inline-block';
-  if (rotationCtrl) rotationCtrl.style.display = 'inline-flex';
 }
 
 // ========================================
@@ -589,11 +484,14 @@ function repositionCombinedFile(containerId, combinedFilename, processedFilesLis
   }
 }
 
-async function handleMedidokCombine() {
-  // Sortierte Reihenfolge aus der Dateiliste holen
-  const sortedFiles = window.FileSorting ? window.FileSorting.getOrder('fileList') : [];
-  const stagedFiles = window.FileSorting ? window.FileSorting.getOrder('stagedFiles') : [];
-  const selected = [...sortedFiles, ...stagedFiles];
+async function handleCombine(tab) {
+  const cfg = TAB_CONFIG[tab];
+  let selected;
+  if (window.FileSorting) {
+    selected = cfg.sortContainers.flatMap(id => window.FileSorting.getOrder(id));
+  } else {
+    selected = Array.from(document.querySelectorAll(cfg.checkedSelector)).map(cb => cb.value);
+  }
 
   if (selected.length < 2) {
     Notifications.warning("Bitte mindestens zwei Dateien auswählen.");
@@ -618,35 +516,29 @@ async function handleMedidokCombine() {
 
     if (data.processed_files) {
       data.processed_files.forEach(file => {
-        processedFiles[file] = {
-          operation: 'merged',
-          timestamp: Date.now() / 1000,
-          result: data.combined
-        };
+        processedFiles[file] = { operation: 'merged', timestamp: Date.now() / 1000, result: data.combined };
       });
     }
 
-    await loadStagedFiles('medidok');
-    updateFileListUI('medidok');  // UI nach Laden aktualisieren
+    await loadStagedFiles(tab);
+    updateFileListUI(tab);
+    repositionCombinedFile(cfg.stagedContainerId, data.combined, data.processed_files || []);
 
-    // Positioniere die kombinierte Datei direkt unter den ausgeblendeten Dateien
-    repositionCombinedFile('stagedFiles', data.combined, data.processed_files || []);
-
-    const preview = document.getElementById("preview");
-    const iframe = `<iframe src="/processed/${encodeURIComponent(data.combined)}#page=1&zoom=fit" scrolling="no"></iframe>`;
-    preview.innerHTML = iframe;
-
+    const preview = document.getElementById(cfg.previewId);
+    if (preview) {
+      preview.innerHTML = `<iframe src="/processed/${encodeURIComponent(data.combined)}#page=1&zoom=fit" scrolling="no"></iframe>`;
+    }
   } catch (err) {
-    console.error("[medidok combine] Fehler:", err);
+    console.error(`[${tab} combine] Fehler:`, err);
     Notifications.error("Netzwerk-/JS-Fehler: " + err);
   } finally {
     showSpinner(false);
   }
 }
 
-async function handleMedidokSplit() {
-  const selected = Array.from(document.querySelectorAll('input[name="selected_files"]:checked:not(:disabled)'))
-    .map(cb => cb.value);
+async function handleSplit(tab) {
+  const cfg = TAB_CONFIG[tab];
+  const selected = Array.from(document.querySelectorAll(cfg.checkedSelector)).map(cb => cb.value);
 
   if (selected.length !== 1) {
     Notifications.warning("Bitte genau eine Datei auswählen.");
@@ -656,10 +548,6 @@ async function handleMedidokSplit() {
   const filename = selected[0];
   if (!filename.toLowerCase().endsWith('.pdf')) {
     Notifications.warning("Nur PDF-Dateien können zerlegt werden.");
-    return;
-  }
-
-  if (!await Notifications.confirm(`PDF "${filename}" in einzelne Seiten zerlegen?\n\nDie Original-Datei bleibt unverändert.`, 'Zerlegen', 'Abbrechen')) {
     return;
   }
 
@@ -680,18 +568,13 @@ async function handleMedidokSplit() {
     Notifications.success(`PDF in ${data.count} Einzelseiten zerlegt`);
 
     if (data.processed_file) {
-      processedFiles[data.processed_file] = {
-        operation: 'split',
-        timestamp: Date.now() / 1000,
-        result_count: data.count
-      };
+      processedFiles[data.processed_file] = { operation: 'split', timestamp: Date.now() / 1000, result_count: data.count };
     }
 
-    await loadStagedFiles('medidok');
-    updateFileListUI('medidok');  // UI nach Laden aktualisieren
-
+    await loadStagedFiles(tab);
+    updateFileListUI(tab);
   } catch (err) {
-    console.error("[medidok split] Fehler:", err);
+    console.error(`[${tab} split] Fehler:`, err);
     Notifications.error("Netzwerk-/JS-Fehler: " + err);
   } finally {
     showSpinner(false);
@@ -699,238 +582,79 @@ async function handleMedidokSplit() {
 }
 
 // ========================================
-// EINZEL-UPLOAD FUNKTIONEN
+// DOWNLOAD SELECTED FILES
 // ========================================
 
-async function handleEinzelCombine() {
-  // Sortierte Reihenfolge aus der Dateiliste holen
-  const selected = window.FileSorting ? window.FileSorting.getOrder('einzelStagedFiles') :
-    Array.from(document.querySelectorAll('#einzelStagedFiles input[type="checkbox"]:checked:not(:disabled)'))
-      .map(cb => cb.value);
+async function handleDownload(tab) {
+  const cfg = TAB_CONFIG[tab];
+  const selected = Array.from(document.querySelectorAll(cfg.checkedSelector)).map(cb => cb.value);
 
-  if (selected.length < 2) {
-    Notifications.warning('Bitte mindestens zwei Dateien auswählen.');
+  if (selected.length === 0) {
+    Notifications.warning("Bitte mindestens eine Datei auswählen.");
     return;
   }
 
-  showSpinner(true);
-  try {
-    const res = await fetch('/combine_medidok', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ files: selected })
-    });
-    
-    const data = await res.json();
-    
-    if (!res.ok || !data.success) {
-      Notifications.error('Fehler beim Kombinieren: ' + (data.message || `HTTP ${res.status}`));
-      return;
-    }
-    
-    console.log(`✅ ${selected.length} Dateien kombiniert: ${data.combined}`);
-    
-    if (data.processed_files) {
-      data.processed_files.forEach(file => {
-        processedFiles[file] = {
-          operation: 'merged',
-          timestamp: Date.now() / 1000,
-          result: data.combined
-        };
+  console.log(`💾 Starte Download für ${selected.length} Datei(en)`);
+
+  if (selected.length === 1) {
+    // Einzelne Datei: Direkt herunterladen
+    const filename = selected[0];
+    const downloadUrl = `/download_staged/${encodeURIComponent(filename)}`;
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = filename;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    console.log(`✅ Download gestartet: ${filename}`);
+    Notifications.success("Download gestartet");
+  } else {
+    // Mehrere Dateien: ZIP erstellen und herunterladen
+    showSpinner(true);
+    try {
+      const res = await fetch("/download_multiple_as_zip", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ files: selected })
       });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        Notifications.error("Fehler beim Erstellen des ZIP-Archives: " + (data.message || `HTTP ${res.status}`));
+        return;
+      }
+
+      // ZIP-Datei als Blob herunterladen
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `download_${new Date().toISOString().slice(0,10)}.zip`;
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      console.log(`✅ ZIP-Download gestartet: ${selected.length} Dateien`);
+      Notifications.success(`${selected.length} Dateien als ZIP heruntergeladen`);
+    } catch (err) {
+      console.error('[download] Fehler:', err);
+      Notifications.error("Netzwerk-/JS-Fehler: " + err);
+    } finally {
+      showSpinner(false);
     }
-
-    await loadStagedFiles('einzel');
-    updateFileListUI('einzel');  // UI nach Laden aktualisieren
-
-    // Positioniere die kombinierte Datei direkt unter den ausgeblendeten Dateien
-    repositionCombinedFile('einzelStagedFiles', data.combined, data.processed_files || []);
-
-    const preview = document.getElementById('einzelPreview');
-    preview.innerHTML = `<iframe src="/processed/${encodeURIComponent(data.combined)}#page=1&zoom=fit" scrolling="no"></iframe>`;
-
-  } catch (err) {
-    console.error('[einzel combine] Fehler:', err);
-    Notifications.error('Fehler: ' + err);
-  } finally {
-    showSpinner(false);
-  }
-}
-
-async function handleEinzelSplit() {
-  const selected = Array.from(document.querySelectorAll('#einzelStagedFiles input[type="checkbox"]:checked:not(:disabled)'))
-    .map(cb => cb.value);
-  
-  if (selected.length !== 1) {
-    Notifications.warning('Bitte genau eine PDF-Datei auswählen.');
-    return;
-  }
-  
-  const filename = selected[0];
-  if (!filename.toLowerCase().endsWith('.pdf')) {
-    Notifications.warning('Nur PDF-Dateien können zerlegt werden.');
-    return;
-  }
-  
-  if (!await Notifications.confirm(`PDF "${filename}" in einzelne Seiten zerlegen?`, "OK", "Abbrechen")) {
-    return;
-  }
-  
-  showSpinner(true);
-  try {
-    const res = await fetch('/split_pdf', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ file: filename })
-    });
-    
-    const data = await res.json();
-    
-    if (!res.ok || !data.success) {
-      Notifications.error('Fehler beim Zerlegen: ' + (data.message || `HTTP ${res.status}`));
-      return;
-    }
-    
-    Notifications.success(`PDF in ${data.count} Einzelseiten zerlegt`);
-    
-    if (data.processed_file) {
-      processedFiles[data.processed_file] = {
-        operation: 'split',
-        timestamp: Date.now() / 1000,
-        result_count: data.count
-      };
-    }
-
-    await loadStagedFiles('einzel');
-    updateFileListUI('einzel');  // UI nach Laden aktualisieren
-    
-  } catch (err) {
-    console.error('[einzel split] Fehler:', err);
-    Notifications.error('Fehler: ' + err);
-  } finally {
-    showSpinner(false);
   }
 }
 
 // ========================================
-// BATCH-UPLOAD FUNKTIONEN
+// OCR ONLY
 // ========================================
 
-async function handleBatchCombine() {
-  // Sortierte Reihenfolge aus der Dateiliste holen
-  const selected = window.FileSorting ? window.FileSorting.getOrder('batchStagedFiles') :
-    Array.from(document.querySelectorAll('#batchStagedFiles input[type="checkbox"]:checked:not(:disabled)'))
-      .map(cb => cb.value);
-
-  if (selected.length < 2) {
-    Notifications.warning('Bitte mindestens zwei Dateien auswählen.');
-    return;
-  }
-
-  showSpinner(true);
-  try {
-    const res = await fetch('/combine_medidok', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ files: selected })
-    });
-    
-    const data = await res.json();
-    
-    if (!res.ok || !data.success) {
-      Notifications.error('Fehler beim Kombinieren: ' + (data.message || `HTTP ${res.status}`));
-      return;
-    }
-    
-    console.log(`✅ ${selected.length} Dateien kombiniert: ${data.combined}`);
-    
-    if (data.processed_files) {
-      data.processed_files.forEach(file => {
-        processedFiles[file] = {
-          operation: 'merged',
-          timestamp: Date.now() / 1000,
-          result: data.combined
-        };
-      });
-    }
-
-    await loadStagedFiles('batch');
-    updateFileListUI('batch');  // UI nach Laden aktualisieren
-
-    // Positioniere die kombinierte Datei direkt unter den ausgeblendeten Dateien
-    repositionCombinedFile('batchStagedFiles', data.combined, data.processed_files || []);
-
-    const preview = document.getElementById('batchPreview');
-    preview.innerHTML = `<iframe src="/processed/${encodeURIComponent(data.combined)}#page=1&zoom=fit" scrolling="no"></iframe>`;
-
-  } catch (err) {
-    console.error('[batch combine] Fehler:', err);
-    Notifications.error('Fehler: ' + err);
-  } finally {
-    showSpinner(false);
-  }
-}
-
-async function handleBatchSplit() {
-  const selected = Array.from(document.querySelectorAll('#batchStagedFiles input[type="checkbox"]:checked:not(:disabled)'))
-    .map(cb => cb.value);
-  
-  if (selected.length !== 1) {
-    Notifications.warning('Bitte genau eine PDF-Datei auswählen.');
-    return;
-  }
-  
-  const filename = selected[0];
-  if (!filename.toLowerCase().endsWith('.pdf')) {
-    Notifications.warning('Nur PDF-Dateien können zerlegt werden.');
-    return;
-  }
-  
-  if (!await Notifications.confirm(`PDF "${filename}" in einzelne Seiten zerlegen?`, "OK", "Abbrechen")) {
-    return;
-  }
-  
-  showSpinner(true);
-  try {
-    const res = await fetch('/split_pdf', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ file: filename })
-    });
-    
-    const data = await res.json();
-    
-    if (!res.ok || !data.success) {
-      Notifications.error('Fehler beim Zerlegen: ' + (data.message || `HTTP ${res.status}`));
-      return;
-    }
-    
-    Notifications.success(`PDF in ${data.count} Einzelseiten zerlegt`);
-    
-    if (data.processed_file) {
-      processedFiles[data.processed_file] = {
-        operation: 'split',
-        timestamp: Date.now() / 1000,
-        result_count: data.count
-      };
-    }
-
-    await loadStagedFiles('batch');
-    updateFileListUI('batch');  // UI nach Laden aktualisieren
-    
-  } catch (err) {
-    console.error('[batch split] Fehler:', err);
-    Notifications.error('Fehler: ' + err);
-  } finally {
-    showSpinner(false);
-  }
-}
-
-// ===== MEDIDOK TAB - OCR ONLY =====
-
-async function handleMediOcrOnly() {
-  const selected = Array.from(document.querySelectorAll('input[name="selected_files"]:checked:not(:disabled)'))
-    .map(cb => cb.value);
+async function handleOcrOnly(tab) {
+  const cfg = TAB_CONFIG[tab];
+  const selected = Array.from(document.querySelectorAll(cfg.checkedSelector)).map(cb => cb.value);
 
   if (selected.length === 0) {
     Notifications.warning("Bitte mindestens eine Datei auswählen.");
@@ -938,14 +662,12 @@ async function handleMediOcrOnly() {
   }
 
   showSpinner(true);
-
   try {
     const res = await fetch("/ocr_only", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ files: selected })
     });
-
     const data = await res.json().catch(() => ({}));
 
     if (!res.ok || !data.success) {
@@ -953,210 +675,119 @@ async function handleMediOcrOnly() {
       return;
     }
 
-    // Erfolgreiche Dateien anzeigen
     const successful = data.results.filter(r => r.success);
     const failed = data.results.filter(r => !r.success);
 
     if (failed.length > 0) {
       console.error('OCR-Fehler:', failed);
-      Notifications.warning(`${successful.length} von ${data.results.length} Dateien erfolgreich verarbeitet`);
-    } else {
-      Notifications.success(`${successful.length} Datei(en) erfolgreich verarbeitet`);
     }
 
-    // Staging-Liste aktualisieren
-    await loadStagedFiles('medidok');
-    
-    // Erste erfolgreiche Datei in Vorschau anzeigen
+    // Download für erfolgreiche OCR-Dateien
     if (successful.length > 0) {
-      const firstOcrFile = successful[0].ocr_file;
-      const preview = document.getElementById("preview");
-      const iframe = `<iframe src="/processed/${encodeURIComponent(firstOcrFile)}#page=1&zoom=fit" scrolling="no"></iframe>`;
-      preview.innerHTML = iframe;
+      console.log(`📥 Starte Download für ${successful.length} OCR-Datei(en)`);
+
+      if (successful.length === 1) {
+        // Einzelne Datei: Direkt herunterladen
+        const downloadUrl = `/download_ocr/${encodeURIComponent(successful[0].ocr_file)}`;
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = successful[0].ocr_file;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        console.log(`✅ Download gestartet: ${successful[0].ocr_file}`);
+        if (failed.length > 0) {
+          Notifications.warning(`1 von ${data.results.length} Dateien erfolgreich verarbeitet`);
+        } else {
+          Notifications.success("OCR-Datei wird heruntergeladen");
+        }
+      } else {
+        // Mehrere Dateien: Als ZIP herunterladen
+        const ocrFiles = successful.map(r => r.ocr_file);
+        const zipRes = await fetch("/download_multiple_as_zip", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ files: ocrFiles })
+        });
+
+        if (!zipRes.ok) {
+          const zipData = await zipRes.json().catch(() => ({}));
+          Notifications.error("Fehler beim Erstellen des ZIP-Archives: " + (zipData.message || `HTTP ${zipRes.status}`));
+          return;
+        }
+
+        const blob = await zipRes.blob();
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `ocr_${new Date().toISOString().slice(0, 10)}.zip`;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        console.log(`✅ ZIP-Download gestartet: ${successful.length} OCR-Dateien`);
+        if (failed.length > 0) {
+          Notifications.warning(`${successful.length} von ${data.results.length} Dateien erfolgreich verarbeitet und als ZIP heruntergeladen`);
+        } else {
+          Notifications.success(`${successful.length} OCR-Dateien als ZIP heruntergeladen`);
+        }
+      }
     }
-    
+
+    // WICHTIG: loadStagedFiles NICHT aufrufen, damit OCR-Dateien nicht in der Liste erscheinen
+    // await loadStagedFiles(tab);  <-- ENTFERNT
+
   } catch (err) {
-    console.error("[medidok ocr only] Fehler:", err);
+    console.error(`[${tab} ocr only] Fehler:`, err);
     Notifications.error("Netzwerk-/JS-Fehler: " + err);
   } finally {
     showSpinner(false);
   }
 }
 
-// ===== EINZEL TAB - OCR ONLY =====
-
-async function handleEinzelOcrOnly() {
-  const selected = Array.from(document.querySelectorAll('#einzelStagedFiles input[type="checkbox"]:checked:not(:disabled)'))
-    .map(cb => cb.value);
-
-  if (selected.length === 0) {
-    Notifications.warning('Bitte mindestens eine Datei auswählen.');
-    return;
-  }
-
-  showSpinner(true);
-
-  try {
-    const res = await fetch('/ocr_only', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ files: selected })
-    });
-
-    const data = await res.json();
-
-    if (!res.ok || !data.success) {
-      Notifications.error('Fehler beim OCR: ' + (data.message || `HTTP ${res.status}`));
-      return;
-    }
-
-    // Erfolgreiche Dateien anzeigen
-    const successful = data.results.filter(r => r.success);
-    const failed = data.results.filter(r => !r.success);
-
-    if (failed.length > 0) {
-      console.error('OCR-Fehler:', failed);
-      Notifications.warning(`${successful.length} von ${data.results.length} Dateien erfolgreich verarbeitet`);
-    } else {
-      Notifications.success(`${successful.length} Datei(en) erfolgreich verarbeitet`);
-    }
-
-    // Staging-Liste aktualisieren
-    await loadStagedFiles('einzel');
-    
-    // Erste erfolgreiche Datei in Vorschau anzeigen
-    if (successful.length > 0) {
-      const firstOcrFile = successful[0].ocr_file;
-      const preview = document.getElementById('einzelPreview');
-      const iframe = `<iframe src="/processed/${encodeURIComponent(firstOcrFile)}#page=1&zoom=fit" scrolling="no"></iframe>`;
-      preview.innerHTML = iframe;
-    }
-    
-  } catch (err) {
-    console.error('[einzel ocr only] Fehler:', err);
-    Notifications.error('Fehler: ' + err);
-  } finally {
-    showSpinner(false);
-  }
-}
-
-// ===== BATCH TAB - OCR ONLY =====
-
-async function handleBatchOcrOnly() {
-  const selected = Array.from(document.querySelectorAll('#batchStagedFiles input[type="checkbox"]:checked:not(:disabled)'))
-    .map(cb => cb.value);
-
-  if (selected.length === 0) {
-    Notifications.warning('Bitte mindestens eine Datei auswählen.');
-    return;
-  }
-
-  showSpinner(true);
-
-  try {
-    const res = await fetch('/ocr_only', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ files: selected })
-    });
-
-    const data = await res.json();
-
-    if (!res.ok || !data.success) {
-      Notifications.error('Fehler beim OCR: ' + (data.message || `HTTP ${res.status}`));
-      return;
-    }
-
-    // Erfolgreiche Dateien anzeigen
-    const successful = data.results.filter(r => r.success);
-    const failed = data.results.filter(r => !r.success);
-
-    if (failed.length > 0) {
-      console.error('OCR-Fehler:', failed);
-      Notifications.warning(`${successful.length} von ${data.results.length} Dateien erfolgreich verarbeitet`);
-    } else {
-      Notifications.success(`${successful.length} Datei(en) erfolgreich verarbeitet`);
-    }
-
-    // Staging-Liste aktualisieren
-    await loadStagedFiles('batch');
-    
-    // Erste erfolgreiche Datei in Vorschau anzeigen
-    if (successful.length > 0) {
-      const firstOcrFile = successful[0].ocr_file;
-      const preview = document.getElementById('batchPreview');
-      const iframe = `<iframe src="/processed/${encodeURIComponent(firstOcrFile)}#page=1&zoom=fit" scrolling="no"></iframe>`;
-      preview.innerHTML = iframe;
-    }
-    
-  } catch (err) {
-    console.error('[batch ocr only] Fehler:', err);
-    Notifications.error('Fehler: ' + err);
-  } finally {
-    showSpinner(false);
-  }
-}
-
 // ========================================
-// BUTTON-STATUS UPDATE ERWEITERN
-// Ergänze die bestehende updateButtonStates Funktion
+// BUTTON-STATUS UPDATE
 // ========================================
 
-// In der bestehenden updateButtonStates() Funktion ergänzen:
 function updateButtonStates(tab = currentTab) {
-  const prefix = tab === 'medidok' ? 'medi' :
-                 tab === 'einzel' ? 'einzel' :
-                 'batch';
+  const cfg = TAB_CONFIG[tab];
+  const p = cfg.prefix;
 
-  const selector = tab === 'medidok' ?
-    'input[name="selected_files"]:not(:disabled)' :
-    `#${tab === 'einzel' ? 'einzelStagedFiles' : 'batchStagedFiles'} input[type="checkbox"]:not(:disabled)`;
-
-  const checkboxes = document.querySelectorAll(selector);
-  const submitBtn = document.getElementById(prefix === 'medi' ? 'medidokSubmit' : `${prefix}Analyze`);
-  const combineBtn = document.getElementById(`${prefix}Combine`);
-  const splitBtn = document.getElementById(`${prefix}Split`);
-  const ocrOnlyBtn = document.getElementById(`${prefix}OcrOnly`);
-
-  // Rotations-Buttons
-  const rotateLeftBtn = document.getElementById(`${prefix}RotateLeft`);
-  const rotate180Btn = document.getElementById(`${prefix}Rotate180`);
-  const rotateRightBtn = document.getElementById(`${prefix}RotateRight`);
+  const checkboxes = document.querySelectorAll(cfg.checkboxSelector);
+  const submitBtn = document.getElementById(p === 'medi' ? 'medidokSubmit' : `${p}Analyze`);
+  const combineBtn = document.getElementById(`${p}Combine`);
+  const splitBtn = document.getElementById(`${p}Split`);
+  const ocrOnlyBtn = document.getElementById(`${p}OcrOnly`);
+  const downloadBtn = document.getElementById(`${p}Download`);
+  const rotateLeftBtn = document.getElementById(`${p}RotateLeft`);
+  const rotate180Btn = document.getElementById(`${p}Rotate180`);
+  const rotateRightBtn = document.getElementById(`${p}RotateRight`);
 
   const selected = Array.from(checkboxes).filter(cb => cb.checked);
   const count = selected.length;
 
   if (submitBtn) submitBtn.disabled = count === 0;
   if (combineBtn) combineBtn.disabled = count < 2;
-
   if (splitBtn) {
     const onePdfSelected = count === 1 && selected[0].value.toLowerCase().endsWith('.pdf');
     splitBtn.disabled = !onePdfSelected;
   }
+  if (ocrOnlyBtn) ocrOnlyBtn.disabled = count === 0;
+  if (downloadBtn) downloadBtn.disabled = count === 0;
 
-  // OCR-Only Button aktivieren wenn mind. 1 Datei ausgewählt
-  if (ocrOnlyBtn) {
-    ocrOnlyBtn.disabled = count === 0;
-  }
-
-  // Rotations-Buttons aktivieren wenn genau 1 rotierfähige Datei ausgewählt
-  const rotatableExtensions = ['pdf', 'jpg', 'jpeg', 'png'];
   const oneRotatableSelected = count === 1 &&
-    rotatableExtensions.includes(getExtension(selected[0].value));
-
+    ['pdf', 'jpg', 'jpeg', 'png'].includes(getExtension(selected[0].value));
   if (rotateLeftBtn) rotateLeftBtn.disabled = !oneRotatableSelected;
   if (rotate180Btn) rotate180Btn.disabled = !oneRotatableSelected;
   if (rotateRightBtn) rotateRightBtn.disabled = !oneRotatableSelected;
 
-  // Floating Analyse Button aktualisieren
   updateFloatingAnalyzeButton(count > 0);
 
-  // Master-Checkbox aktualisieren
-  if (tab === 'medidok') {
-    updateMasterCheckbox('medidok');
-  } else if (tab === 'batch') {
-    updateMasterCheckbox('batch');
-  }
+  if (tab === 'medidok') updateMasterCheckbox('medidok');
+  else if (tab === 'einzel') updateMasterCheckbox('einzel');
+  else if (tab === 'batch') updateMasterCheckbox('batch');
 }
 
 // ========================================
@@ -1164,15 +795,10 @@ function updateButtonStates(tab = currentTab) {
 // ========================================
 
 async function rotateFile(direction, tab = currentTab) {
-  const prefix = tab === 'medidok' ? 'medi' :
-                 tab === 'einzel' ? 'einzel' :
-                 'batch';
+  const cfg = TAB_CONFIG[tab];
+  const p = cfg.prefix;
 
-  const selector = tab === 'medidok' ?
-    'input[name="selected_files"]:checked:not(:disabled)' :
-    `#${tab === 'einzel' ? 'einzelStagedFiles' : 'batchStagedFiles'} input[type="checkbox"]:checked:not(:disabled)`;
-
-  const selected = Array.from(document.querySelectorAll(selector));
+  const selected = Array.from(document.querySelectorAll(cfg.checkedSelector));
   if (selected.length !== 1) {
     Notifications.warning("Bitte genau eine Datei zum Drehen auswählen.");
     return;
@@ -1186,10 +812,9 @@ async function rotateFile(direction, tab = currentTab) {
     return;
   }
 
-  // Buttons deaktivieren während Rotation
-  const rotateLeftBtn = document.getElementById(`${prefix}RotateLeft`);
-  const rotate180Btn = document.getElementById(`${prefix}Rotate180`);
-  const rotateRightBtn = document.getElementById(`${prefix}RotateRight`);
+  const rotateLeftBtn = document.getElementById(`${p}RotateLeft`);
+  const rotate180Btn = document.getElementById(`${p}Rotate180`);
+  const rotateRightBtn = document.getElementById(`${p}RotateRight`);
 
   if (rotateLeftBtn) rotateLeftBtn.disabled = true;
   if (rotate180Btn) rotate180Btn.disabled = true;
@@ -1217,10 +842,7 @@ async function rotateFile(direction, tab = currentTab) {
     Notifications.success(`Datei um ${angleText} gedreht`);
 
     // Vorschau aktualisieren mit Cache-Busting
-    const previewId = tab === 'medidok' ? 'preview' :
-                      tab === 'einzel' ? 'einzelPreview' :
-                      'batchPreview';
-    const preview = document.getElementById(previewId);
+    const preview = document.getElementById(cfg.previewId);
 
     if (preview) {
       const timestamp = new Date().getTime();
@@ -1267,15 +889,7 @@ function updateFloatingAnalyzeButton(hasSelection) {
 }
 
 function handleFloatingAnalyze() {
-  const tab = currentTab;
-
-  if (tab === 'medidok') {
-    handleMedidokAnalyze();
-  } else if (tab === 'einzel') {
-    handleEinzelAnalyze();
-  } else if (tab === 'batch') {
-    handleBatchAnalyze();
-  }
+  handleAnalyze(currentTab);
 }
 
 // ========================================
@@ -1307,6 +921,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   setupPreview('einzel');
   setupPreview('batch');
   setupMasterCheckbox('medidok');
+  setupMasterCheckbox('einzel');
   setupMasterCheckbox('batch');
   updateAllFileLists();
   await loadStagedFiles('medidok');
@@ -1396,12 +1011,8 @@ window.addEventListener("DOMContentLoaded", async () => {
           const res = await fetch("/reset_session");
           if (res.ok) {
             switchTab(targetTab);
-            currentTab = targetTab;
-            
-            const previewId = targetTab === 'medidok' ? 'preview' :
-                            targetTab === 'einzel' ? 'einzelPreview' :
-                            'batchPreview';
-            const preview = document.getElementById(previewId);
+
+            const preview = document.getElementById(TAB_CONFIG[targetTab].previewId);
             if (preview) {
               preview.innerHTML = '<p style="color: #666;">Keine Vorschau verfügbar</p>';
             }
@@ -1418,48 +1029,46 @@ window.addEventListener("DOMContentLoaded", async () => {
     });
   });
 
-  // ===== MEDIDOK TAB =====
-  
-  const medidokSubmit = document.getElementById("medidokSubmit");
-  if (medidokSubmit) {
-    medidokSubmit.addEventListener("click", handleMedidokAnalyze);
-  }
-  
-  const mediCombine = document.getElementById("mediCombine");
-  if (mediCombine) {
-    mediCombine.addEventListener("click", handleMedidokCombine);
-  }
-  
-  const mediSplit = document.getElementById("mediSplit");
-  if (mediSplit) {
-    mediSplit.addEventListener("click", handleMedidokSplit);
-  }
+  // ===== TAB-BUTTONS (Analyse, Combine, Split, OCR, Download, Rotation) =====
+  ['medidok', 'einzel', 'batch'].forEach(tab => {
+    const p = TAB_CONFIG[tab].prefix;
+    const analyzeId = p === 'medi' ? 'medidokSubmit' : `${p}Analyze`;
 
-  // ===== EINZEL TAB =====
-  
+    const analyzeBtn = document.getElementById(analyzeId);
+    if (analyzeBtn) analyzeBtn.addEventListener('click', () => handleAnalyze(tab));
+
+    const combineBtn = document.getElementById(`${p}Combine`);
+    if (combineBtn) combineBtn.addEventListener('click', () => handleCombine(tab));
+
+    const splitBtn = document.getElementById(`${p}Split`);
+    if (splitBtn) splitBtn.addEventListener('click', () => handleSplit(tab));
+
+    const ocrBtn = document.getElementById(`${p}OcrOnly`);
+    if (ocrBtn) ocrBtn.addEventListener('click', () => handleOcrOnly(tab));
+
+    const downloadBtn = document.getElementById(`${p}Download`);
+    if (downloadBtn) downloadBtn.addEventListener('click', () => handleDownload(tab));
+
+    const dirMap = { Left: 'left', '180': '180', Right: 'right' };
+    ['Left', '180', 'Right'].forEach(dir => {
+      const btn = document.getElementById(`${p}Rotate${dir}`);
+      if (btn) btn.addEventListener('click', () => rotateFile(dirMap[dir], tab));
+    });
+  });
+
+  // ===== EINZEL-UPLOAD =====
   const fileInput = document.getElementById("fileInput");
-  
   if (fileInput) {
     fileInput.addEventListener("change", async function () {
       const files = this.files;
-      
-      if (!files || files.length === 0) {
-        return;
-      }
-      
+      if (!files || files.length === 0) return;
+
       showSpinner(true);
-      
       const formData = new FormData();
-      for (let file of files) {
-        formData.append('files', file);
-      }
-      
+      for (let file of files) formData.append('files', file);
+
       try {
-        const res = await fetch('/upload', {
-          method: 'POST',
-          body: formData
-        });
-        
+        const res = await fetch('/upload', { method: 'POST', body: formData });
         const data = await res.json();
 
         if (!res.ok || !data.success) {
@@ -1468,28 +1077,17 @@ window.addEventListener("DOMContentLoaded", async () => {
         }
 
         console.log('📤 Upload-Response:', data);
-        console.log('📂 Hochgeladene Dateien:', data.files);
-
         await loadStagedFiles('einzel');
 
-        // Alle neu hochgeladenen Dateien automatisch auswählen
         setTimeout(() => {
           const checkboxes = document.querySelectorAll('#einzelStagedFiles input[type="checkbox"]:not(:disabled)');
           checkboxes.forEach(cb => cb.checked = true);
           updateButtonStates('einzel');
-
-          // Erste Datei in Vorschau anzeigen
           const firstLabel = document.querySelector("#einzelStagedFiles .file-label");
           if (firstLabel) firstLabel.click();
         }, 100);
 
-        const einzelAnalyze = document.getElementById('einzelAnalyze');
-        if (einzelAnalyze) {
-          einzelAnalyze.disabled = false;
-        }
-
         console.log(`✅ ${files.length} Datei(en) hochgeladen und bereit zur Analyse`);
-        
       } catch (err) {
         console.error('[einzel upload] Fehler:', err);
         Notifications.error('Netzwerk-/JS-Fehler: ' + err);
@@ -1498,68 +1096,34 @@ window.addEventListener("DOMContentLoaded", async () => {
       }
     });
   }
-  
-  const einzelAnalyze = document.getElementById("einzelAnalyze");
-  if (einzelAnalyze) {
-    einzelAnalyze.addEventListener("click", handleEinzelAnalyze);
-  }
-  
-  const einzelCombine = document.getElementById("einzelCombine");
-  if (einzelCombine) {
-    einzelCombine.addEventListener("click", handleEinzelCombine);
-  }
-  
-  const einzelSplit = document.getElementById("einzelSplit");
-  if (einzelSplit) {
-    einzelSplit.addEventListener("click", handleEinzelSplit);
-  }
 
-  // ===== BATCH TAB =====
-  
+  // ===== BATCH-UPLOAD =====
   const folderInput = document.getElementById("folderInput");
-  
   if (folderInput) {
     folderInput.addEventListener("change", async function() {
       const files = this.files;
-      
-      if (!files || files.length === 0) {
-        return;
-      }
-      
+      if (!files || files.length === 0) return;
+
       showSpinner(true);
-      
       const formData = new FormData();
-      for (let file of files) {
-        formData.append('files', file);
-      }
-      
+      for (let file of files) formData.append('files', file);
+
       try {
-        const res = await fetch('/upload_folder', {
-          method: 'POST',
-          body: formData
-        });
-        
+        const res = await fetch('/upload_folder', { method: 'POST', body: formData });
         const data = await res.json();
-        
+
         if (!res.ok || !data.success) {
           Notifications.error('Fehler beim Upload: ' + (data.message || `HTTP ${res.status}`));
           return;
         }
-        
+
         await loadStagedFiles('batch');
-        
-        const batchAnalyze = document.getElementById('batchAnalyze');
-        if (batchAnalyze) {
-          batchAnalyze.disabled = false;
-        }
-        
         console.log(`✅ ${files.length} Datei(en) hochgeladen und bereit zur Analyse`);
-        
+
         setTimeout(() => {
           const firstLabel = document.querySelector("#batchStagedFiles .file-label");
           if (firstLabel) firstLabel.click();
         }, 100);
-        
       } catch (err) {
         console.error('[batch upload] Fehler:', err);
         Notifications.error('Netzwerk-/JS-Fehler: ' + err);
@@ -1567,82 +1131,6 @@ window.addEventListener("DOMContentLoaded", async () => {
         showSpinner(false);
       }
     });
-  }
-  
-  const batchAnalyze = document.getElementById("batchAnalyze");
-  if (batchAnalyze) {
-    batchAnalyze.addEventListener("click", handleBatchAnalyze);
-  }
-  
-  const batchCombine = document.getElementById("batchCombine");
-  if (batchCombine) {
-    batchCombine.addEventListener("click", handleBatchCombine);
-  }
-  
-  const batchSplit = document.getElementById("batchSplit");
-  if (batchSplit) {
-    batchSplit.addEventListener("click", handleBatchSplit);
-  }
-
-  // ===== OCR-ONLY BUTTONS =====
-
-  const mediOcrOnly = document.getElementById("mediOcrOnly");
-  if (mediOcrOnly) {
-    mediOcrOnly.addEventListener("click", handleMediOcrOnly);
-  }
-
-  const einzelOcrOnly = document.getElementById("einzelOcrOnly");
-  if (einzelOcrOnly) {
-    einzelOcrOnly.addEventListener("click", handleEinzelOcrOnly);
-  }
-
-  const batchOcrOnly = document.getElementById("batchOcrOnly");
-  if (batchOcrOnly) {
-    batchOcrOnly.addEventListener("click", handleBatchOcrOnly);
-  }
-
-  // ===== ROTATIONS-BUTTONS =====
-
-  // Medidok Rotation
-  const mediRotateLeft = document.getElementById("mediRotateLeft");
-  if (mediRotateLeft) {
-    mediRotateLeft.addEventListener("click", () => rotateFile("left", "medidok"));
-  }
-  const mediRotate180 = document.getElementById("mediRotate180");
-  if (mediRotate180) {
-    mediRotate180.addEventListener("click", () => rotateFile("180", "medidok"));
-  }
-  const mediRotateRight = document.getElementById("mediRotateRight");
-  if (mediRotateRight) {
-    mediRotateRight.addEventListener("click", () => rotateFile("right", "medidok"));
-  }
-
-  // Einzel Rotation
-  const einzelRotateLeft = document.getElementById("einzelRotateLeft");
-  if (einzelRotateLeft) {
-    einzelRotateLeft.addEventListener("click", () => rotateFile("left", "einzel"));
-  }
-  const einzelRotate180 = document.getElementById("einzelRotate180");
-  if (einzelRotate180) {
-    einzelRotate180.addEventListener("click", () => rotateFile("180", "einzel"));
-  }
-  const einzelRotateRight = document.getElementById("einzelRotateRight");
-  if (einzelRotateRight) {
-    einzelRotateRight.addEventListener("click", () => rotateFile("right", "einzel"));
-  }
-
-  // Batch Rotation
-  const batchRotateLeft = document.getElementById("batchRotateLeft");
-  if (batchRotateLeft) {
-    batchRotateLeft.addEventListener("click", () => rotateFile("left", "batch"));
-  }
-  const batchRotate180 = document.getElementById("batchRotate180");
-  if (batchRotate180) {
-    batchRotate180.addEventListener("click", () => rotateFile("180", "batch"));
-  }
-  const batchRotateRight = document.getElementById("batchRotateRight");
-  if (batchRotateRight) {
-    batchRotateRight.addEventListener("click", () => rotateFile("right", "batch"));
   }
 
   // ===== MODELL-VERWALTUNG =====
@@ -1683,6 +1171,68 @@ window.addEventListener("DOMContentLoaded", async () => {
       }
     });
   }
-  
+
+  // ========================================
+  // CLEANUP STAGING VERZEICHNISSE
+  // ========================================
+
+  const cleanupStagingBtn = document.getElementById('cleanupStagingBtn');
+  const cleanupStatus = document.getElementById('cleanupStatus');
+
+  if (cleanupStagingBtn && cleanupStatus) {
+    cleanupStagingBtn.addEventListener('click', async () => {
+      if (!confirm('Möchten Sie wirklich alle alten Staging-Verzeichnisse löschen?\n\nEs werden nur Verzeichnisse gelöscht, die älter als 60 Minuten sind und nicht mehr aktiv verwendet werden.')) {
+        return;
+      }
+
+      cleanupStagingBtn.disabled = true;
+      cleanupStatus.textContent = '🔄 Lösche alte Verzeichnisse...';
+      cleanupStatus.style.color = '#f59e0b';
+
+      try {
+        const res = await fetch('/cleanup_old_staging', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ max_age_minutes: 60 })
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+          cleanupStatus.textContent = `✅ ${data.deleted_count} Verzeichnisse gelöscht, ${data.skipped_count} übersprungen`;
+          cleanupStatus.style.color = '#10b981';
+
+          console.log('🧹 Cleanup-Ergebnis:', data);
+
+          if (data.deleted_count > 0) {
+            Notifications.success(`${data.deleted_count} alte Staging-Verzeichnisse wurden gelöscht`);
+          } else {
+            Notifications.info('Keine alten Verzeichnisse zum Löschen gefunden');
+          }
+
+          if (data.failed_count > 0) {
+            Notifications.warning(`${data.failed_count} Verzeichnisse konnten nicht gelöscht werden`);
+          }
+        } else {
+          cleanupStatus.textContent = '❌ Fehler beim Cleanup';
+          cleanupStatus.style.color = '#dc2626';
+          Notifications.error('Cleanup fehlgeschlagen: ' + (data.message || 'unbekannt'));
+        }
+      } catch (err) {
+        console.error('❌ Cleanup-Fehler:', err);
+        cleanupStatus.textContent = '❌ Fehler beim Cleanup';
+        cleanupStatus.style.color = '#dc2626';
+        Notifications.error('Fehler beim Cleanup: ' + err.message);
+      } finally {
+        cleanupStagingBtn.disabled = false;
+
+        // Status nach 5 Sekunden zurücksetzen
+        setTimeout(() => {
+          cleanupStatus.textContent = '';
+        }, 5000);
+      }
+    });
+  }
+
   console.log('✅ Initialisierung abgeschlossen');
 });

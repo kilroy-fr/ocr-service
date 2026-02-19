@@ -19,9 +19,137 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
+def _rmtree_cifs(path: Path, verbose: bool = False) -> bool:
+    """
+    Löscht Verzeichnis rekursiv, CIFS/SMB-kompatibel.
+
+    Versucht mehrere Strategien:
+    1. Normales shutil.rmtree mit Berechtigungsanpassung
+    2. Manuelles Löschen aller Dateien, dann Unterverzeichnisse
+    3. Windows-spezifische rd-Kommando (falls verfügbar)
+
+    Args:
+        path: Pfad zum zu löschenden Verzeichnis
+        verbose: Wenn True, werden Details geloggt
+
+    Returns:
+        True wenn erfolgreich gelöscht
+    """
+    import stat
+    import platform
+
+    if not path.exists():
+        return True
+
+    # Strategie 1: Standard shutil.rmtree mit Berechtigungsanpassung
+    # WICHTIG: Der onexc-Handler muss ORIGINALE os-Funktionen nutzen!
+    def _onexc(*args):
+        # args = (func, fpath, exc_info) aber wir brauchen nur fpath
+        fpath = args[1] if len(args) > 1 else None
+        if not fpath:
+            return
+
+        try:
+            # Versuche Berechtigungen zu setzen
+            os.chmod(fpath, stat.S_IWRITE | stat.S_IREAD | stat.S_IEXEC)
+
+            # Nutze ORIGINALE Funktionen statt der gepatchten
+            if os.path.isfile(fpath) or os.path.islink(fpath):
+                _os_unlink_original(fpath)
+            elif os.path.isdir(fpath):
+                _os_rmdir_original(fpath)
+        except Exception as e:
+            if verbose:
+                log(f"   ⚠️ onexc-Handler fehlgeschlagen für {fpath}: {e}", level="debug")
+
+    try:
+        shutil.rmtree(str(path), onexc=_onexc)
+        if not path.exists():
+            return True
+    except Exception as e:
+        if verbose:
+            log(f"   ⚠️ shutil.rmtree fehlgeschlagen: {e}", level="debug")
+
+    # Strategie 2: Manuelles rekursives Löschen mit ORIGINALEN os-Funktionen
+    # WICHTIG: Nutze _os_*_original um das Staging-System zu umgehen!
+    try:
+        # Sammle alle Dateien und Verzeichnisse
+        all_files = []
+        all_dirs = []
+
+        for item in path.rglob('*'):
+            if item.is_file() or item.is_symlink():
+                all_files.append(item)
+            elif item.is_dir():
+                all_dirs.append(item)
+
+        # Lösche zuerst alle Dateien
+        for item in all_files:
+            try:
+                try:
+                    os.chmod(str(item), stat.S_IWRITE)
+                except:
+                    pass
+                # Nutze ORIGINALE unlink-Funktion, nicht die gepatchte!
+                _os_unlink_original(str(item))
+            except Exception as e:
+                if verbose:
+                    log(f"   ⚠️ Fehler beim Löschen von Datei {item.name}: {e}", level="debug")
+
+        # Lösche Verzeichnisse von innen nach außen (tiefste zuerst)
+        for item in sorted(all_dirs, key=lambda p: len(str(p)), reverse=True):
+            try:
+                try:
+                    os.chmod(str(item), stat.S_IWRITE | stat.S_IEXEC)
+                except:
+                    pass
+                # Nutze ORIGINALE rmdir-Funktion, nicht die gepatchte!
+                _os_rmdir_original(str(item))
+            except Exception as e:
+                if verbose:
+                    log(f"   ⚠️ Fehler beim Löschen von Verzeichnis {item.name}: {e}", level="debug")
+
+        # Hauptverzeichnis löschen
+        try:
+            os.chmod(str(path), stat.S_IWRITE | stat.S_IEXEC)
+        except:
+            pass
+        # Nutze ORIGINALE rmdir-Funktion
+        _os_rmdir_original(str(path))
+
+        if not path.exists():
+            return True
+    except Exception as e:
+        if verbose:
+            log(f"   ⚠️ Manuelles Löschen fehlgeschlagen: {e}", level="debug")
+
+    # Strategie 3: Windows-spezifisch - verwende rd-Kommando
+    if platform.system() == 'Windows':
+        try:
+            import subprocess
+            result = subprocess.run(
+                ['cmd', '/c', 'rd', '/s', '/q', str(path)],
+                capture_output=True,
+                timeout=30
+            )
+            if not path.exists():
+                return True
+            if verbose and result.returncode != 0:
+                log(f"   ⚠️ rd-Kommando fehlgeschlagen: {result.stderr.decode('utf-8', errors='ignore')}", level="debug")
+        except Exception as e:
+            if verbose:
+                log(f"   ⚠️ Windows rd-Kommando fehlgeschlagen: {e}", level="debug")
+
+    # Letzte Prüfung
+    return not path.exists()
+
+
 # Speichere originale os-Funktionen BEVOR sie von app.py gepatcht werden
 _os_remove_original = os.remove
 _os_rename_original = os.rename
+_os_unlink_original = os.unlink
+_os_rmdir_original = os.rmdir
 
 # ============================================================================
 # DATACLASSES
@@ -124,8 +252,8 @@ def cleanup_orphaned_files(work_root: Path, output_root: Path,
     Bereinigt verwaiste Dateien aus Work- und Output-Verzeichnissen.
     
     Args:
-        work_root: Pfad zum Work-Root (z.B. /app/medidok/work)
-        output_root: Pfad zum Output-Root (z.B. /app/medidok/staging)
+        work_root: Pfad zum Staging-Root (z.B. /app/medidok/staging)
+        output_root: Pfad zum Output-Root (z.B. /app/medidok/output)
         active_sessions: Set mit aktiven Session-IDs
     
     Returns:
@@ -155,50 +283,18 @@ def cleanup_orphaned_files(work_root: Path, output_root: Path,
             
             for session_dir in session_dirs:
                 session_id = session_dir.name
-                
-                # Wenn Session nicht aktiv -> löschen
+
                 if session_id not in active_sessions:
                     try:
-                        # Dateien zählen
-                        file_count = sum(1 for _ in session_dir.rglob('*') if _.is_file())
-
+                        file_count = sum(1 for f in session_dir.rglob('*') if f.is_file())
                         log(f"   🗑️ Lösche Session-Verzeichnis: {session_id} ({file_count} Dateien)")
 
-                        # Netzlaufwerk-Kompatibilität: rmtree hat Probleme mit dir_fd auf CIFS
-                        # Lösung: Manuelles Löschen statt shutil.rmtree()
-                        def remove_readonly(func, path, exc_info):
-                            """Entferne Read-Only-Attribut und versuche erneut"""
-                            import stat
-                            os.chmod(path, stat.S_IWRITE)
-                            func(path)
-
-                        # Erst alle Dateien löschen, dann Verzeichnisse von unten nach oben
-                        for item in session_dir.rglob('*'):
-                            try:
-                                if item.is_file():
-                                    item.unlink()
-                                elif item.is_dir():
-                                    # Wird später gelöscht
-                                    pass
-                            except Exception:
-                                pass
-
-                        # Jetzt Verzeichnisse von unten nach oben löschen
-                        for item in sorted(session_dir.rglob('*'), reverse=True):
-                            try:
-                                if item.is_dir():
-                                    item.rmdir()
-                            except Exception:
-                                pass
-
-                        # Abschließend das Session-Verzeichnis selbst löschen
-                        try:
-                            session_dir.rmdir()
-                        except Exception:
-                            pass
-
-                        stats['work_dirs_removed'] += 1
-                        stats['work_files_removed'] += file_count
+                        if _rmtree_cifs(session_dir):
+                            stats['work_dirs_removed'] += 1
+                            stats['work_files_removed'] += file_count
+                        else:
+                            stats['errors'].append(f"Work-Dir {session_id}: nicht vollständig gelöscht")
+                            log(f"   ⚠️ Nicht vollständig gelöscht: {session_id}", level="warning")
                     except Exception as e:
                         error_msg = f"Work-Dir {session_id}: {e}"
                         stats['errors'].append(error_msg)
@@ -288,8 +384,26 @@ def handle_successful_processing(summary_data, original_path, target_dir):
     feld3 = sanitize_filename(summary_data.get("geburtsdatum", "Unbekannt"))
     feld4 = sanitize_filename(summary_data.get("datum", "Unbekannt"))
     feld5 = sanitize_filename(summary_data.get("beschreibung1", "Unbekannt"))[:30]
-    feld6 = sanitize_filename(summary_data.get("beschreibung2", "Unbekannt"))[:120]
     feld7 = sanitize_filename(summary_data.get("categoryID", "11"))
+
+    # Windows-Pfadlängen-Limit: f:\MDok\import\Dateiname.pdf
+    # Max 115 Zeichen für Dateiname (inkl. .pdf) - optimiertes Limit
+    MAX_FILENAME_LENGTH = 115
+
+    # Berechne Länge aller Teile außer feld6 (Befund)
+    prefix = f"{feld1}_{feld2}_{feld3}_{feld4}_{feld5}, "
+    suffix = f"_{feld7}.pdf"
+    prefix_suffix_length = len(prefix) + len(suffix)
+
+    # Berechne maximale Länge für feld6 (Befund)
+    max_feld6_length = MAX_FILENAME_LENGTH - prefix_suffix_length
+
+    # Stelle sicher, dass mindestens 10 Zeichen für Befund bleiben
+    if max_feld6_length < 10:
+        max_feld6_length = 10
+
+    # Kürze feld6 auf verfügbare Länge
+    feld6 = sanitize_filename(summary_data.get("beschreibung2", "Unbekannt"))[:max_feld6_length]
 
     new_filename = f"{feld1}_{feld2}_{feld3}_{feld4}_{feld5}, {feld6}_{feld7}.pdf"
 
@@ -384,32 +498,8 @@ class StagingSession:
         if not self.session_id:
             return
 
-        # Netzlaufwerk-Kompatibilität: Manuelles Löschen statt rmtree
         if self.work_dir.exists():
-            try:
-                # Erst alle Dateien löschen
-                for item in self.work_dir.rglob('*'):
-                    try:
-                        if item.is_file():
-                            item.unlink()
-                    except Exception:
-                        pass
-
-                # Dann Verzeichnisse von unten nach oben
-                for item in sorted(self.work_dir.rglob('*'), reverse=True):
-                    try:
-                        if item.is_dir():
-                            item.rmdir()
-                    except Exception:
-                        pass
-
-                # Abschließend work_dir selbst
-                try:
-                    self.work_dir.rmdir()
-                except Exception:
-                    pass
-            except Exception:
-                pass
+            _rmtree_cifs(self.work_dir)
 
         self.meta_file.unlink(missing_ok=True)
         logger.info("Staging session %s aborted", self.session_id)
@@ -446,32 +536,8 @@ class StagingSession:
                 if staged_out.exists():
                     os.replace(staged_out, final_out)
 
-        # Netzlaufwerk-Kompatibilität: Manuelles Löschen statt rmtree
         if self.work_dir.exists():
-            try:
-                # Erst alle Dateien löschen
-                for item in self.work_dir.rglob('*'):
-                    try:
-                        if item.is_file():
-                            item.unlink()
-                    except Exception:
-                        pass
-
-                # Dann Verzeichnisse von unten nach oben
-                for item in sorted(self.work_dir.rglob('*'), reverse=True):
-                    try:
-                        if item.is_dir():
-                            item.rmdir()
-                    except Exception:
-                        pass
-
-                # Abschließend work_dir selbst
-                try:
-                    self.work_dir.rmdir()
-                except Exception:
-                    pass
-            except Exception:
-                pass
+            _rmtree_cifs(self.work_dir)
 
         self.meta_file.unlink(missing_ok=True)
         logger.info(f"Staging session {self.session_id} committed")

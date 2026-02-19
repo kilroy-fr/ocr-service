@@ -54,10 +54,9 @@ def upload_files():
                     filename = filename + '.tif'
                     log(f"✅ TIFF-Endung ergänzt: {filename}")
                 else:
-                    # Andere Datei ohne Endung → .jpg ergänzen
-                    log(f"📝 Datei ohne gültige Endung erkannt: {filename}")
-                    filename = filename + '.jpg'
-                    log(f"✅ JPG-Endung ergänzt: {filename}")
+                    # Nicht unterstütztes Format → überspringen
+                    log(f"⏭️ Überspringe nicht unterstützte Datei: {filename}")
+                    continue
 
             # Sichere den Dateinamen
             safe_name = secure_filename(filename)
@@ -97,7 +96,7 @@ def upload_files():
                     file.save(staging_path)
                     uploaded_files.append(safe_name)
             else:
-                # Normale Dateien (PDF, JPG, PNG) direkt speichern
+                # Normale Dateien (PDF, JPG, PNG, DOCX) direkt speichern
                 staging_path = os.path.join(fs.work_dir, safe_name)
                 file.save(staging_path)
                 uploaded_files.append(safe_name)
@@ -144,7 +143,7 @@ def upload_folder():
         is_tiff = magic_bytes[:4] in (b'II*\x00', b'MM\x00*')
 
         # ✅ Dateien ohne gültige Dateiendung behandeln
-        has_valid_extension = filename.lower().endswith(('.pdf', '.jpg', '.jpeg', '.png', '.tif', '.tiff', '.txt'))
+        has_valid_extension = filename.lower().endswith(('.pdf', '.jpg', '.jpeg', '.png', '.tif', '.tiff', '.txt', '.docx'))
 
         if not has_valid_extension:
             if is_tiff:
@@ -153,18 +152,12 @@ def upload_folder():
                 filename = filename + '.tif'
                 log(f"✅ TIFF-Endung ergänzt: {filename}")
             else:
-                # Andere Datei ohne Endung → .jpg ergänzen
-                log(f"📝 Datei ohne gültige Endung erkannt: {filename}")
-                filename = filename + '.jpg'
-                log(f"✅ JPG-Endung ergänzt: {filename}")
+                # Nicht unterstütztes Format → überspringen
+                log(f"⏭️ Überspringe nicht unterstützte Datei: {filename}")
+                continue
 
         # Sichere den Dateinamen
         safe_name = secure_filename(filename)
-
-        # Nur unterstützte Formate
-        if not safe_name.lower().endswith(('.pdf', '.jpg', '.jpeg', '.png', '.tif', '.tiff', '.txt', '.docx')):
-            log(f"⏭️ Überspringe Datei (nicht unterstützt): {safe_name}")
-            continue
 
         # ✅ TIF/TIFF direkt zu JPG konvertieren (durch Magic Bytes, nicht durch Endung)
         if is_tiff or safe_name.lower().endswith(('.tif', '.tiff')):
@@ -603,4 +596,216 @@ def list_staged_files():
 
     except Exception as e:
         log(f"❌ Fehler beim Auflisten der Staging-Dateien: {e}", level="error")
+        return jsonify(success=False, message=str(e)), 500
+
+
+@file_bp.route("/download_ocr/<path:filename>")
+def download_ocr_file(filename):
+    """
+    Sendet eine OCR-Datei als Download und löscht sie anschließend aus dem Staging.
+    """
+    from flask import make_response
+    from config import OUTPUT_ROOT
+
+    filename = unquote(filename)
+
+    log(f"📥 Download-Anfrage für OCR-Datei: {filename}")
+
+    # Datei im Staging suchen
+    file_path = None
+    work_dir_str = None
+
+    if fs.session_id:
+        try:
+            work_dir_str = str(fs.work_dir)
+            staged = os.path.join(work_dir_str, filename)
+
+            if os.path.exists(staged):
+                file_path = staged
+                log(f"✅ OCR-Datei gefunden in Staging: {filename}")
+        except Exception as e:
+            log(f"⚠️ Fehler beim Zugriff auf work_dir: {e}", level="warning")
+
+    # Fallback: Output-Verzeichnis
+    if not file_path:
+        output_path = os.path.join(OUTPUT_ROOT, filename)
+        if os.path.exists(output_path):
+            file_path = output_path
+            log(f"✅ OCR-Datei gefunden in Output: {filename}")
+
+    if not file_path:
+        log(f"❌ OCR-Datei nicht gefunden: {filename}", level="error")
+        return jsonify(success=False, message="Datei nicht gefunden"), 404
+
+    try:
+        # Datei als Download senden
+        directory = os.path.dirname(file_path)
+        basename = os.path.basename(file_path)
+
+        response = make_response(send_from_directory(directory, basename, as_attachment=True))
+        response.headers['Content-Disposition'] = f'attachment; filename="{basename}"'
+
+        log(f"📤 OCR-Datei wird zum Download gesendet: {filename}")
+
+        # Datei nach erfolgreichem Download aus Staging löschen
+        # (nur wenn sie im Staging liegt, nicht aus Output)
+        if work_dir_str and file_path.startswith(work_dir_str):
+            try:
+                # Wir löschen die Datei nach dem Response senden
+                # Dafür registrieren wir einen After-Request Handler
+                @response.call_on_close
+                def cleanup():
+                    try:
+                        if os.path.exists(file_path):
+                            os.remove(file_path)
+                            log(f"🗑️ OCR-Datei aus Staging gelöscht: {filename}")
+                    except Exception as e:
+                        log(f"⚠️ Fehler beim Löschen der OCR-Datei: {e}", level="warning")
+            except Exception as e:
+                log(f"⚠️ Fehler beim Registrieren des Cleanup-Handlers: {e}", level="warning")
+
+        return response
+
+    except Exception as e:
+        log(f"❌ Fehler beim Download der OCR-Datei: {e}", level="error")
+        return jsonify(success=False, message=str(e)), 500
+
+
+@file_bp.route("/download_staged/<path:filename>")
+def download_staged_file(filename):
+    """
+    Sendet eine Datei aus dem Staging als Download.
+    Die Datei bleibt im Staging erhalten.
+    """
+    from flask import make_response
+    from config import OUTPUT_ROOT
+
+    filename = unquote(filename)
+
+    log(f"📥 Download-Anfrage für Datei: {filename}")
+
+    # Datei im Staging suchen
+    file_path = None
+    work_dir_str = None
+
+    if fs.session_id:
+        try:
+            work_dir_str = str(fs.work_dir)
+            staged = os.path.join(work_dir_str, filename)
+
+            if os.path.exists(staged):
+                file_path = staged
+                log(f"✅ Datei gefunden in Staging: {filename}")
+        except Exception as e:
+            log(f"⚠️ Fehler beim Zugriff auf work_dir: {e}", level="warning")
+
+    # Fallback: INPUT_ROOT
+    if not file_path:
+        input_path = os.path.join(INPUT_ROOT, filename)
+        if os.path.exists(input_path):
+            file_path = input_path
+            log(f"✅ Datei gefunden in INPUT_ROOT: {filename}")
+
+    # Fallback: Output-Verzeichnis
+    if not file_path:
+        output_path = os.path.join(OUTPUT_ROOT, filename)
+        if os.path.exists(output_path):
+            file_path = output_path
+            log(f"✅ Datei gefunden in Output: {filename}")
+
+    if not file_path:
+        log(f"❌ Datei nicht gefunden: {filename}", level="error")
+        return jsonify(success=False, message="Datei nicht gefunden"), 404
+
+    try:
+        # Datei als Download senden
+        directory = os.path.dirname(file_path)
+        basename = os.path.basename(file_path)
+
+        response = make_response(send_from_directory(directory, basename, as_attachment=True))
+        response.headers['Content-Disposition'] = f'attachment; filename="{basename}"'
+
+        log(f"📤 Datei wird zum Download gesendet: {filename}")
+
+        return response
+
+    except Exception as e:
+        log(f"❌ Fehler beim Download der Datei: {e}", level="error")
+        return jsonify(success=False, message=str(e)), 500
+
+
+@file_bp.route("/download_multiple_as_zip", methods=["POST"])
+def download_multiple_as_zip():
+    """
+    Erstellt ein ZIP-Archiv aus mehreren ausgewählten Dateien und sendet es als Download.
+    """
+    import zipfile
+    import io
+    from flask import send_file
+    from config import OUTPUT_ROOT
+
+    try:
+        data = request.get_json(force=True) or {}
+        filenames = data.get("files", [])
+
+        if not filenames:
+            return jsonify(success=False, message="Keine Dateien ausgewählt"), 400
+
+        log(f"📦 ZIP-Download angefordert für {len(filenames)} Datei(en)")
+
+        # In-Memory ZIP erstellen
+        zip_buffer = io.BytesIO()
+
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            files_added = 0
+
+            for filename in filenames:
+                file_path = None
+
+                # Datei suchen (Staging -> INPUT_ROOT -> Output)
+                if fs.session_id:
+                    try:
+                        work_dir_str = str(fs.work_dir)
+                        staged = os.path.join(work_dir_str, filename)
+                        if os.path.exists(staged):
+                            file_path = staged
+                    except Exception as e:
+                        log(f"⚠️ Fehler beim Zugriff auf work_dir: {e}", level="warning")
+
+                if not file_path:
+                    input_path = os.path.join(INPUT_ROOT, filename)
+                    if os.path.exists(input_path):
+                        file_path = input_path
+
+                if not file_path:
+                    output_path = os.path.join(OUTPUT_ROOT, filename)
+                    if os.path.exists(output_path):
+                        file_path = output_path
+
+                if file_path and os.path.exists(file_path):
+                    # Datei zum ZIP hinzufügen
+                    zip_file.write(file_path, arcname=os.path.basename(file_path))
+                    files_added += 1
+                    log(f"✅ Datei zum ZIP hinzugefügt: {filename}")
+                else:
+                    log(f"⚠️ Datei nicht gefunden, überspringe: {filename}", level="warning")
+
+        if files_added == 0:
+            return jsonify(success=False, message="Keine der ausgewählten Dateien wurde gefunden"), 404
+
+        # ZIP-Buffer zurückspulen
+        zip_buffer.seek(0)
+
+        log(f"📤 ZIP-Archiv mit {files_added} Datei(en) wird gesendet")
+
+        # ZIP als Download senden
+        return send_file(
+            zip_buffer,
+            mimetype='application/zip',
+            as_attachment=True,
+            download_name=f'download_{time.strftime("%Y%m%d_%H%M%S")}.zip'
+        )
+
+    except Exception as e:
+        log(f"❌ Fehler beim Erstellen des ZIP-Archives: {e}", level="error")
         return jsonify(success=False, message=str(e)), 500

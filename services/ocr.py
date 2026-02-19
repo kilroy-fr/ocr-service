@@ -7,7 +7,7 @@ import json
 from .summarizer import summarize_pdf
 from .file_utils import fs, to_rel_under_input, safe_line, handle_successful_processing, build_absender
 from .logger import log
-from config import INPUT_ROOT, FAIL_DIR_MEDIDOK, JSON_FOLDER
+from config import INPUT_ROOT, JSON_FOLDER
 from flask import render_template, session
 
 def process_medidok_files(file_paths, target_dir_unused):

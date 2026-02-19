@@ -16,9 +16,12 @@
           <p class="page-subtitle">Importtool für medizinische Dokumente</p>
         </div>
       </div>
-      <div class="model-control">
-        <label for="modelSelect">Modell wählen:</label>
-        <select id="modelSelect" class="btn"></select>
+      <div class="header-right">
+        <span class="version-badge">v{{ version }}</span>
+        <div class="model-control">
+          <label for="modelSelect">Modell wählen:</label>
+          <select id="modelSelect" class="btn"></select>
+        </div>
       </div>
     </div>
   </div>
@@ -61,6 +64,16 @@
           </button>
           <button type="button" class="op-btn ocr-only-btn" id="batchOcrOnly" disabled style="display: none;">
             📄 Nur OCR (ohne Analyse)
+          </button>
+
+          <button type="button" class="op-btn" id="mediDownload" disabled>
+            💾 Ausgewählte herunterladen
+          </button>
+          <button type="button" class="op-btn" id="einzelDownload" disabled style="display: none;">
+            💾 Ausgewählte herunterladen
+          </button>
+          <button type="button" class="op-btn" id="batchDownload" disabled style="display: none;">
+            💾 Ausgewählte herunterladen
           </button>
 
           <!-- Rotation Buttons -->
@@ -178,6 +191,15 @@
               <label for="fileInput" class="btn">📂 Dateien auswählen</label>
               <input type="file" name="files" id="fileInput" multiple style="display: none;">
 
+              <!-- Master-Checkbox für Einzel -->
+              <div class="master-checkbox-container" style="margin-top: 20px;">
+                <label class="master-checkbox-label">
+                  <input type="checkbox" id="einzelMasterCheckbox">
+                  <span id="einzelMasterCheckboxLabel">Alle auswählbaren Dateien auswählen</span>
+                  <span id="einzelSelectionCount"></span>
+                </label>
+              </div>
+
               <!-- Dateiliste für Staging -->
               <div id="einzelFileList" style="margin-top: 20px;">
                 <p style="font-weight: bold; color: #9ca3af; margin-bottom: 10px;">📄 Hochgeladene Dateien:</p>
@@ -252,6 +274,22 @@
     </button>
   </div>
   
+  <!-- Admin Bereich -->
+  <div class="section" style="background-color: #2a2a2a; border-left: 4px solid #f59e0b; margin-bottom: 20px;">
+    <h2 style="display: flex; align-items: center; gap: 10px;">
+      ⚙️ Wartung
+    </h2>
+    <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+      <button id="cleanupStagingBtn" class="btn" style="background: linear-gradient(135deg, #dc2626, #b91c1c); min-width: 250px;">
+        🧹 Alte Staging-Verzeichnisse löschen
+      </button>
+      <span id="cleanupStatus" style="color: #9ca3af; font-size: 0.9em;"></span>
+    </div>
+    <p style="margin-top: 10px; color: #6b7280; font-size: 0.85em;">
+      ℹ️ Löscht alle Staging-Verzeichnisse, die älter als 60 Minuten sind und nicht mehr aktiv verwendet werden.
+    </p>
+  </div>
+
   <!-- Logging -->
   <div class="section">
     <h2>Logging</h2>

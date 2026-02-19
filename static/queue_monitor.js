@@ -14,13 +14,26 @@ const QueueMonitor = {
     updateInterval: 3000,  // Update alle 3 Sekunden
     intervalId: null,
     statusContainer: null,
+    onComplete: null,          // Callback wenn Queue vollständig verarbeitet
+    hasSeenActivity: false,    // Verhindert Falsch-"fertig" bei leerem Start
+    _idleSince: null,          // Zeitstempel wenn Queue zuletzt inaktiv wurde (Fallback-Timer)
 
     /**
      * Startet die Queue-Überwachung
      * @param {string} containerId - ID des DOM-Elements für Status-Anzeige
+     * @param {Function} [onComplete] - Wird aufgerufen wenn alle Dateien verarbeitet sind, Parameter: total_processed
      */
-    start(containerId = 'queue-status') {
+    start(containerId = 'queue-status', onComplete = null) {
+        // Vorhandenes Intervall auräumen (verhindert Doppel-Start)
+        if (this.intervalId) {
+            clearInterval(this.intervalId);
+            this.intervalId = null;
+        }
+
         this.statusContainer = document.getElementById(containerId);
+        this.onComplete = onComplete;
+        this.hasSeenActivity = false;
+        this._idleSince = null;
 
         if (!this.statusContainer) {
             console.warn('Queue Monitor: Container nicht gefunden:', containerId);
@@ -45,8 +58,11 @@ const QueueMonitor = {
         if (this.intervalId) {
             clearInterval(this.intervalId);
             this.intervalId = null;
-            console.log('🛑 Queue Monitor gestoppt');
         }
+        this.onComplete = null;
+        this.hasSeenActivity = false;
+        this._idleSince = null;
+        console.log('🛑 Queue Monitor gestoppt');
     },
 
     /**
@@ -65,24 +81,64 @@ const QueueMonitor = {
             console.log('📊 Queue-Monitor: Received data:', data);
 
             if (data.success && data.stats) {
-                console.log('✅ Queue-Monitor: Rendering status with stats:', data.stats);
                 this.renderStatus(data.stats);
+                this._checkCompletion(data.stats);
+            } else if (data.stats) {
+                this.renderStatus(data.stats);
+                this._checkCompletion(data.stats);
             } else {
-                // Nur Fehler zeigen wenn Queue-Service wirklich nicht läuft
-                // Bei leerem/initialem State zeige Status trotzdem an
-                if (data.stats) {
-                    console.log('⚠️ Queue-Monitor: Rendering status (no success flag)');
-                    this.renderStatus(data.stats);
-                } else {
-                    console.warn('⚠️ Queue-Status ohne stats:', data);
-                    this.renderError(data.message || 'Queue-Service startet...');
-                }
+                console.warn('⚠️ Queue-Status ohne stats:', data);
+                this.renderError(data.message || 'Queue-Service startet...');
             }
         } catch (error) {
             console.error('❌ Fehler beim Laden des Queue-Status:', error);
-            // Weniger aufdringliche Fehlerdarstellung
             this.renderError('Verbindung zum Queue-Service wird hergestellt...');
         }
+    },
+
+    /**
+     * Prüft ob Queue vollständig verarbeitet ist und ruft onComplete auf
+     */
+    _checkCompletion(stats) {
+        const { current_queue_size, total_processed, total_queued, current_file } = stats;
+
+        if (total_queued > 0 || current_queue_size > 0) {
+            this.hasSeenActivity = true;
+        }
+
+        if (!this.onComplete || !this.hasSeenActivity) return;
+
+        // Queue ist inaktiv: kein Item wartend, keine Datei in Bearbeitung
+        const isIdle = (current_queue_size === 0 && !current_file);
+
+        if (isIdle) {
+            if (!this._idleSince) this._idleSince = Date.now();
+        } else {
+            this._idleSince = null;  // Aktivität → Timer zurücksetzen
+        }
+
+        // Primäre Prüfung: Queue leer, keine aktive Datei, Zähler stimmen überein
+        if (isIdle && total_processed > 0 && total_processed === total_queued) {
+            console.log('✅ Queue-Monitor: Completion erkannt (primär)');
+            this._triggerComplete(total_processed);
+            return;
+        }
+
+        // Schneller Fallback: Queue seit > 5s inaktiv, mindestens eine Datei verarbeitet
+        // Fängt Edge-Cases ab wo total_processed ≠ total_queued (z.B. Fehler oder Singleton-Akkumulation)
+        if (isIdle && total_processed > 0 && this._idleSince && (Date.now() - this._idleSince) > 5000) {
+            console.warn('⚠️ Queue-Monitor: Fallback-Completion nach 5s Inaktivität (processed=' + total_processed + ', queued=' + total_queued + ')');
+            this._triggerComplete(total_processed);
+        }
+    },
+
+    /**
+     * Feuert den onComplete-Callback und stoppt den Monitor
+     */
+    _triggerComplete(processedCount) {
+        const callback = this.onComplete;
+        this.stop();
+        callback(processedCount);
     },
 
     /**

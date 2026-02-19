@@ -1,4 +1,4 @@
-FROM python:3.10-slim
+FROM python:3.12-slim
 
 # Deutsche Locales und UTF-8 Support
 ENV LANG=de_DE.UTF-8
