@@ -27,4 +27,4 @@ DEFAULT_MODEL       = MODEL_LLM1
 DEFAULT_TEMPERATURE = 0.0  # Für deterministische, konsistente Extraktion
 
 # Frontend-URLs
-HOME_URL            = "https://localhost"  # Startseite für Weiterleitung
+HOME_URL            = os.environ.get("HOME_URL", "http://localhost:5000")  # Startseite für Weiterleitung

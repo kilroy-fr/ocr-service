@@ -49,6 +49,8 @@ docker-compose.override.yml
 # OS
 .DS_Store
 Thumbs.db
+nul
+directories.md
 
 # Logs
 logs/

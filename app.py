@@ -31,7 +31,7 @@ from config import (
 
 # Flask App initialisieren
 app = Flask(__name__)
-app.secret_key = "REDACTED"
+app.secret_key = os.environ.get("SECRET_KEY", "change-me-in-production")
 
 # Flask Konfiguration für UTF-8 / Umlaute
 app.config['JSON_AS_ASCII'] = False

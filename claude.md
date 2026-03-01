@@ -1,10 +1,10 @@
-# OCR Service – Projektdokumentation für Claude
+# OCR Service – Entwicklerdokumentation
 
 ## Projektübersicht
 
 Flask-basierter OCR-Dienst, der Dokumente (PDF, Bilder, DOCX) per Tesseract OCR verarbeitet,
-per LLM (Ollama/qwen2.5:14b) Metadaten extrahiert und die Ergebnisse in eine Medidok-Import-
-Warteschlange einreiht. Läuft als Docker-Container und bindet ein CIFS/SMB-Netzlaufwerk ein.
+per LLM (Ollama) Metadaten extrahiert und die Ergebnisse in eine Medidok-Import-Warteschlange
+einreiht. Läuft als Docker-Container und bindet ein CIFS/SMB-Netzlaufwerk ein.
 
 **Sprache:** Deutsch (UI, Logs, Kommentare, Commits)
 
@@ -13,12 +13,12 @@ Warteschlange einreiht. Läuft als Docker-Container und bindet ein CIFS/SMB-Netz
 ## Architektur
 
 ### Stack
-- **Backend:** Python 3 / Flask 3.1
+- **Backend:** Python 3.12 / Flask 3.1
 - **OCR:** Tesseract (via Subprocess)
-- **LLM:** Ollama (`http://host.docker.internal:11434`) – Modell `qwen2.5:14b`, Temperature 0.0
+- **LLM:** Ollama – Standard-Modell `qwen2.5:14b`, Temperature 0.0
 - **PDF-Handling:** PyMuPDF (fitz), img2pdf, WeasyPrint
 - **DOCX:** python-docx
-- **Deployment:** Docker + Caddy Reverse-Proxy
+- **Deployment:** Docker + Docker Compose
 
 ### Verzeichnisstruktur
 ```
@@ -69,12 +69,12 @@ innerhalb von `INPUT_ROOT` zunächst nur im **Staging-Manifest** geplant werden.
 - `fs` (StagingFS aus `services/file_utils.py`) ist das zentrale Objekt für alle Dateioperationen
 - Für Operationen, die das Staging umgehen sollen (z.B. Startup-Cleanup), immer
   `_os_remove_original` / `_os_rename_original` verwenden
-- **Nie** `os.rename`/`os.remove` direkt in Services aufrufen – diese sind gepatch!
+- **Nie** `os.rename`/`os.remove` direkt in Services aufrufen – diese sind gepatcht!
 
 ### Wichtige Pfade (aus `config.py`)
 | Variable | Pfad | Beschreibung |
 |---|---|---|
-| `INPUT_ROOT` | `/app/medidok` | CIFS-Share (Netzlaufwerk M:) |
+| `INPUT_ROOT` | `/app/medidok` | CIFS-Share (Netzlaufwerk) |
 | `WORK_ROOT` | `/app/medidok/staging` | Staging pro Session |
 | `OUTPUT_ROOT` | `/app/medidok/output` | Nach Commit, vor Import |
 | `IMPORT_QUEUE_DIR` | `/app/medidok/import` | Für externen Import-Dienst |
@@ -99,8 +99,6 @@ SSE-Stream ausliest. Im Frontend werden Logs live angezeigt (`app.js`).
 ### Lokal starten (Docker)
 ```bash
 docker compose up --build
-# oder ohne Rebuild:
-docker compose up
 ```
 Hot-Reload ist aktiv: Quelldateien sind per Volume in den Container gemountet.
 
@@ -111,12 +109,8 @@ python app.py
 ```
 Erfordert Tesseract im PATH und Ollama auf localhost:11434.
 
-### Umgebungsvariablen (docker-compose.yml)
-```
-SMB_USERNAME=...
-SMB_PASSWORD=...
-TZ=Europe/Berlin
-```
+### Umgebungsvariablen
+Siehe `.env.example` für alle verfügbaren Konfigurationsoptionen.
 
 ---
 
@@ -129,43 +123,10 @@ TZ=Europe/Berlin
 - **LLM-Aufrufe:** Über `services/ollama_client.py`
 - **Session-Kontext:** `fs.session_id` / `fs.work_dir` für sessionbezogene Pfade
 - **Fehlerbehandlung:** Exceptions loggen, nicht still schlucken
-- **Kein Emoji-Einsatz** im Code, außer in Log-Meldungen (dort etabliert)
 
 ---
 
-## Offene Aufgaben
+## Contributing
 
-### High Priority
-- [ ] Queue-Monitor Frontend-Integration abschließen
-- [ ] Import-Queue End-to-End testen
-- [ ] Dokumentation aktualisieren
-
-### Backend
-- [ ] OCR-Performance optimieren
-- [ ] Queue-Persistenz implementieren
-- [ ] Logging-Verbesserungen
-
-### Frontend
-- [ ] Queue-Status-Anzeige finalisieren
-- [ ] Dark-Theme auf allen Seiten testen
-- [ ] Ladezustände für async-Operationen
-
-### Testing
-- [ ] Unit-Tests für OCR-Service
-- [ ] Integrationstests für Queue-System
-
-### DevOps
-- [ ] Docker-Optimierung
-- [ ] Backup-Strategie
-- [ ] Monitoring
-
-## Abgeschlossen
-- [x] Dark-Theme implementiert
-- [x] Basis-Queue-Monitoring
-- [x] Docker-Compose-Setup
-- [x] LLM: qwen2.5:14b, Temperature=0.0
-- [x] Ollama-Parameter für strukturierte Extraktion
-- [x] DOCX-Support
-- [x] Staging-System (OS-Patching)
-- [x] Session-Management
-- [x] Import-Queue-Service
+Beiträge sind willkommen! Bitte beachte die Coding-Konventionen oben und erstelle einen
+Pull Request mit einer Beschreibung der Änderungen.

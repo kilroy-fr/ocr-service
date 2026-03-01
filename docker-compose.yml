@@ -37,6 +37,6 @@ volumes:
     driver: local
     driver_opts:
       type: cifs
-      device: "//server/Medidok"
+      device: "${SMB_SHARE:-//server/Medidok}"
       # WICHTIG: iocharset=utf8 für korrekte Umlaute!
       o: "username=${SMB_USERNAME},password=${SMB_PASSWORD},vers=3.0,iocharset=utf8,uid=1000,gid=1000,file_mode=0777,dir_mode=0777"
