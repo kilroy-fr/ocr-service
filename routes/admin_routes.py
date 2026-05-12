@@ -19,7 +19,6 @@ def available_models():
     """Gibt Liste verfügbarer LLM-Modelle zurück."""
     # Whitelist der erlaubten Modelle (reduzierte Auswahl)
     ALLOWED_MODELS = [
-        "gemma4:e4b",
         "qwen2.5:14b",
         "qwen2.5:7b",
         "qwen3:14b",

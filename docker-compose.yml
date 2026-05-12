@@ -6,7 +6,7 @@ services:
     expose:
       - "5000"
     ports:
-      - "127.0.0.1:5000:5000"  # Direkter Zugriff für Entwicklung
+      - "127.0.0.1:5000:5000"
     volumes:
       - ./uploads:/app/uploads
       - ./processed:/app/processed
@@ -19,24 +19,24 @@ services:
       - ./templates:/app/templates
       - ./static:/app/static
     environment:
-      - TZ=Europe/Berlin
+      - TZ=${TZ:-Europe/Berlin}
     stdin_open: true
     tty: true
     networks:
-      - caddy-proxy-network
+      - app-network
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
 
 networks:
-  caddy-proxy-network:
+  app-network:
     external: true
-    name: caddy-proxy-network
+    name: ${DOCKER_NETWORK}
 
 volumes:
   medidok_share:
     driver: local
     driver_opts:
       type: cifs
-      device: "${SMB_SHARE:-//server/Medidok}"
+      device: "${SMB_SHARE}"
       # WICHTIG: iocharset=utf8 für korrekte Umlaute!
-      o: "username=${SMB_USERNAME},password=${SMB_PASSWORD},vers=3.0,iocharset=utf8,uid=1000,gid=1000,file_mode=0777,dir_mode=0777"
+      o: "username=${SMB_USERNAME},password=${SMB_PASSWORD},domain=${SMB_DOMAIN},vers=${SMB_VERS:-3.0},sec=${SMB_SEC:-ntlmssp},iocharset=utf8,uid=1000,gid=1000,file_mode=0777,dir_mode=0777"

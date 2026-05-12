@@ -1,7 +1,7 @@
 import os
 import fitz
 from flask import session
-from config import PROMPT_TEMPLATE, INPUT_ROOT, MODEL_LLM1
+from config import PROMPT_TEMPLATE, INPUT_ROOT, DEFAULT_MODEL
 from .ollama_client import send_to_ollama
 from .logger import log
 from .file_utils import fs
@@ -44,11 +44,11 @@ def summarize_pdf(pdf_path, model=None):
     # Modell-Auswahl: Parameter > Session > Config-Default
     if model is None:
         try:
-            model = session.get("selected_model", MODEL_LLM1)
+            model = session.get("selected_model", DEFAULT_MODEL)
         except RuntimeError:
             # Außerhalb Request-Context (z.B. Background-Thread ohne explizites Modell)
             log("⚠️ Kein Flask Request-Context und kein Modell übergeben, verwende Standard-Modell", level="warning")
-            model = MODEL_LLM1
+            model = DEFAULT_MODEL
     # 1) Prompt laden
     try:
         with open(PROMPT_TEMPLATE, "r", encoding="utf-8") as f:
@@ -114,12 +114,12 @@ def summarize_pdf(pdf_path, model=None):
 
     # 5) Kurzanalyse mit explizitem Modell
     short_prompt = f"{base_prompt}\n\n{first_page_text}"
-    result = send_to_ollama(short_prompt, 0, model)  # ✅ Modell explizit übergeben
+    result = send_to_ollama(short_prompt, model)
 
     if result is None:
         # Fallback: Volltext ab gewählter Startseite versuchen
         full_text = "\n".join(p.get_text() or "" for p in doc[start_page:])
-        result = send_to_ollama(f"{base_prompt}\n\n{full_text}", 1, model)
+        result = send_to_ollama(f"{base_prompt}\n\n{full_text}", model)
         if result is None:
             return "\n".join([
                 "Unbekannt", "Unbekannt", "Unbekannt", "Unbekannt",
@@ -138,7 +138,7 @@ def summarize_pdf(pdf_path, model=None):
             page2_text = (doc[1].get_text() or "").strip()
             if len(page2_text) >= 10:
                 log(f"⚠️ Seite 1 liefert keine Patientendaten - versuche Seite 2 als Fallback")
-                result2 = send_to_ollama(f"{base_prompt}\n\n{page2_text}", 0, model)
+                result2 = send_to_ollama(f"{base_prompt}\n\n{page2_text}", model)
                 if result2 is not None:
                     result = result2
                     log(f"✅ Seite 2 liefert Patientendaten - verwende Ergebnis von Seite 2")

@@ -20,11 +20,10 @@ JSON_FOLDER         = "/app/processed/json"    # control_{session}.json
 
 # Modelle & LLM
 MODEL_LLM1          = "qwen2.5:14b"   # Optimiert für strukturierte Datenextraktion
-MODEL_LLM2          = "gemma4:e4b"    # Standardmodell
 OLLAMA_URL          = "http://host.docker.internal:11434/api/generate"
 
 # Default-Modell für neue Sessions
-DEFAULT_MODEL       = MODEL_LLM2
+DEFAULT_MODEL       = MODEL_LLM1
 DEFAULT_TEMPERATURE = 0.0  # Für deterministische, konsistente Extraktion
 
 # Frontend-URLs

@@ -1,5 +1,5 @@
 import requests
-from config import MODEL_LLM1, OLLAMA_URL
+from config import DEFAULT_MODEL, OLLAMA_URL
 from flask import session
 from .logger import log
 
@@ -42,10 +42,10 @@ def warmup_ollama():
     
     # Versuche Modell aus Session zu holen, sonst Fallback
     try:
-        selected_model = session.get("selected_model", MODEL_LLM1)
+        selected_model = session.get("selected_model", DEFAULT_MODEL)
     except RuntimeError:
         # Außerhalb Request-Context
-        selected_model = MODEL_LLM1
+        selected_model = DEFAULT_MODEL
     
     log(f"Ollama wird vorgewärmt mit Modell: {selected_model}")
     try:
@@ -59,7 +59,7 @@ def warmup_ollama():
         log(f"Ollama nicht erreichbar: {e}")
 
 
-def send_to_ollama(prompt, mnr, model, temperature=None):
+def send_to_ollama(prompt, model, temperature=None):
     """
     Sendet einen Prompt an Ollama mit optimierten Parametern für strukturierte Datenextraktion.
 
@@ -85,7 +85,6 @@ def send_to_ollama(prompt, mnr, model, temperature=None):
     is_deepseek_r1 = model.startswith("deepseek-r1")
     is_gpt_oss = model.startswith("gpt-oss")
 
-    # Qwen3:14b braucht spezielle Parameter (weniger restriktiv als qwen2.5)
     if is_qwen3_14b:
         options = {
             'temperature': 0.1,             # Minimal höher als 0, sonst zu restriktiv
