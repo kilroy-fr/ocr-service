@@ -1004,12 +1004,7 @@ function showQueueMonitor(finalizeData) {
 function onQueueComplete(processedCount) {
   setTimeout(async () => {
     await showImportCompleteDialog(processedCount);
-
-    let targetUrl = "/";
-    if (typeof HOME_URL !== 'undefined' && HOME_URL && HOME_URL !== 'undefined') {
-      targetUrl = HOME_URL;
-    }
-    window.location.href = targetUrl;
+    window.location.href = "/";
   }, 1000);
 }
 
@@ -1139,14 +1134,9 @@ document.addEventListener('click', async function(e) {
       if (!proceed) return;
     }
 
-    // Fallback für undefined/null HOME_URL
-    let targetUrl = "/";
-    if (typeof HOME_URL !== 'undefined' && HOME_URL && HOME_URL !== 'undefined') {
-      targetUrl = HOME_URL;
-    }
-    console.log(`Stopping QueueMonitor und redirect zu: ${targetUrl} (HOME_URL: ${HOME_URL})`);
+    console.log('Stopping QueueMonitor und redirect zur Startseite');
     QueueMonitor.stop();
-    window.location.href = targetUrl;
+    window.location.href = "/";
   }
 });
 

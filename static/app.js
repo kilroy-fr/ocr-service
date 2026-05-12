@@ -293,12 +293,15 @@ async function handleAnalyze(tab) {
     return;
   }
 
+  // Tab für Rückkehr nach Analyse im localStorage speichern (zuverlässiger als Server-Session)
+  localStorage.setItem("ocrLastTab", tab);
+
   showSpinner(true);
   try {
     const res = await fetch("/copy_and_analyze", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ files: selected })
+      body: JSON.stringify({ files: selected, tab: tab })
     });
     const data = await res.json().catch(() => ({}));
 
@@ -924,11 +927,25 @@ window.addEventListener("DOMContentLoaded", async () => {
   setupMasterCheckbox('einzel');
   setupMasterCheckbox('batch');
   updateAllFileLists();
-  await loadStagedFiles('medidok');
-  updateMasterCheckbox('medidok');
 
-  // Initiale Button-Sichtbarkeit setzen
-  updateFileOpsButtons('medidok');
+  // Tab nach Analyse oder Abbruch wiederherstellen.
+  // localStorage ist primär (browserlokal, unabhängig von Server-Session und HTTP-Cache).
+  // window.activeTab (vom Server injiziert) ist Fallback.
+  const storedTab = localStorage.getItem("ocrLastTab");
+  const serverTab = (window.activeTab && window.activeTab !== 'medidok') ? window.activeTab : null;
+  const initialTab = (storedTab && storedTab !== 'medidok') ? storedTab : serverTab;
+
+  if (initialTab) {
+    localStorage.removeItem("ocrLastTab");  // einmalig verwenden, dann löschen
+    switchTab(initialTab);
+    await loadStagedFiles(initialTab);
+    updateMasterCheckbox(initialTab);
+    updateFileOpsButtons(initialTab);
+  } else {
+    await loadStagedFiles('medidok');
+    updateMasterCheckbox('medidok');
+    updateFileOpsButtons('medidok');
+  }
 
   // Sortier-Funktionalität für alle Dateilisten initialisieren
   if (window.FileSorting) {
@@ -993,21 +1010,34 @@ window.addEventListener("DOMContentLoaded", async () => {
   // Tab-Wechsel
   const tabButtons = document.querySelectorAll('.tab-button');
   
-  const restoredTab = localStorage.getItem("activeTabAfterReset");
-  if (restoredTab) { 
-    switchTab(restoredTab); 
-    localStorage.removeItem("activeTabAfterReset"); 
-  }
-  
   tabButtons.forEach(button => {
     button.addEventListener("click", async () => {
       const targetTab = button.getAttribute("data-tab");
       const currentTabActive = document.querySelector(".tab-button.active")?.getAttribute("data-tab");
-      
+
       if (targetTab && targetTab !== currentTabActive) {
-        showSpinner(true);
-        
+        // Prüfen ob noch Staging-Dateien vorhanden sind
+        let hasStagedFiles = false;
         try {
+          const checkRes = await fetch('/list_staged_files');
+          const checkData = await checkRes.json().catch(() => ({}));
+          hasStagedFiles = checkData.success && checkData.files && checkData.files.length > 0;
+        } catch (e) { /* ignorieren */ }
+
+        if (hasStagedFiles) {
+          const confirmed = await Notifications.confirm(
+            "Im Arbeitsbereich befinden sich noch Dateien. Tab wechseln verwirft diese. Trotzdem wechseln?",
+            "Tab wechseln",
+            "Abbrechen"
+          );
+          if (!confirmed) return;
+        }
+
+        showSpinner(true);
+
+        try {
+          // Beim bewussten Tab-Wechsel: gespeicherten Tab löschen (frischer Start)
+          localStorage.removeItem("ocrLastTab");
           const res = await fetch("/reset_session");
           if (res.ok) {
             switchTab(targetTab);
@@ -1016,7 +1046,7 @@ window.addEventListener("DOMContentLoaded", async () => {
             if (preview) {
               preview.innerHTML = '<p style="color: #666;">Keine Vorschau verfügbar</p>';
             }
-            
+
             await loadStagedFiles(targetTab);
             updateButtonStates(targetTab);
           }

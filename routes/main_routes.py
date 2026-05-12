@@ -153,6 +153,9 @@ def index():
     # Aktuelles Modell an Template übergeben
     current_model = session.get("selected_model", MODEL_LLM1)
 
+    # Letzten Arbeits-Tab übergeben (wird nach Analyse wiederhergestellt)
+    active_tab = session.get("active_tab", "medidok")
+
     return render_template(
         "index.html",
         error=error_msg,
@@ -160,5 +163,6 @@ def index():
         llm=current_model,
         current_model=current_model,
         med_src=public_src,
-        processed_files=json.dumps(processed_files)
+        processed_files=json.dumps(processed_files),
+        active_tab=active_tab
     )

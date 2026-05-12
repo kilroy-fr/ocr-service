@@ -506,6 +506,56 @@ class StagingSession:
         self.session_id = None
         self.ops = []
 
+    def partial_commit(self, src_files: list[str]) -> list[str]:
+        """
+        Verschiebt nur bestimmte Staging-Dateien nach OUTPUT.
+        Session, restliche Staging-Dateien und verbleibende Ops bleiben erhalten.
+
+        Args:
+            src_files: Liste der src_rel-Dateinamen, die nach OUTPUT committed werden sollen
+                       (z.B. ["doc_ocr.pdf", "foto_ocr.pdf"])
+
+        Returns:
+            Liste der erfolgreich committeten dst_rel-Pfade in OUTPUT_ROOT
+        """
+        committed = []
+        remaining_ops = []
+        committed_srcs: set[str] = set()
+
+        for op in self.ops:
+            if op.get("kind") == "rename" and op["src_rel"] in src_files:
+                src_rel = op["src_rel"]
+                dst_rel = op["dst_rel"]
+                staged_src = self.work_dir / src_rel
+                final_dst = self.output_root / dst_rel
+                final_dst.parent.mkdir(parents=True, exist_ok=True)
+
+                if staged_src.exists():
+                    os.replace(str(staged_src), str(final_dst))
+                    committed.append(dst_rel)
+                    logger.info(f"Partial commit: {src_rel} → {dst_rel}")
+                else:
+                    logger.warning(f"Partial commit: Quelle nicht gefunden: {src_rel}")
+                committed_srcs.add(src_rel)
+            else:
+                remaining_ops.append(op)
+
+        # Dateien ohne Rename-Op direkt nach OUTPUT verschieben (old_fname == new_fname)
+        for src_file in src_files:
+            if src_file not in committed_srcs:
+                staged_src = self.work_dir / src_file
+                if staged_src.exists():
+                    final_dst = self.output_root / src_file
+                    final_dst.parent.mkdir(parents=True, exist_ok=True)
+                    os.replace(str(staged_src), str(final_dst))
+                    committed.append(src_file)
+                    logger.info(f"Partial commit (kein Rename): {src_file}")
+
+        self.ops = remaining_ops
+        self._save()
+
+        return committed
+
     def commit(self):
         for op in self.ops:
             if op.get("kind") != "rename":

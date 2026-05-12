@@ -13,7 +13,7 @@ from services.logger import log
 from services.session_manager import ensure_staging, cleanup_session, registry
 from services.file_utils import (
     fs, handle_successful_processing, sanitize_filename,
-    cleanup_orphaned_files, _os_rename_original
+    cleanup_orphaned_files, _os_rename_original, _os_remove_original
 )
 from services.ollama_client import warmup_ollama
 from services.import_queue import get_import_queue_service
@@ -252,6 +252,10 @@ def finalize_import():
     # Lösung: Finde die tatsächliche Datei im Staging und plane die Umbenennung.
 
     json_path = os.path.join(JSON_FOLDER, f"control_{sid}.json")
+    ocr_src_files = []        # OCR-Dateien die nach OUTPUT committed werden sollen
+    staging_cleanup_files = []  # Original-Uploads + Temp-Dateien aus Staging entfernen
+    staging_dir = None        # Wird unten gesetzt, muss hier initialisiert sein
+
     if os.path.exists(json_path):
         control_data = safe_load_json(json_path)
 
@@ -269,7 +273,6 @@ def finalize_import():
             staging_files = {}
             for fname in os.listdir(staging_dir):
                 if fname.endswith(".pdf"):
-                    # Speichere ohne Pfad für einfachen Vergleich
                     staging_files[fname] = fname
 
             log(f"📂 Gefundene Dateien im Staging ({staging_dir}): {list(staging_files.keys())}")
@@ -298,24 +301,46 @@ def finalize_import():
                             log(f"🔄 Plane Umbenennung: {old_fname} → {new_fname}")
                         else:
                             log(f"ℹ️ Keine Umbenennung nötig: {old_fname}")
+
+                        ocr_src_files.append(old_fname)
+
+                        # Original-Upload und Temp-Konvertierungsdateien für Bereinigung merken
+                        staging_cleanup_files.append(original_fname)
+                        conv_fname = f"{base}_converted.pdf"
+                        if conv_fname != old_fname:
+                            staging_cleanup_files.append(conv_fname)
+                        txt_conv = f"{base}_txt_converted.pdf"
+                        if txt_conv != old_fname:
+                            staging_cleanup_files.append(txt_conv)
                     else:
                         log(f"⚠️ Datei nicht im Staging gefunden: {old_fname}")
         else:
             log(f"⚠️ Staging-Verzeichnis nicht gefunden: {staging_dir}")
 
-    # 1) Commit durchführen
+    # 1) Partial Commit: nur die analysierten Dateien nach OUTPUT verschieben,
+    #    restliche Staging-Dateien und Session bleiben erhalten.
     try:
-        # Prüfe ob Session aktiv ist
         if not fs.session_id:
             log(f"⚠️ Keine aktive Staging-Session gefunden. Überspringe Commit.", level="warning")
         else:
-            fs.commit()
-            log(f"✅ Commit erfolgreich für Session: {sid}")
+            committed = fs.partial_commit(ocr_src_files)
+            log(f"✅ Partial commit: {len(committed)} Datei(en) nach OUTPUT verschoben, Session bleibt aktiv")
     except Exception as e:
         log(f"❌ Commit fehlgeschlagen: {e}", level="error")
         import traceback
         log(traceback.format_exc(), level="error")
         return jsonify(success=False, message=f"Commit fehlgeschlagen: {e}"), 500
+
+    # 1b) Quell-Dateien (Original-Uploads, Temp-Konvertierungen) aus Staging entfernen
+    if staging_dir and os.path.exists(staging_dir):
+        for fname in staging_cleanup_files:
+            fpath = os.path.join(staging_dir, fname)
+            if os.path.exists(fpath):
+                try:
+                    _os_remove_original(fpath)
+                    log(f"🗑️ Quell-Datei aus Staging entfernt: {fname}")
+                except Exception as e:
+                    log(f"⚠️ Konnte Quell-Datei nicht entfernen: {fname}: {e}", level="warning")
 
     # 2) Dateien sequenziell über ImportQueue nach IMPORT_QUEUE_DIR verschieben
     os.makedirs(IMPORT_QUEUE_DIR, exist_ok=True)
@@ -379,64 +404,14 @@ def finalize_import():
         else:
             log(f"[WARN] Original nicht gefunden in INPUT_ROOT: {original_filename}")
 
-    # 4) Staging-Verzeichnisse aufräumen (nach erfolgreichem Import)
-    staging_cleaned = False
-    output_cleaned = False
+    # 4) Session bewusst NICHT aufräumen – restliche Staging-Dateien bleiben erhalten.
+    #    Der Nutzer kann nach dem Import direkt weitere Dateien analysieren.
+    #    Die Session endet erst beim Schließen des Browserfensters (Cookie-Ablauf)
+    #    oder beim manuellen Reset.
+    remaining_staged = fs.list_staged_files() if fs.session_id else []
+    log(f"📂 Verbleibende Staging-Dateien: {len(remaining_staged)} ({remaining_staged})")
 
-    if sid and fs.session_id:
-        try:
-            from pathlib import Path
-            from services.file_utils import _rmtree_cifs
-
-            # Staging-Verzeichnis löschen (WORK_ROOT/session_id)
-            staging_session_dir = Path(WORK_ROOT) / sid
-            if staging_session_dir.exists():
-                log(f"🧹 Lösche Staging-Verzeichnis: {staging_session_dir}")
-                if _rmtree_cifs(staging_session_dir, verbose=True):
-                    staging_cleaned = True
-                    log(f"✅ Staging-Verzeichnis gelöscht: {staging_session_dir}")
-                else:
-                    log(f"⚠️ Staging-Verzeichnis konnte nicht vollständig gelöscht werden: {staging_session_dir}", level="warning")
-                    # Zeige verbleibende Einträge
-                    try:
-                        if staging_session_dir.exists():
-                            remaining = list(staging_session_dir.rglob('*'))
-                            log(f"   ℹ️ Verbleibende Einträge: {len(remaining)}", level="warning")
-                    except:
-                        pass
-
-            # Output-Verzeichnis der Session löschen (falls noch vorhanden)
-            output_session_dir = Path(OUTPUT_ROOT) / sid
-            if output_session_dir.exists():
-                log(f"🧹 Lösche Output-Verzeichnis: {output_session_dir}")
-                if _rmtree_cifs(output_session_dir, verbose=True):
-                    output_cleaned = True
-                    log(f"✅ Output-Verzeichnis gelöscht: {output_session_dir}")
-                else:
-                    log(f"⚠️ Output-Verzeichnis konnte nicht vollständig gelöscht werden: {output_session_dir}", level="warning")
-                    # Zeige verbleibende Einträge
-                    try:
-                        if output_session_dir.exists():
-                            remaining = list(output_session_dir.rglob('*'))
-                            log(f"   ℹ️ Verbleibende Einträge: {len(remaining)}", level="warning")
-                    except:
-                        pass
-
-        except Exception as e:
-            log(f"⚠️ Fehler beim Löschen der Staging-Verzeichnisse: {e}", level="warning")
-
-    # 5) Session aufräumen
-    if sid:
-        registry.unregister(sid)
-        log(f"🧹 Session nach Finalisierung aufgeräumt: {sid}")
-
-    session.clear()
-
-    cleanup_msg = ""
-    if staging_cleaned or output_cleaned:
-        cleanup_msg = f" Staging-Verzeichnisse aufgeräumt: {staging_cleaned}, Output: {output_cleaned}."
-
-    log(f"📊 Zusammenfassung: {queued} Dateien in Queue eingereiht, {trashed} Originale in TRASH verschoben.{cleanup_msg}")
+    log(f"📊 Zusammenfassung: {queued} Dateien in Queue eingereiht, {trashed} Originale in TRASH verschoben.")
     log(f"ℹ️ Die Dateien werden nun sequenziell verarbeitet. Nutzen Sie /import_queue_status zur Überwachung.")
 
     return jsonify(
@@ -445,9 +420,8 @@ def finalize_import():
         moved=moved,
         trashed=trashed,
         trash_location=trash_session_dir,
-        staging_cleaned=staging_cleaned,
-        output_cleaned=output_cleaned,
-        message=f"{queued} Dateien werden sequenziell importiert. Der externe Dienst erhält jeweils nur eine Datei."
+        remaining_staged=len(remaining_staged),
+        message=f"{queued} Dateien werden sequenziell importiert. Noch {len(remaining_staged)} Datei(en) im Arbeitsbereich."
     )
 
 
@@ -875,21 +849,49 @@ def commit_changes():
 
 @control_bp.route("/abort", methods=["POST"])
 def abort_changes():
-    """Verwirft alle Änderungen."""
+    """
+    Verwirft die aktuelle Analyse, behält aber alle Staging-Dateien und die Session.
+    Der Nutzer kehrt damit in seinen vorbereiteten Arbeitsbereich zurück.
+    Nur die OCR-Ausgabedateien (_ocr.pdf) aus der aktuellen Analyse werden bereinigt.
+    """
     try:
         sid = session.get("session_id")
 
-        # Staging abräumen
-        fs.abort()
-        log(f"🚫 Änderungen verworfen für Session: {sid}")
+        # Analyse-Artefakte aus Staging bereinigen (nur _ocr.pdf der aktuellen Analyse)
+        json_path = os.path.join(JSON_FOLDER, f"control_{sid}.json")
+        if os.path.exists(json_path) and fs.session_id:
+            try:
+                staging_dir = str(fs.work_dir)
+                control_data = safe_load_json(json_path)
+                for entry in control_data:
+                    original_fname = entry.get("originalFilename", "")
+                    if original_fname:
+                        base = os.path.splitext(original_fname)[0]
+                        if original_fname.lower().endswith('.txt'):
+                            ocr_fname = f"{base}_txt_converted.pdf"
+                        else:
+                            ocr_fname = f"{base}_ocr.pdf"
+                        ocr_path = os.path.join(staging_dir, ocr_fname)
+                        if os.path.exists(ocr_path):
+                            _os_remove_original(ocr_path)
+                            log(f"🗑️ OCR-Artefakt bereinigt: {ocr_fname}")
+            except Exception as e:
+                log(f"⚠️ Fehler beim Bereinigen der OCR-Artefakte: {e}", level="warning")
 
-        # Session aufräumen
-        cleanup_session()
-        session.clear()
+        # control.json löschen
+        if os.path.exists(json_path):
+            try:
+                _os_remove_original(json_path)
+                log(f"🗑️ control.json nach Abbruch gelöscht")
+            except Exception as e:
+                log(f"⚠️ Fehler beim Löschen von control.json: {e}", level="warning")
+
+        # Session und Staging NICHT löschen – der Nutzer setzt seine Arbeit fort
+        log(f"↩️ Analyse abgebrochen, Staging bleibt erhalten für Session: {sid}")
 
         return jsonify(success=True)
     except Exception as e:
-        log(f"❌ Fehler beim Verwerfen: {e}", level="error")
+        log(f"❌ Fehler beim Abbrechen: {e}", level="error")
         return jsonify(success=False, message=str(e)), 500
 
 

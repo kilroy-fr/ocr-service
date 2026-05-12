@@ -31,12 +31,16 @@ def copy_and_analyze_progressive():
     session_id = ensure_staging()
     payload = request.get_json(force=True) or {}
     selected = payload.get("files", [])
+    tab = payload.get("tab", "medidok")
 
     if selected and isinstance(selected[0], dict):
         selected = [x.get("file") for x in selected if x.get("file")]
 
     if not selected:
         return jsonify(success=False, message="Keine Dateien übergeben."), 400
+
+    # Herkunfts-Tab speichern, um nach Analyse dorthin zurückzukehren
+    session["active_tab"] = tab
 
     # Modell aus Session holen (jetzt, solange wir im Request-Context sind)
     current_model = session.get("selected_model", MODEL_LLM1)
