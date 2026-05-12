@@ -15,7 +15,7 @@ einreiht. Läuft als Docker-Container und bindet ein CIFS/SMB-Netzlaufwerk ein.
 ### Stack
 - **Backend:** Python 3.12 / Flask 3.1
 - **OCR:** Tesseract (via Subprocess)
-- **LLM:** Ollama – Standard-Modell `qwen2.5:14b`, Temperature 0.0
+- **LLM:** Ollama – Standard-Modell `gemma4:e4b`, Temperature 0.0
 - **PDF-Handling:** PyMuPDF (fitz), img2pdf, WeasyPrint
 - **DOCX:** python-docx
 - **Deployment:** Docker + Docker Compose

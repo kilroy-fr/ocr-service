@@ -35,7 +35,7 @@ Browser ──► Flask (Port 5000) ──► Tesseract OCR ──► LLM (Ollam
 |----------------|--------------------------------------|
 | Backend        | Python 3.12 / Flask 3.1              |
 | OCR            | Tesseract (via Subprocess)           |
-| LLM            | Ollama (z.B. `qwen2.5:14b`)         |
+| LLM            | Ollama (z.B. `gemma4:e4b`)          |
 | PDF-Handling   | PyMuPDF, img2pdf, WeasyPrint         |
 | DOCX           | python-docx                          |
 | Deployment     | Docker + Docker Compose              |
@@ -85,7 +85,7 @@ Auf dem Host-System Ollama installieren und das Modell herunterladen:
 
 ```bash
 # Ollama installieren: https://ollama.com
-ollama pull qwen2.5:14b
+ollama pull gemma4:e4b
 ```
 
 ### 4. Docker-Container starten
@@ -124,7 +124,8 @@ Der Service ist danach unter `http://localhost:5000` erreichbar.
 Das Standard-Modell und die Ollama-URL werden in [config.py](config.py) konfiguriert:
 
 ```python
-MODEL_LLM1  = "qwen2.5:14b"
+MODEL_LLM2  = "gemma4:e4b"      # Standardmodell
+MODEL_LLM1  = "qwen2.5:14b"     # Alternative
 OLLAMA_URL  = "http://host.docker.internal:11434/api/generate"
 ```
 
