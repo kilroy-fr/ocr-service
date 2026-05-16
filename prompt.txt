@@ -11,10 +11,12 @@ AUSGABEFORMAT (genau in dieser Reihenfolge):
 5. Fachrichtung (z.B. Psychiater, Kardiologie, Labor)
 6. Name Absender - NUR KERNNAME ohne Titel/Zusätze
    Bei Arzt: Nur Nachname (z.B. "Schmidt" statt "Dr. med. Schmidt")
-   Bei Klinik/Krankenhaus: Kurzform (z.B. "Uni Würzburg" statt vollständiger Name)
+   Bei Klinik/Krankenhaus: Name der EINRICHTUNG, nicht der unterzeichnende Arzt (z.B. "Uni Würzburg", "St. Elisabeth")
    Bei Labor: Laborname kurz (z.B. "Labor Enders")
-7. Hauptbefund
+7. Hauptbefund (ein Satz)
 8. Kategorie (nur die Zahl: 5=Praxis, 6=Krankenhaus)
+
+FEHLENDE INFORMATIONEN: Falls eine Information nicht im Dokument steht → leere Zeile lassen. NIEMALS Daten erfinden oder schätzen.
 
 BEISPIEL ARZTPRAXIS:
 Mustermann
@@ -46,4 +48,4 @@ Labor Enders
 Blutbild auffällig
 5
 
-Leere Zeilen wenn Information fehlt. Immer 8 Zeilen. Keine Satzzeichen am Zeilenende.
+Immer genau 8 Zeilen. Keine Satzzeichen am Zeilenende.
