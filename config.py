@@ -26,5 +26,9 @@ OLLAMA_URL          = "http://host.docker.internal:11434/api/generate"
 DEFAULT_MODEL       = MODEL_LLM1
 DEFAULT_TEMPERATURE = 0.0  # Für deterministische, konsistente Extraktion
 
+# OCR-Fallback via Vision-LLM (wenn Tesseract zu wenig Text liefert)
+OCR_FALLBACK_MODEL     = "glm-ocr:latest"
+OCR_FALLBACK_MIN_CHARS = 100  # Gesamtzeichen unterhalb dieses Schwellwerts → Fallback
+
 # Frontend-URLs
 HOME_URL            = os.environ.get("HOME_URL", "/")  # Startseite für Weiterleitung (relative URL bevorzugt)

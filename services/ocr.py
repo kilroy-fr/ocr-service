@@ -7,7 +7,7 @@ import json
 from .summarizer import summarize_pdf
 from .file_utils import fs, to_rel_under_input, safe_line, handle_successful_processing, build_absender
 from .logger import log
-from config import INPUT_ROOT, JSON_FOLDER
+from config import INPUT_ROOT, JSON_FOLDER, OCR_FALLBACK_MODEL, OCR_FALLBACK_MIN_CHARS
 from flask import render_template, session
 
 def process_medidok_files(file_paths, target_dir_unused):
@@ -856,6 +856,106 @@ def create_control_json_from_summaries(summaries, *, overwrite=False, dedupe=Tru
 
     log(f"[INFO] control.json aktualisiert ({len(control_data)} Einträge): {path}")
 
+def _count_pdf_text(pdf_path: str) -> int:
+    """Zählt Gesamtzeichen im extrahierten Text eines PDFs."""
+    try:
+        import fitz
+        doc = fitz.open(pdf_path)
+        total = sum(len((page.get_text() or "").strip()) for page in doc)
+        doc.close()
+        return total
+    except Exception:
+        return 0
+
+
+def _glm_ocr_fallback(input_pdf_path: str, staged_out: str) -> bool:
+    """
+    GLM-OCR Fallback: Rendert PDF-Seiten als Bilder, sendet sie an das
+    GLM-OCR Vision-Modell in Ollama und erstellt ein neues Text-PDF.
+
+    Returns:
+        bool: True bei Erfolg, False bei Fehler
+    """
+    import fitz
+    import base64
+    import requests
+    from config import OLLAMA_URL
+
+    try:
+        doc = fitz.open(input_pdf_path)
+        num_pages = len(doc)
+        all_text = []
+
+        for page_num, page in enumerate(doc):
+            # Seite mit 200 DPI rendern (Kompromiss: Qualität vs. Größe)
+            mat = fitz.Matrix(200 / 72, 200 / 72)
+            pix = page.get_pixmap(matrix=mat)
+            img_b64 = base64.b64encode(pix.tobytes("png")).decode("utf-8")
+
+            log(f"📸 GLM-OCR: Seite {page_num + 1}/{num_pages}")
+
+            payload = {
+                "model": OCR_FALLBACK_MODEL,
+                "prompt": (
+                    "Extrahiere den vollständigen Text aus diesem Bild. "
+                    "Behalte die Struktur bei. Gib nur den Text zurück, keine Erklärungen."
+                ),
+                "images": [img_b64],
+                "stream": False,
+                "options": {"temperature": 0.0, "num_predict": 2000},
+            }
+
+            response = requests.post(OLLAMA_URL, json=payload, timeout=120)
+            response.raise_for_status()
+            page_text = response.json().get("response", "").strip()
+
+            if page_text:
+                all_text.append(f"--- Seite {page_num + 1} ---\n{page_text}")
+                log(f"✅ GLM-OCR Seite {page_num + 1}: {len(page_text)} Zeichen")
+            else:
+                log(f"⚠️ GLM-OCR Seite {page_num + 1}: kein Text erkannt")
+
+        doc.close()
+
+        if not all_text:
+            log("❌ GLM-OCR: kein Text auf keiner Seite gefunden", level="error")
+            return False
+
+        # Neues PDF mit extrahiertem Text aufbauen
+        full_text = "\n\n".join(all_text)
+        new_doc = fitz.open()
+        page = new_doc.new_page(width=595, height=842)
+        y, line_height = 50, 14
+
+        for line in full_text.split("\n"):
+            if y + line_height > 792:
+                page = new_doc.new_page(width=595, height=842)
+                y = 50
+            try:
+                page.insert_text((50, y), line, fontsize=10, fontname="helv")
+            except Exception:
+                try:
+                    page.insert_text(
+                        (50, y),
+                        line.encode("ascii", "replace").decode("ascii"),
+                        fontsize=10, fontname="helv"
+                    )
+                except Exception:
+                    pass
+            y += line_height
+
+        new_doc.save(staged_out)
+        new_doc.close()
+
+        total_chars = sum(len(t) for t in all_text)
+        log(f"✅ GLM-OCR Fallback: {total_chars} Zeichen → {os.path.basename(staged_out)}")
+        return True
+
+    except Exception as e:
+        log(f"❌ GLM-OCR Fallback fehlgeschlagen: {e}", level="error")
+        return False
+
+
 def ocr_to_staging(input_pdf_path: str, output_rel: str):
     output_basename = os.path.basename(output_rel)
     staged_out = os.path.join(fs.work_dir, output_basename)
@@ -888,5 +988,13 @@ def ocr_to_staging(input_pdf_path: str, output_rel: str):
     if not os.path.exists(staged_out):
         log(f"❌ OCR-Zieldatei fehlt: {staged_out}", level="error")
         return None
+
+    # Qualitätsprüfung: bei zu wenig Text GLM-OCR als Fallback
+    text_chars = _count_pdf_text(staged_out)
+    log(f"📊 Tesseract-Ergebnis: {text_chars} Zeichen (Schwellwert: {OCR_FALLBACK_MIN_CHARS})")
+    if text_chars < OCR_FALLBACK_MIN_CHARS:
+        log(f"⚠️ Zu wenig Text – starte GLM-OCR Fallback ({OCR_FALLBACK_MODEL})")
+        if not _glm_ocr_fallback(input_pdf_path, staged_out):
+            log("⚠️ GLM-OCR Fallback fehlgeschlagen – Tesseract-Ergebnis bleibt erhalten", level="warning")
 
     return staged_out
