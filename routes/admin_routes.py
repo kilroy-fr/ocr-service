@@ -24,8 +24,7 @@ def available_models():
         "qwen3:14b",
         "qwen3:8b",
         "deepseek-r1:14b",
-        "gpt-oss:20b",
-        "llama3.1:8b"
+        "gpt-oss:20b"
     ]
 
     try:
