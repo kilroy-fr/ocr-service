@@ -110,16 +110,18 @@ def send_to_ollama(prompt, model, temperature=None):
         timeout = 60
 
     elif is_gpt_oss:
-        # GPT-OSS ist sehr groß und langsam - braucht mehr Zeit und weniger Restriktionen
+        # gpt-oss:20b verbraucht ~450 Token für internes Reasoning bevor die Antwort kommt.
+        # num_predict muss hoch genug sein, sonst endet Generierung mit done_reason=length
+        # und response bleibt leer. num_ctx erhöht für den längeren Reasoning-Kontext.
         options = {
-            'temperature': 0.2,             # Etwas höher für Kreativität
+            'temperature': 0.2,
             'top_p': 0.95,
             'top_k': 50,
             'repeat_penalty': 1.05,
-            'num_predict': 400,
-            'num_ctx': 2048,
+            'num_predict': 2000,
+            'num_ctx': 4096,
         }
-        timeout = 90  # Sehr langer Timeout wegen Modellgröße
+        timeout = 120  # Mehr Zeit wegen längerem Reasoning
 
     else:
         # Standard-Parameter für andere Modelle (qwen2.5:14b, qwen3:8b, etc.)
