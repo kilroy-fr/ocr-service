@@ -138,8 +138,8 @@ def send_to_ollama(prompt, model, temperature=None):
         'prompt': prompt,
         'stream': False,
         'options': options,
-        # think auf Top-Level: deaktiviert Reasoning-Modus für qwen3 und deepseek-r1
-        **({"think": False} if is_qwen3 or is_deepseek_r1 else {}),
+        # think auf Top-Level: deaktiviert Reasoning-Modus für Reasoning-Modelle
+        **({"think": False} if is_qwen3 or is_deepseek_r1 or is_gpt_oss else {}),
     }
 
     try:
