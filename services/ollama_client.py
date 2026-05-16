@@ -81,11 +81,11 @@ def send_to_ollama(prompt, model, temperature=None):
             temperature = 0.0
 
     # Modell-spezifische Optimierungen
-    is_qwen3_14b = model.startswith("qwen3:14b")
+    is_qwen3 = model.startswith("qwen3:")
     is_deepseek_r1 = model.startswith("deepseek-r1")
     is_gpt_oss = model.startswith("gpt-oss")
 
-    if is_qwen3_14b:
+    if is_qwen3:
         options = {
             'temperature': 0.1,             # Minimal höher als 0, sonst zu restriktiv
             'top_p': 0.95,                  # Weniger streng, mehr Flexibilität
@@ -137,7 +137,9 @@ def send_to_ollama(prompt, model, temperature=None):
         'model': model,
         'prompt': prompt,
         'stream': False,
-        'options': options
+        'options': options,
+        # think auf Top-Level: deaktiviert Reasoning-Modus für qwen3 und deepseek-r1
+        **({"think": False} if is_qwen3 or is_deepseek_r1 else {}),
     }
 
     try:
@@ -147,7 +149,12 @@ def send_to_ollama(prompt, model, temperature=None):
             timeout=timeout
         )
         response.raise_for_status()
-        return response.json().get("response", "").strip()
+        raw = response.json().get("response", "").strip()
+        # qwen3 und andere Reasoning-Modelle geben <think>...</think>-Blöcke aus,
+        # die die Zeilen-Parsing-Logik zerstören würden.
+        import re
+        raw = re.sub(r'<think>.*?</think>', '', raw, flags=re.DOTALL).strip()
+        return raw
     except Exception as e:
         log(f"Fehler bei der Anfrage an Ollama: {e}")
         if response := locals().get("response"):
