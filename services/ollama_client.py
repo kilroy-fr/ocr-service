@@ -84,6 +84,7 @@ def send_to_ollama(prompt, model, temperature=None):
     is_qwen3 = model.startswith("qwen3:")
     is_deepseek_r1 = model.startswith("deepseek-r1")
     is_gpt_oss = model.startswith("gpt-oss")
+    is_gemma4 = model.startswith("gemma4:")
 
     if is_qwen3:
         options = {
@@ -122,6 +123,19 @@ def send_to_ollama(prompt, model, temperature=None):
             'num_ctx': 4096,
         }
         timeout = 120  # Mehr Zeit wegen längerem Reasoning
+
+    elif is_gemma4:
+        # gemma4 verbraucht ~500-700 Token gesamt (internes Reasoning ohne sichtbares Thinking-Feld).
+        # num_predict=400 führt zu done_reason=length und leerem response.
+        options = {
+            'temperature': 0.1,
+            'top_p': 0.95,
+            'top_k': 40,
+            'repeat_penalty': 1.05,
+            'num_predict': 2000,
+            'num_ctx': 4096,
+        }
+        timeout = 120
 
     else:
         # Standard-Parameter für andere Modelle (qwen2.5:14b, qwen3:8b, etc.)
