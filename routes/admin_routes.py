@@ -19,14 +19,14 @@ def available_models():
     """Gibt Liste verfügbarer LLM-Modelle zurück."""
     # Whitelist der erlaubten Modelle (reduzierte Auswahl)
     ALLOWED_MODELS = [
-        "qwen2.5:14b",
-        "qwen2.5:7b",
-        "qwen3:14b",
-        "qwen3:8b",
-        "deepseek-r1:14b",
-        "gpt-oss:20b",
-        "gemma4:e2b",
-        "gemma4:26b"
+        "qwen2.5:7b",       #  4.7 GB
+        "qwen3:8b",         #  5.2 GB
+        "gemma4:e2b",       #  7.2 GB
+        "deepseek-r1:14b",  #  9.0 GB
+        "qwen2.5:14b",      #  9.0 GB
+        "qwen3:14b",        #  9.3 GB
+        "gpt-oss:20b",      # 13.8 GB
+        "gemma4:26b",       # 18.0 GB
     ]
 
     try:
