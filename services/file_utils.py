@@ -8,7 +8,7 @@ from config import INPUT_ROOT, WORK_ROOT, OUTPUT_ROOT
 from dataclasses import dataclass, asdict
 
 import tempfile
-import fitz  # PyMuPDF
+import pymupdf as fitz  # PyMuPDF
 import os
 import json
 import time

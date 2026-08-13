@@ -527,7 +527,7 @@ def rotate_file():
 
         # PDF rotieren
         if ext == 'pdf':
-            import fitz
+            import pymupdf as fitz
             doc = fitz.open(file_path)
             for page in doc:
                 page.set_rotation((page.rotation + angle) % 360)

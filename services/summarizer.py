@@ -1,5 +1,5 @@
 import os
-import fitz
+import pymupdf as fitz
 from flask import session
 from config import PROMPT_TEMPLATE, INPUT_ROOT, DEFAULT_MODEL
 from .ollama_client import send_to_ollama

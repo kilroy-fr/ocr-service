@@ -60,7 +60,7 @@ def process_medidok_files(file_paths, target_dir_unused):
 
             try:
                 from docx import Document
-                import fitz  # PyMuPDF
+                import pymupdf as fitz  # PyMuPDF
 
                 # DOCX öffnen und Text extrahieren
                 doc = Document(working_input)
@@ -203,7 +203,7 @@ def process_medidok_files(file_paths, target_dir_unused):
                 temp_pdf.parent.mkdir(parents=True, exist_ok=True)
 
                 # Text als einfaches PDF erstellen mit PyMuPDF (fitz)
-                import fitz  # PyMuPDF ist bereits installiert
+                import pymupdf as fitz  # PyMuPDF ist bereits installiert
 
                 doc = fitz.open()  # Neues leeres PDF
                 page = doc.new_page(width=595, height=842)  # A4-Format
@@ -458,7 +458,7 @@ def process_medidok_files_with_model(file_paths, target_dir_unused, model, sessi
 
             try:
                 from docx import Document
-                import fitz  # PyMuPDF
+                import pymupdf as fitz  # PyMuPDF
 
                 # DOCX öffnen und Text extrahieren
                 doc = Document(working_input)
@@ -603,7 +603,7 @@ def process_medidok_files_with_model(file_paths, target_dir_unused, model, sessi
                 temp_pdf.parent.mkdir(parents=True, exist_ok=True)
 
                 # Text als einfaches PDF erstellen mit PyMuPDF (fitz)
-                import fitz  # PyMuPDF ist bereits installiert
+                import pymupdf as fitz  # PyMuPDF ist bereits installiert
 
                 doc = fitz.open()  # Neues leeres PDF
                 page = doc.new_page(width=595, height=842)  # A4-Format
@@ -859,7 +859,7 @@ def create_control_json_from_summaries(summaries, *, overwrite=False, dedupe=Tru
 def _count_pdf_text(pdf_path: str) -> int:
     """Zählt Gesamtzeichen im extrahierten Text eines PDFs."""
     try:
-        import fitz
+        import pymupdf as fitz
         doc = fitz.open(pdf_path)
         total = sum(len((page.get_text() or "").strip()) for page in doc)
         doc.close()
@@ -876,7 +876,7 @@ def _glm_ocr_fallback(input_pdf_path: str, staged_out: str) -> bool:
     Returns:
         bool: True bei Erfolg, False bei Fehler
     """
-    import fitz
+    import pymupdf as fitz
     import base64
     import requests
     from config import OLLAMA_URL

@@ -14,9 +14,10 @@ einreiht. Läuft als Docker-Container und bindet ein CIFS/SMB-Netzlaufwerk ein.
 
 ### Stack
 - **Backend:** Python 3.12 / Flask 3.1
-- **OCR:** Tesseract (via Subprocess)
-- **LLM:** Ollama – Standard-Modell `qwen2.5:14b`, Temperature 0.0
-- **PDF-Handling:** PyMuPDF (fitz), img2pdf, WeasyPrint
+- **OCR:** Tesseract (via Subprocess), OCRmyPDF, Ghostscript
+- **LLM:** Ollama – Standard-Modell `qwen3:8b` (`MODEL_LLM1` in `config.py`), Temperature 0.0
+- **OCR-Fallback:** `glm-ocr:latest` (Vision), greift unter `OCR_FALLBACK_MIN_CHARS` Zeichen
+- **PDF-Handling:** PyMuPDF, img2pdf
 - **DOCX:** python-docx
 - **Deployment:** Docker + Docker Compose
 
@@ -123,6 +124,27 @@ Siehe `.env.example` für alle verfügbaren Konfigurationsoptionen.
 - **LLM-Aufrufe:** Über `services/ollama_client.py`
 - **Session-Kontext:** `fs.session_id` / `fs.work_dir` für sessionbezogene Pfade
 - **Fehlerbehandlung:** Exceptions loggen, nicht still schlucken
+- **PyMuPDF:** Immer `import pymupdf as fitz` – das Legacy-Modul `fitz` gibt seit
+  PyMuPDF 1.28 beim Import eine Deprecation-Warnung aus. Der Alias hält alle
+  bestehenden `fitz.*`-Aufrufe unverändert gültig.
+
+---
+
+## Abhängigkeiten & Docker-Image
+
+Alle Pakete in `requirements.txt` sind exakt gepinnt und liefern für `python:3.12-slim`
+fertige manylinux-Wheels. Das Image enthält **bewusst keinen Compiler** (kein `gcc`,
+kein `python3-dev`) und auch keine Header-Pakete (`libjpeg-dev`, `zlib1g-dev`) – die
+Pillow-Wheels bringen ihre Bibliotheken selbst mit. Das spart rund 320 MB.
+
+`pip install` läuft deshalb mit `--only-binary=:all:`. Sollte ein Paket künftig kein
+passendes Wheel mehr liefern, bricht der Build klar ab, statt undurchsichtig an einem
+fehlenden `gcc` zu scheitern. In dem Fall entweder die Version anpassen oder die
+Build-Abhängigkeiten gezielt wieder aufnehmen.
+
+Beim Anheben von Versionen: `docker compose build` genügt nicht zum Prüfen – die
+Wheels kommen erst beim Neubau der `pip`-Schicht. Nach Änderungen an `requirements.txt`
+immer `docker compose up --build` fahren.
 
 ---
 

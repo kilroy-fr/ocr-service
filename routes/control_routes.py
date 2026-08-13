@@ -4,7 +4,7 @@ Control Routes - Document Control Panel
 import os
 import json
 import time
-import fitz
+import pymupdf as fitz
 import img2pdf
 from datetime import datetime
 from flask import Blueprint, request, jsonify, session, render_template, redirect, url_for

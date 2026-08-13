@@ -34,9 +34,9 @@ Browser ──► Flask (Port 5000) ──► Tesseract OCR ──► LLM (Ollam
 | Komponente     | Technologie                          |
 |----------------|--------------------------------------|
 | Backend        | Python 3.12 / Flask 3.1              |
-| OCR            | Tesseract (via Subprocess)           |
-| LLM            | Ollama (z.B. `qwen2.5:14b`)         |
-| PDF-Handling   | PyMuPDF, img2pdf, WeasyPrint         |
+| OCR            | Tesseract, OCRmyPDF, Ghostscript     |
+| LLM            | Ollama (Standard: `qwen3:8b`)        |
+| PDF-Handling   | PyMuPDF, img2pdf                     |
 | DOCX           | python-docx                          |
 | Deployment     | Docker + Docker Compose              |
 
@@ -85,7 +85,10 @@ Auf dem Host-System Ollama installieren und das Modell herunterladen:
 
 ```bash
 # Ollama installieren: https://ollama.com
-ollama pull qwen2.5:14b
+ollama pull qwen3:8b
+
+# Optional: Vision-Modell als OCR-Fallback bei schlechter Texterkennung
+ollama pull glm-ocr:latest
 ```
 
 ### 4. Docker-Container starten
@@ -124,8 +127,12 @@ Der Service ist danach unter `http://localhost:5000` erreichbar.
 Das Standard-Modell und die Ollama-URL werden in [config.py](config.py) konfiguriert:
 
 ```python
-MODEL_LLM1  = "qwen2.5:14b"
+MODEL_LLM1  = "qwen3:8b"
 OLLAMA_URL  = "http://host.docker.internal:11434/api/generate"
+
+# Vision-Fallback, wenn Tesseract zu wenig Text liefert
+OCR_FALLBACK_MODEL     = "glm-ocr:latest"
+OCR_FALLBACK_MIN_CHARS = 100
 ```
 
 Im Docker-Setup verbindet sich der Container über `host.docker.internal` mit der
@@ -155,6 +162,17 @@ python app.py
 ```
 
 Erfordert Tesseract im PATH und Ollama auf `localhost:11434`.
+
+### Abhängigkeiten
+
+Alle Pakete in [requirements.txt](requirements.txt) sind exakt gepinnt und liegen als
+fertige Wheels vor. Das Docker-Image enthält deshalb keinen Compiler; `pip install`
+läuft mit `--only-binary=:all:`. Nach Änderungen an den Abhängigkeiten das Image
+neu bauen:
+
+```bash
+docker compose up --build
+```
 
 ## Projektstruktur
 

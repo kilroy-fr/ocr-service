@@ -221,7 +221,7 @@ def ocr_only():
             if filename.lower().endswith('.docx'):
                 try:
                     from docx import Document
-                    import fitz
+                    import pymupdf as fitz
 
                     temp_rel = f"{base_no_ext}_docx_converted.pdf"
                     temp_pdf = os.path.join(fs.work_dir, temp_rel)
