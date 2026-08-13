@@ -572,15 +572,18 @@ async function saveData() {
 }
 
 function checkFinalizeReady() {
-  // Button nur aktivieren, wenn ALLE Dateien:
-  // 1. Besucht wurden UND
-  // 2. Eine Include-Entscheidung haben (ja oder nein)
-  const allVisited = files.every((_, index) => visited.has(index));
   const allDecided = files.every(f => f.include === true || f.include === false);
-  
-  document.getElementById("finalizeBtn").disabled = !(allVisited && allDecided);
-  
-  if (allVisited && !allDecided) {
+  const ready = files.length > 0 && allDecided;
+
+  document.getElementById("finalizeBtn").disabled = !ready;
+
+  const finalizeOverlay = document.getElementById("finalizeOverlay");
+  if (finalizeOverlay) {
+    finalizeOverlay.disabled = !ready;
+    finalizeOverlay.classList.toggle("hidden", !ready);
+  }
+
+  if (!allDecided) {
     const remaining = files.filter(f => f.include !== true && f.include !== false).length;
     console.log(`WARNUNG: ${remaining} Datei(en) haben noch keine Include-Entscheidung`);
   }
@@ -1206,10 +1209,12 @@ function setupSideOverlays() {
   const controlActions = document.querySelector('.control-actions');
   const prevOverlay = document.getElementById('prevOverlay');
   const nextOverlay = document.getElementById('nextOverlay');
+  const finalizeOverlay = document.getElementById('finalizeOverlay');
   if (!controlActions || !prevOverlay || !nextOverlay) return;
 
   prevOverlay.addEventListener('click', prevFile);
   nextOverlay.addEventListener('click', nextFile);
+  if (finalizeOverlay) finalizeOverlay.addEventListener('click', finalizeAnalysis);
 
   const observer = new IntersectionObserver((entries) => {
     const visible = entries[0].isIntersecting;

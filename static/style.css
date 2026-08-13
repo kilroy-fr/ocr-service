@@ -659,6 +659,48 @@ input[type="submit"]:hover,
   transform: translateY(-50%) scale(0.93);
 }
 
+/* ============================================ */
+/* FLOATING FINALIZE BUTTON (control.html)     */
+/* ============================================ */
+.floating-finalize-btn {
+  position: fixed;
+  right: 30px;
+  bottom: 30px;
+  width: 105px;
+  height: 105px;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
+  border: none;
+  border-radius: 50%;
+  color: #022c22;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.floating-finalize-btn:hover:not(:disabled) {
+  transform: scale(1.1) translateY(-5px);
+  box-shadow: 0 10px 30px rgba(16, 185, 129, 0.7);
+}
+
+.floating-finalize-btn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.floating-finalize-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.floating-finalize-btn.hidden {
+  display: none;
+}
+
 /* PRINT STYLES */
 /* ============================================ */
 @media print {
@@ -746,13 +788,13 @@ input[readonly] {
   position: fixed;
   right: 30px;
   bottom: 30px;
-  width: 70px;
-  height: 70px;
+  width: 105px;
+  height: 105px;
   background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
   border: none;
   border-radius: 50%;
   color: #022c22;
-  font-size: 32px;
+  font-size: 48px;
   cursor: pointer;
   box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
   z-index: 1000;
