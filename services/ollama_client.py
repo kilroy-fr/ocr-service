@@ -125,8 +125,10 @@ def send_to_ollama(prompt, model, temperature=None):
         timeout = 120  # Mehr Zeit wegen längerem Reasoning
 
     elif is_gemma4:
-        # gemma4 verbraucht ~500-700 Token gesamt (internes Reasoning ohne sichtbares Thinking-Feld).
-        # num_predict=400 führt zu done_reason=length und leerem response.
+        # gemma4:12b/26b denken laenger als jedes num_predict-Budget zulaesst und liefern
+        # ueber /api/generate eine leere response (done_reason=length, 0 sichtbare Tokens),
+        # auch mit num_predict=2000. Nur ueber /api/chat mit think:False wird das Reasoning
+        # zuverlaessig unterdrueckt (siehe TESTERGEBNISSE.md).
         options = {
             'temperature': 0.1,
             'top_p': 0.95,
@@ -149,24 +151,41 @@ def send_to_ollama(prompt, model, temperature=None):
         }
         timeout = 30
 
-    payload = {
-        'model': model,
-        'prompt': prompt,
-        'stream': False,
-        'options': options,
-        # think auf Top-Level: deaktiviert Reasoning-Modus für qwen3/deepseek-r1.
-        # gpt-oss NICHT: bei think:true/false ist response leer – ohne Parameter funktioniert es korrekt.
-        **({"think": False} if is_qwen3 or is_deepseek_r1 else {}),
-    }
-
     try:
-        response = requests.post(
-            OLLAMA_URL,
-            json=payload,
-            timeout=timeout
-        )
-        response.raise_for_status()
-        raw = response.json().get("response", "").strip()
+        if is_gemma4:
+            # /api/chat statt /api/generate: nur hier unterdrueckt think:False
+            # das Reasoning von gemma4 zuverlaessig (siehe Kommentar oben).
+            payload = {
+                'model': model,
+                'messages': [{'role': 'user', 'content': prompt}],
+                'stream': False,
+                'think': False,
+                'options': options,
+            }
+            response = requests.post(
+                OLLAMA_URL.replace('/api/generate', '/api/chat'),
+                json=payload,
+                timeout=timeout
+            )
+            response.raise_for_status()
+            raw = (response.json().get("message") or {}).get("content", "").strip()
+        else:
+            payload = {
+                'model': model,
+                'prompt': prompt,
+                'stream': False,
+                'options': options,
+                # think auf Top-Level: deaktiviert Reasoning-Modus für qwen3/deepseek-r1.
+                # gpt-oss NICHT: bei think:true/false ist response leer – ohne Parameter funktioniert es korrekt.
+                **({"think": False} if is_qwen3 or is_deepseek_r1 else {}),
+            }
+            response = requests.post(
+                OLLAMA_URL,
+                json=payload,
+                timeout=timeout
+            )
+            response.raise_for_status()
+            raw = response.json().get("response", "").strip()
         # qwen3 und andere Reasoning-Modelle geben <think>...</think>-Blöcke aus,
         # die die Zeilen-Parsing-Logik zerstören würden.
         import re

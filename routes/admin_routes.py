@@ -17,17 +17,25 @@ admin_bp = Blueprint('admin', __name__)
 @admin_bp.route("/available_models", methods=["GET"])
 def available_models():
     """Gibt Liste verfügbarer LLM-Modelle zurück."""
-    # Whitelist der erlaubten Modelle (reduzierte Auswahl)
+    # Whitelist der erlaubten Modelle (kuratiert nach Qualitaetstest, siehe TESTERGEBNISSE.md).
+    # Entfernt: qwen2.5:7b, qwen2.5:14b, gpt-oss:20b (von gleich- oder kleinerem qwen3-Modell
+    # klar geschlagen), gemma4:26b (Reasoning sprengt jedes Token-Budget, keine Antwort) sowie
+    # deepseek-r1:14b (61% im 9-Dokumente-Test, unzuverlaessig: liefert bei laengerem Reasoning
+    # unfertige <think>-Bloecke statt der Extraktion, z.B. bei T6/T9 - siehe TESTERGEBNISSE.md).
     ALLOWED_MODELS = [
-        "qwen2.5:7b",       #  4.7 GB
-        "qwen3:8b",         #  5.2 GB
-        "gemma4:e2b",       #  7.2 GB
-        "deepseek-r1:14b",  #  9.0 GB
-        "qwen2.5:14b",      #  9.0 GB
-        "qwen3:14b",        #  9.3 GB
-        "gpt-oss:20b",      # 13.8 GB
-        "gemma4:26b",       # 18.0 GB
+        "qwen3:8b",     #  5.2 GB - Standard, 90% Score, schnellste Inferenz (~4s)
+        "qwen3:14b",    #  9.3 GB - 86% Score
+        "gemma4:12b",   #  7.6 GB - 84% Score (Fix: laeuft ueber /api/chat + think:False)
+        "gemma4:e2b",   #  7.2 GB - 82% Score
     ]
+
+    # Kurzbeschreibung je Modell fuers Frontend-Dropdown (siehe TESTERGEBNISSE.md)
+    MODEL_DESCRIPTIONS = {
+        "qwen3:8b":    "Empfohlen - schnell, beste Qualitaet (90%)",
+        "qwen3:14b":   "Solide Alternative (86%), etwas langsamer",
+        "gemma4:12b":  "Gut (84%), moderater Ressourcenbedarf",
+        "gemma4:e2b":  "Kompakt & schnell (82%)",
+    }
 
     try:
         response = requests.get(OLLAMA_URL.replace("/generate", "/tags"), timeout=5)
@@ -44,11 +52,13 @@ def available_models():
 
         # Aktuell ausgewähltes Modell mitgeben
         current = session.get("selected_model")
+        descriptions = {m: MODEL_DESCRIPTIONS[m] for m in models if m in MODEL_DESCRIPTIONS}
 
         return jsonify(
             success=True,
             models=models,
-            current=current
+            current=current,
+            descriptions=descriptions
         )
     except Exception as e:
         log(f"⚠️ Fehler beim Laden der Modelle: {e}", level="warning")

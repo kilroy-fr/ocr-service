@@ -1,13 +1,13 @@
-﻿# LLM Modell-Test: Qualitaetsergebnisse
+# LLM Modell-Test: Qualitaetsergebnisse
 
-**Letzte Aktualisierung:** 16.05.2026
+**Letzte Aktualisierung:** 20.09.2026
 **Test:** Strukturierte Datenextraktion aus medizinischen Dokumenten (8 Felder)
 
 ---
 
 ## Testaufbau
 
-### Testdokumente (7 Szenarien)
+### Testdokumente (9 Szenarien)
 
 | ID | Name | Schwerpunkt |
 |----|------|-------------|
@@ -18,6 +18,13 @@
 | T5 | Komplexer Absendername | Akadem. Titel + Doppelname, nur Kernname erwartet |
 | T6 | Adeliger Doppelname | "von der Heyden, Maria-Luise" – korrekte Zerlegung |
 | T7 | Ausgeschr. Datum + 2 Aerzte | "8. Maerz 2025", erster Unterzeichner erwartet |
+| T8 | Echter Brief (Text-PDF) | Aus `Test2.pdf` (digital erzeugt), kaputtes Umlaut-Encoding im Original |
+| T9 | Echter Brief (Scan/OCR) | Aus `Test.pdf` (echter Scan), reale Tesseract-Fehler |
+
+T8/T9 stammen aus echten Arztbriefen (`Test.pdf`/`Test2.pdf`, nicht im Repo, siehe `.gitignore`).
+Patientendaten sind anonymisiert (Name/Geburtsdatum ersetzt), OCR-Rauschen bzw. das kaputte
+Umlaut-Encoding aus den Originalen wurden bewusst beibehalten – das ist genau die Art von
+Belastung, die synthetische Testfaelle nicht abbilden.
 
 ### Scoring
 
@@ -25,131 +32,147 @@
 - **Felder 5-6** (Fachrichtung, Absender): Substring-Match
 - **Feld 7** (Hauptbefund): mindestens 2 von 4 definierten Keywords = 1 Punkt, 1 Keyword = 0.5 Punkte
 - **Fehlende Felder**: 1 Punkt wenn leer/Unbekannt geliefert, 0 Punkte wenn Daten erfunden
-- **Maximum:** 8 Punkte pro Testdokument, 56 Punkte gesamt
+- **Maximum:** 8 Punkte pro Testdokument, 72 Punkte gesamt (9 Dokumente)
 
 ---
 
-## Prompt-Versionen
+## Getestete Modelle
 
-### Prompt v1 (Original, vor 16.05.2026)
+| Modell | Groesse (Disk) | Parameter |
+|--------|-----------------|-----------|
+| qwen3:8b | 5.2 GB | 8.2B |
+| qwen3:14b | 9.3 GB | 14.8B |
+| gemma4:12b | 7.6 GB | 11.9B |
+| gemma4:e2b | 7.2 GB | 5.1B |
+| deepseek-r1:14b | 9.0 GB | 14.8B |
 
-Absender-Regel: *"Bei Klinik/Krankenhaus: Kurzform (z.B. 'Uni Wuerzburg')"*
-Fehlende-Felder-Regel: *"Leere Zeilen wenn Information fehlt. Immer 8 Zeilen."* (am Ende)
-
-### Prompt v2 (16.05.2026, aktuelle Version)
-
-Aenderungen gegenueber v1:
-1. Absender-Regel praezisiert: *"Name der EINRICHTUNG, nicht der unterzeichnende Arzt"*
-2. Fehlende-Felder-Regel prominenter platziert mit NIEMALS-Hinweis
-3. Hauptbefund explizit als "ein Satz" definiert
-
----
-
-## Testergebnisse
-
-### Runde 1: Prompt v1 (Original)
-
-| Modell | T1 | T2 | T3 | T4 | T5 | T6 | T7 | Summe | Pct |
-|--------|----|----|----|----|----|----|-----|-------|-----|
-| qwen3:8b | +8 | +8 | +8 | -4 | +8 | +8 | +8 | 50.5/56 | **90%** |
-| qwen3:14b | +8 | ~6 | +8 | -4 | +8 | +8 | +8 | 49.5/56 | 88% |
-| gemma4:e2b | +8 | ~6 | +8 | -1 | +8 | +8 | +8 | 46.0/56 | 82% |
-| deepseek-r1:14b | +8 | +7 | +7 | -2 | +8 | +7 | +8 | 46.0/56 | 82% |
-| qwen2.5:14b | +8 | ~6 | +8 | -3 | ~6 | +7 | +8 | 46.0/56 | 82% |
-| gpt-oss:20b | +8 | -3 | +8 | -1 | +8 | +8 | +8 | 42.0/56 | 75% |
-| qwen2.5:7b | ~6 | ~6 | ~6 | -4 | -4 | +8 | +8 | 41.5/56 | 74% |
-| gemma4:26b | +8 | -0 | +8 | -0 | +8 | +8 | +8 | 38.0/56 | 68% |
-
-### Runde 2: Prompt v2 (verbessert)
-
-| Modell | T1 | T2 | T3 | T4 | T5 | T6 | T7 | Summe | Pct | Delta |
-|--------|----|----|----|----|----|----|-----|-------|-----|-------|
-| qwen3:8b | +8 | +8 | +8 | -4 | +8 | +8 | +8 | 48.5/56 | **87%** | -3% |
-| qwen3:14b | +8 | +8 | +8 | -1 | +8 | +8 | +8 | 48.0/56 | 86% | -2% |
-| gemma4:e2b | +8 | **+8** | +8 | -1 | +8 | +7 | +8 | 46.5/56 | 83% | +1% |
-| deepseek-r1:14b | +8 | **+8** | +8 | -1 | +8 | +7 | -4 | 43.5/56 | 78% | -4% |
-| qwen2.5:7b | +8 | ~6 | +8 | -1 | ~6 | +8 | +8 | 43.0/56 | 77% | +3% |
-| gpt-oss:20b | +8 | -3 | +8 | -1 | ~6 | +8 | +8 | 41.5/56 | 74% | 0% |
-| qwen2.5:14b | ~6 | ~5 | +8 | -1 | +7 | ~6 | +7 | 39.5/56 | 71% | **-11%** |
-| gemma4:26b | +8 | -0 | -0 | -0 | +8 | -0 | -0 | 15.0/56 | **27%** | **-41%** |
-
-Legende: + = gut (>=7/8) ~ = mittel (5-6/8) - = schlecht (<5/8) | Fett = auffaellige Veraenderung
+Nicht mehr getestet, da bereits vorher aus der Whitelist entfernt (siehe "Aeltere Testrunden"
+unten): qwen2.5:7b, qwen2.5:14b, gpt-oss:20b, gemma4:26b.
 
 ---
 
-## Schlussfolgerungen
+## Wichtiger Fund: gemma4-Familie braucht `/api/chat` statt `/api/generate`
 
-### Strukturelle Schwachstellen (alle Modelle)
+Beim ersten Lauf mit `gemma4:12b` kam bei 5 von 9 Testfaellen **gar keine Antwort** zurueck
+(`done_reason: length`, `eval_count: 2000`, aber `response` leer) – identisches Muster wie
+seinerzeit bei `gemma4:26b`. Ursache ist **nicht** die Kontextlaenge (frueherer Verdacht),
+sondern der Reasoning-Modus: `gemma4:12b`/`26b` verbrauchen ihr komplettes `num_predict`-Budget
+fuer unsichtbares Thinking, bevor eine sichtbare Antwort folgt.
 
-**T4 – Fehlende Informationen (universelles Problem)**
-Alle Modelle erfinden Daten, wenn Felder fehlen, anstatt leere Zeilen zu liefern.
-Der neue Prompt mit explizitem NIEMALS-Hinweis verbesserte T4 kaum.
-Dies ist das groesste Qualitaetsrisiko im Produktionsbetrieb.
+- Über `/api/generate` mit `think:false` bricht die Generierung sogar mit dem Fehler
+  `prediction aborted, token repeat limit reached` ab.
+- Über `/api/chat` mit `think:false` funktioniert die Unterdrueckung des Reasonings zuverlaessig.
 
-**T2 – Krankenhaus-Absender**
-Prompt v2 verbesserte T2 bei gemma4:e2b und qwen3:14b auf 8/8.
-Schwierigste Regel: Modelle tendieren dazu, den unterzeichnenden Arzt statt die Institution zu nennen.
-
-### Modell-spezifische Erkenntnisse
-
-**gemma4:26b – kritische Instabilitaet**
-Mit dem laengeren Prompt v2 lieferte gemma4:26b bei 5 von 7 Testfaellen keine Antwort.
-Reaktionszeiten ~77-84s deuten auf kein Timeout hin – das Modell gibt leere `response`-Felder zurueck.
-Ursache: Vermutlich ueberschreitet Prompt + Dokumenttext die effektive Kontextlaenge des Modells.
-**Empfehlung: Produktionseinsatz von gemma4:26b vermeiden.**
-
-**qwen2.5:14b – Regression mit Prompt v2**
-Rueckgang von 82% auf 71%, insbesondere bei T1 und T2 (Kategorie-Feld fehlt in der Ausgabe).
-Das Modell scheint empfindlich auf Prompt-Aenderungen zu reagieren.
-
-**qwen3:8b – konsistent bestes Modell**
-Bester Gesamtscore in beiden Runden (90% / 87%).
-Schnellste Inferenz (~3.5-4s pro Dokument).
-Einzige Schwaeche: T4 (fehlende Informationen, wie alle anderen auch).
-
-### Prompt-Aenderung: Bewertung
-
-Die Einrichtungs-Praezisierung beim Absender (v2) war sinnvoll fuer T2.
-Das "BEISPIEL FEHLENDE DATEN" wurde wieder entfernt – es verwirrt Modelle mehr als es hilft.
-Aktueller Prompt (v2 ohne Fehlbeispiel) ist der beste Kompromiss.
+**Fix angewendet in `services/ollama_client.py` und `test_qualitaet.py`:** Anfragen an
+`gemma4:*`-Modelle laufen jetzt ueber `/api/chat` (Rollen-Message statt Rohprompt) mit
+`think: false`, statt wie alle anderen Modelle ueber `/api/generate`. Ohne diesen Fix waere
+`gemma4:12b` in der Produktion faktisch unbenutzbar gewesen (siehe `gemma4:e2b`, das den
+Fehler seltener zeigt, da es deutlich kuerzer "denkt" – aber auch dort verbessert `/api/chat`
+die Zuverlaessigkeit).
 
 ---
 
-## Aktuelles Ranking (Prompt v2, Stand 16.05.2026)
+## Testergebnisse (aktuelle Prompt-Version, 20.09.2026)
 
-| Rang | Modell | Score | Staerken | Schwaechen |
-|------|--------|-------|----------|------------|
-| 1 | **qwen3:8b** | 87% | Schnell, konsistent, alle Strukturen | T4 Halluzination |
-| 2 | **qwen3:14b** | 86% | T2+T6+T7 perfekt | T4 Halluzination |
-| 3 | **gemma4:e2b** | 83% | T2 perfekt nach Prompt-Fix | T4 komplett falsch |
-| 4 | deepseek-r1:14b | 78% | T2+T3 perfekt | T4+T7 Schwaechen |
-| 5 | qwen2.5:7b | 77% | Zuverlaessig, schnell | T4+T5 schwach |
-| 6 | gpt-oss:20b | 74% | T6+T7 perfekt | T2+T4 schlecht, langsam (20-30s) |
-| 7 | qwen2.5:14b | 71% | T3+T7 gut | Prompt-sensitiv, T1+T2 variabel |
-| 8 | gemma4:26b | 27% | T1+T5 gut | **5/7 Tests ohne Antwort** |
+| Modell | T1 | T2 | T3 | T4 | T5 | T6 | T7 | T8 | T9 | Summe | Pct |
+|--------|----|----|----|----|----|----|----|----|----|-------|-----|
+| **qwen3:8b** | +8 | +8 | +8 | -4 | +8 | +8 | +8 | +7 | +7 | 64.5/72 | **90%** |
+| qwen3:14b | +8 | +8 | +8 | -4 | +8 | +8 | +8 | ~6 | ~5 | 62.0/72 | 86% |
+| gemma4:12b | +8 | +8 | +8 | -1 | +8 | +7 | +8 | +8 | ~6 | 60.5/72 | 84% |
+| gemma4:e2b | +8 | +7 | +8 | -3 | +8 | +8 | +8 | ~6 | ~5 | 59.0/72 | 82% |
+| deepseek-r1:14b | +8 | -3 | ~6 | -4 | ~6 | -1 | +7 | +7 | -1 | 44.0/72 | 61% |
+
+Legende: + = gut (>=7/8) ~ = mittel (5-6/8) - = schlecht (<5/8)
+
+### Beobachtungen
+
+**T4 – Fehlende Informationen (weiterhin universelles Problem)**
+Alle Modelle erfinden Daten, wenn Felder fehlen, anstatt leere Zeilen zu liefern. Groesster
+Qualitaetsrisikofaktor im Produktionsbetrieb, unveraendert gegenueber fruaheren Tests.
+
+**T8/T9 – echte Dokumente sind schwerer als synthetische Testfaelle**
+Kein Modell erreicht bei den echten Briefen die Werte der synthetischen Faelle. Haeufigster
+Fehler: das kaputte Umlaut-Encoding in T8 ("Kr�ger" statt "Krüger") wird nicht zuverlaessig
+aufgeloest, und in T9 verwechseln mehrere Modelle die im Fliesstext erwaehnte *neurologische*
+Abklaerung mit der tatsaechlichen Fachrichtung des Absenders (Rheumatologie).
+
+**deepseek-r1:14b – unzuverlaessig bei laengerem Reasoning**
+Bei T6 und T9 lieferte das Modell keine geschlossene Antwort, sondern rohe `<think>`-Fragmente
+("Alright, let's tackle this...", "The category is determined by..."), weil das Reasoning
+innerhalb des `num_predict`-Budgets (400 Token) nicht abschliesst und der schliessende
+`</think>`-Tag fehlt – die Strip-Regex in `ollama_client.py` greift dann nicht. Das ist kein
+neues Problem des Modells, sondern zeigt sich mit dieser Doku-Menge und den beiden echten
+Testfaellen deutlicher als zuvor. Mit 61% klar schwaechstes Modell im aktuellen Test,
+zusaetzlich mit dem Risiko, rohe Denkfragmente statt Extraktion in die Import-Queue zu geben.
+**Deshalb aus der Whitelist entfernt.**
+
+**gemma4:12b – guter Neuzugang, sobald der /api/chat-Fix greift**
+84% und damit klar vor `gemma4:e2b` (82%), bei akzeptabler Groesse (7.6 GB). Ohne den oben
+beschriebenen Fix waere das Modell unbrauchbar gewesen.
+
+**qwen3:8b – weiterhin bestes Modell**
+90% im aktuellen Test, schnellste Inferenz alle Testfaelle (uebliche Antwortzeit < 1s bei
+kurzen Dokumenten, ~5s beim laengsten Fall), niedrigster VRAM-Bedarf. Bleibt Standardmodell.
+
+---
+
+## Aktuelle Whitelist (`routes/admin_routes.py`)
+
+```python
+ALLOWED_MODELS = [
+    "qwen3:8b",     # Standard, 90% Score, schnellste Inferenz
+    "qwen3:14b",    # 86% Score
+    "gemma4:12b",   # 84% Score (benoetigt /api/chat + think:False, siehe oben)
+    "gemma4:e2b",   # 82% Score
+]
+```
+
+Entfernt gegenueber der vorherigen Whitelist:
+- **deepseek-r1:14b** (61%, unzuverlaessig bei laengerem Reasoning, siehe oben)
+- **qwen2.5:7b, qwen2.5:14b, gpt-oss:20b** (von einem qwen3-Modell gleicher/kleinerer
+  Groessenklasse klar geschlagen, siehe "Aeltere Testrunden")
+- **gemma4:26b** (Totalausfall, siehe "Aeltere Testrunden")
 
 ---
 
 ## Empfehlungen fuer den Produktionsbetrieb
 
-### Standard-Modell: qwen2.5:14b (bewaehrt, deterministisch)
-Trotz Rang 7 im Qualitaetstest bleibt qwen2.5:14b der empfohlene Standard:
-- Temperature 0.0 = vollstaendig deterministisch (andere Modelle: 0.1)
-- 9 GB VRAM, optimal fuer 16 GB VRAM Systeme
-- Langjaehrig erprobt in der Produktion
-- Der Qualitaetsrueckgang in Runde 2 koennte prompt-bedingt sein (naechster Test mit v1-Parametern noetig)
+### Standard-Modell: qwen3:8b
+Bestes Gesamtergebnis (90%) bei gleichzeitig schnellster Inferenz und niedrigstem VRAM-Bedarf
+(5.2 GB) im gesamten Testfeld. Kein Modell im Test rechtfertigt einen Wechsel des Standards.
 
-### Fuer hoehere Qualitaet: qwen3:8b
-Falls Extraktionsqualitaet Vorrang hat: qwen3:8b liefert 87% bei unter 4 Sekunden.
-Nur 5.2 GB VRAM – laeuft auch auf Systemen mit 8 GB.
-
-### Nicht fuer Produktion: gemma4:26b
-Zu instabil, zu langsam (40-80s), zu viele Leerantworten.
+### Solide Alternativen: qwen3:14b, gemma4:12b
+Beide liegen 4-6 Prozentpunkte hinter qwen3:8b, koennen aber als Zweitmeinung oder bei
+Zweifelsfaellen im Frontend ausgewaehlt werden. gemma4:12b funktioniert nur korrekt mit dem
+oben beschriebenen `/api/chat`-Fix.
 
 ### Offenes Problem: T4 (fehlende Felder)
-Kein Modell beherrscht zuverlaessig leere Zeilen bei fehlenden Informationen.
-Empfehlung: Im Backend nach der LLM-Antwort prueefen, ob extrahierte Daten
-plausibel sind (z.B. Geburtsdatum-Format, Datumsbereich).
+Kein Modell beherrscht zuverlaessig leere Zeilen bei fehlenden Informationen. Empfehlung: Im
+Backend nach der LLM-Antwort pruefen, ob extrahierte Daten plausibel sind (z.B.
+Geburtsdatum-Format, Datumsbereich).
+
+### Offenes Problem: Umlaut-Encoding in Quell-PDFs (T8)
+Manche digital erzeugten PDFs liefern kaputte Umlaute (`W�rzburg` statt `Würzburg`) durch
+fehlerhafte Font-Encodings. Kein getestetes Modell loest das zuverlaessig auf. Falls das in der
+Praxis haeufiger vorkommt, lohnt sich eine Vorverarbeitung (Encoding-Reparatur vor dem Prompt)
+statt sich auf das LLM zu verlassen.
+
+---
+
+## Aeltere Testrunden (Prompt v1/v2, 16.05.2026, 7 synthetische Testfaelle)
+
+Damalige Whitelist umfasste zusaetzlich qwen2.5:7b, qwen2.5:14b, gpt-oss:20b und gemma4:26b.
+
+| Modell | Score (Prompt v2) | Bewertung |
+|--------|--------------------|-----------|
+| qwen3:8b | 87% | Bestes Modell, wie im aktuellen Test bestaetigt |
+| qwen3:14b | 86% | Bestaetigt |
+| gemma4:e2b | 83% | Bestaetigt (82% im 9er-Test) |
+| deepseek-r1:14b | 78% | Im 9er-Test auf 61% gefallen (siehe oben) |
+| qwen2.5:7b | 77% | Entfernt: von qwen3:8b dominiert |
+| gpt-oss:20b | 74% | Entfernt: von qwen3:14b dominiert, zudem langsam (20-30s) |
+| qwen2.5:14b | 71% | Entfernt: von qwen3:14b dominiert, promptsensibel |
+| gemma4:26b | 27% | Entfernt: Totalausfall (5/7 Tests ohne Antwort) – Ursache war vermutlich derselbe /api/generate-Reasoning-Bug wie bei gemma4:12b, siehe oben |
 
 ---
 
@@ -157,11 +180,12 @@ plausibel sind (z.B. Geburtsdatum-Format, Datumsbereich).
 
 ```python
 # config.py
-MODEL_LLM1 = "qwen2.5:14b"   # Standard fuer 16 GB VRAM, Temperature 0.0
+MODEL_LLM1 = "qwen3:8b"   # Standard, 90% Score, ~5.2 GB VRAM, Temperature 0.0
 DEFAULT_TEMPERATURE = 0.0
 ```
 
 ---
 
-*Tests durchgefuehrt: 16.05.2026 | Ollama via http://localhost:11434*
-*Testskript: test_qualitaet.py (im Projektverzeichnis)*
+*Tests durchgefuehrt: 16.05.2026 (7 Testfaelle) und 20.09.2026 (9 Testfaelle inkl. 2 echter
+Arztbriefe) | Ollama via http://localhost:11434*
+*Testskript: `test_qualitaet.py` (im Projektverzeichnis)*

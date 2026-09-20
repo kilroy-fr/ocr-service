@@ -93,6 +93,18 @@ Background-Thread. Datei-Bewegung über `_safe_move()` (CIFS-robust: copy2 + unl
 `/stream` liefert Server-Sent Events. `services/logger.py` schreibt in eine Queue, die der
 SSE-Stream ausliest. Im Frontend werden Logs live angezeigt (`app.js`).
 
+### Modell-Whitelist & gemma4-Sonderfall
+Im Frontend wählbare Modelle sind in `routes/admin_routes.py` (`ALLOWED_MODELS`) auf eine
+kuratierte Liste beschränkt (aktuell: `qwen3:8b` als Standard, `qwen3:14b`, `gemma4:12b`,
+`gemma4:e2b`). Auswahl und Ranking basieren auf `test_qualitaet.py`, Ergebnisse in
+[TESTERGEBNISSE.md](TESTERGEBNISSE.md).
+
+`gemma4:*`-Modelle verbrauchen ihr komplettes `num_predict`-Budget für unsichtbares
+Reasoning und liefern über `/api/generate` eine leere Antwort. `services/ollama_client.py`
+routet sie deshalb als einzige Modellfamilie über `/api/chat` mit `think: false` statt über
+`/api/generate` – bei neuen `gemma4:*`-Varianten in der Whitelist immer testen, ob das noch
+nötig ist.
+
 ---
 
 ## Entwicklung

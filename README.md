@@ -138,6 +138,14 @@ OCR_FALLBACK_MIN_CHARS = 100
 Im Docker-Setup verbindet sich der Container über `host.docker.internal` mit der
 Ollama-Instanz auf dem Host. Für andere Setups die `OLLAMA_URL` entsprechend anpassen.
 
+### Im Frontend wählbare Modelle
+
+Die Modell-Auswahl im Frontend ist in `routes/admin_routes.py` (`ALLOWED_MODELS`) auf
+eine kuratierte Liste beschränkt: `qwen3:8b` (Standard), `qwen3:14b`, `gemma4:12b`,
+`gemma4:e2b`. Auswahl und Ranking basieren auf einem Qualitätstest mit 9 Dokumenten
+(siehe [TESTERGEBNISSE.md](TESTERGEBNISSE.md)); dort auch der Hintergrund zu Modellen,
+die bewusst nicht in der Liste sind.
+
 ### Prompt-Template
 
 Das LLM-Prompt-Template ist in [prompt.txt](prompt.txt) definiert und kann für andere

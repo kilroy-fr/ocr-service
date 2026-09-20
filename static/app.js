@@ -350,12 +350,13 @@ async function loadModels() {
     
     const models = data.models || [];
     const currentModel = data.current || null;
-    
+    const descriptions = data.descriptions || {};
+
     console.log('📋 Verfügbare Modelle:', models);
     console.log('✅ Aktuelles Modell:', currentModel);
-    
+
     select.innerHTML = '';
-    
+
     if (models.length === 0) {
       const opt = document.createElement("option");
       opt.textContent = "Keine Modelle verfügbar";
@@ -364,13 +365,13 @@ async function loadModels() {
       select.disabled = true;
       return;
     }
-    
+
     const modelExists = models.includes(currentModel);
-    
+
     models.forEach(model => {
       const opt = document.createElement("option");
       opt.value = model;
-      opt.textContent = model;
+      opt.textContent = descriptions[model] ? `${model} – ${descriptions[model]}` : model;
       select.appendChild(opt);
     });
     

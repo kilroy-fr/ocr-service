@@ -27,6 +27,10 @@ wheels/
 .env
 *.log
 
+# Echte Test-Patientendokumente (nie committen!)
+Test.pdf
+Test2.pdf
+
 # Arbeitsverzeichnisse (nicht ins Repo!)
 uploads/
 processed/

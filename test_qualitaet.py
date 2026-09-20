@@ -29,11 +29,18 @@ TEST_CASES = [
     {"id":7,"name":"Ausgeschr. Datum und 2 Aerzte","beschreibung":"Datum als Langtext, zwei Unterzeichner",
      "text":"Urologische Praxisgemeinschaft\nDr. med. Andreas Braun und Dr. med. Petra Schwarz\nFachgebiet: Urologie\n\nMuenchen, den 8. Maerz 2025\n\nPatient: Klein, Robert Hermann\nGeburtsdatum: 25.06.1955\n\nBefundbericht:\nPSA-Wert: 6.8 ng/ml (Normalwert < 4.0) maessig erhoet\nProstatavolumen: 45 ml\nEmpfehlung: Biopsie zur Abklaerung empfohlen.\n\nDr. med. Braun   Dr. med. Schwarz",
      "expected":{"nachname":"Klein","vorname":"Robert","geburtsdatum":"25.06.1955","briefdatum":"08.03.2025","fachrichtung":"Urologie","absender":"Braun","hauptbefund_kw":["psa","prostata","biopsie","erhoet"],"kategorie":"5"}},
+    # T8/T9: Aus echten Arztbriefen abgeleitet (Test.pdf/Test2.pdf), Patientendaten anonymisiert.
+    # OCR-Rauschen bzw. Encoding-Fehler aus den Originalen bewusst beibehalten (realistische Belastungsprobe).
+    {"id":8,"name":"Echter Brief (Text-PDF)","beschreibung":"Test2.pdf - digital erzeugtes PDF mit kaputtem Umlaut-Encoding",
+     "text":"Dr. med. Michael Brenner * Dr. med. Lukas Wehner\nRheumatologie / Sportmedizin / Innere Medizin\n97070 W�rzburg * Musterstra�e 7\n\nDrs. med. Reiter / Fuchs / Lang\nAllgemeinmedizin/Internist\nMusterg�sschen 3\n91541 Rothenburg o.d.Taube\n\nW�rzburg, 19.09.2026\n\nSehr geehrte Frau Kollegin, sehr geehrter Herr Kollege.\nSabine Kr�ger, geb. am 22.03.1971\nAnschrift: 91616 Musterhausen, Gartenweg 5\n\nAnamnese und Befund\nVorstellung am 27.8.26: Momentan Schmerzen rechte Hand. 4.Zehe bds. schmerzhaft und geschwollen.\n\nDiagnosen\nM07.30 (G) Psoriasis-Arthritis\nL40.5 (G) Hautpsoriasis mit Gelenkbefall\nF32.9 (G) Depressive Episode, nicht n�her bezeichnet\n\nTherapie\nAktuell Beibehalten der Therapie, Adalimumab 40 mg 14-t�gig.\nBei unkompliziertem Verlauf Wiedervorstellung zur rheumatologischen Verlaufskontrolle in 3-6 Monaten erbeten.\n\nMit freundlichen Gr��en\nDr. Michael Brenner",
+     "expected":{"nachname":"Krüger","vorname":"Sabine","geburtsdatum":"22.03.1971","briefdatum":"19.09.2026","fachrichtung":"Rheumatologie","absender":"Brenner","hauptbefund_kw":["psoriasis","arthritis","adalimumab","gelenk"],"kategorie":"5"}},
+    {"id":9,"name":"Echter Brief (Scan/OCR)","beschreibung":"Test.pdf - echter Scan, Tesseract-Ausgabe mit typischen OCR-Fehlern",
+     "text":"WALDBURG-ZEIL\nvorläufig.\nKlinik Oberammergau\nZentrum für Rheumatologie, Orthopädie und\nSchmerztherapie\nKlinik Oberammergau » Hubertusstraße 40 » 82487 Musterstadt\nAbteilung für Internistische Rheumatologie\n\nGemeinschaftspraxis Klinikmanager\nDres. med. Reiter / Fuchs Daniel Nauroth\nMusterweg 1\n91541 Musterstadt Dr.med. Diethard Kaufmann\n\nAnsprechpartner: Dr. rer. nat. Dr. med. Bernhard Lohr Telefon: 08822 914 - 261 Datum: 17.08.2026 REN\n\nSe SI (s Ai rh sc N de rh Sı sc ur ve Sı n kl\n\nSeite 3 von 6 - Pat.: Klara Bergmann, geb. 15.09.1988\n\n07/2026 stationäre Abklärung der Klinik für Neurologie: Diagnosen:\nBeschwerdekomplex bestehend aus\n1. Parallel versetzten Doppelbildern mit Blick nach links,\n2. Taubheit und einschießenden Schmerzen an den Armen/Händen und Füßen\n3. Rezidivierend Muskelkrämpfe und Zuckungen der Arme/Schultern bds.\n4. Neurokognitiven Verschlechterung mit Konzentration und Denkstörungen\n5. Entzündliches Liquorsyndrom unklarer Genese",
+     "expected":{"nachname":"Bergmann","vorname":"Klara","geburtsdatum":"15.09.1988","briefdatum":"17.08.2026","fachrichtung":"Rheumatologie","absender":"Oberammergau","hauptbefund_kw":["doppelbild","muskelkrämpfe","neurokognitiven","liquorsyndrom"],"kategorie":"6"}},
 ]
 
 ALLOWED_MODELS = [
-    "qwen2.5:7b", "qwen3:8b", "gemma4:e2b", "deepseek-r1:14b",
-    "qwen2.5:14b", "qwen3:14b", "gpt-oss:20b", "gemma4:26b",
+    "qwen3:8b", "gemma4:12b", "gemma4:e2b", "deepseek-r1:14b", "qwen3:14b",
 ]
 
 def send_to_ollama(prompt, model):
@@ -51,15 +58,27 @@ def send_to_ollama(prompt, model):
         options = {"temperature":0.2,"top_p":0.95,"top_k":50,"repeat_penalty":1.05,"num_predict":2000,"num_ctx":4096}
         timeout = 120
     elif is_gemma4:
+        # gemma4:12b/26b denken laenger als das num_predict-Budget zulaesst und liefern
+        # ueber /api/generate eine leere response (done_reason=length, 0 sichtbare Tokens).
+        # Ueber /api/chat mit think:False wird das Reasoning zuverlaessig unterdrueckt.
         options = {"temperature":0.1,"top_p":0.95,"top_k":40,"repeat_penalty":1.05,"num_predict":2000,"num_ctx":4096}
         timeout = 120
     else:
         options = {"temperature":0.0,"top_p":0.9,"top_k":10,"repeat_penalty":1.1,"num_predict":200,"stop":["\n\n\n"]}
         timeout = 30
-    payload = {"model":model,"prompt":prompt,"stream":False,"options":options,
-               **({"think":False} if is_qwen3 or is_deepseek_r1 else {})}
     t0 = time.time()
     try:
+        if is_gemma4:
+            payload = {"model":model,"messages":[{"role":"user","content":prompt}],
+                       "stream":False,"think":False,"options":options}
+            r = requests.post(OLLAMA_URL.replace("/generate","/chat"), json=payload, timeout=timeout)
+            r.raise_for_status()
+            elapsed = round(time.time()-t0, 1)
+            raw = (r.json().get("message") or {}).get("content","").strip()
+            raw = re.sub(r"<think>.*?</think>", "", raw, flags=re.DOTALL).strip()
+            return raw, elapsed
+        payload = {"model":model,"prompt":prompt,"stream":False,"options":options,
+                   **({"think":False} if is_qwen3 or is_deepseek_r1 else {})}
         r = requests.post(OLLAMA_URL, json=payload, timeout=timeout)
         r.raise_for_status()
         elapsed = round(time.time()-t0, 1)
