@@ -15,7 +15,7 @@ einreiht. Läuft als Docker-Container und bindet ein CIFS/SMB-Netzlaufwerk ein.
 ### Stack
 - **Backend:** Python 3.12 / Flask 3.1
 - **OCR:** Tesseract (via Subprocess), OCRmyPDF, Ghostscript
-- **LLM:** Ollama – Standard-Modell `qwen3:8b` (`MODEL_LLM1` in `config.py`), Temperature 0.0
+- **LLM:** Ollama – Standard-Modell `gemma4:12b` (`MODEL_LLM1` in `config.py`), Temperature 0.1
 - **OCR-Fallback:** `glm-ocr:latest` (Vision), greift unter `OCR_FALLBACK_MIN_CHARS` Zeichen
 - **PDF-Handling:** PyMuPDF, img2pdf
 - **DOCX:** python-docx
@@ -29,7 +29,10 @@ ocr-service/
 ├── docker-compose.yml
 ├── Dockerfile
 ├── requirements.txt
-├── prompt.txt              # LLM-Prompt-Template
+├── prompt.txt              # LLM-Prompt-Template (nicht als Volume gemountet!)
+├── test_qualitaet.py       # 9 synthetische Testfälle, läuft vom Host
+├── test_echte_briefe.py    # Echte Briefe durch die komplette Kette, läuft im Container
+├── testdateien/            # Echte Patientenbriefe + erwartung.json (nicht im Repo/Image)
 ├── routes/
 │   ├── __init__.py         # register_routes()
 │   ├── main_routes.py      # Index, SSE-Stream
@@ -93,17 +96,62 @@ Background-Thread. Datei-Bewegung über `_safe_move()` (CIFS-robust: copy2 + unl
 `/stream` liefert Server-Sent Events. `services/logger.py` schreibt in eine Queue, die der
 SSE-Stream ausliest. Im Frontend werden Logs live angezeigt (`app.js`).
 
+### OCR und Seitenauswahl
+`ocr_pdf()` in `services/ocr.py` entscheidet **pro Seite**, ob OCR nötig ist
+(`_pages_needing_ocr`): Seiten mit ≥ 200 Zeichen Textebene, ohne `U+FFFD` und ohne Bild über
+mehr als die halbe Seite gelten als digital und behalten ihren Text. Nur die übrigen Seiten
+gehen per `ocrmypdf --force-ocr --pages …` durch Tesseract; ist keine Seite ein Scan, läuft
+`--skip-text`. Grund: `--force-ocr` auf digitalen Briefen ersetzte fehlerfreien Text durch
+OCR-Fehler und mischte Briefkopf-Spalten in den Text. Ein reines `--skip-text` reicht nicht,
+weil es auch Fax-Scans mit aufgedruckter Text-Kopfzeile übergehen würde.
+
+Scans rendert `ocrmypdf` in ihrer nativen Auflösung. DPI-Anhebung, Median-Filter und
+Sauvola-Binarisierung (der Ansatz aus ki-atteste) brachten hier keinen Gewinn – siehe
+TESTERGEBNISSE.md.
+
+`summarize_pdf()` schickt nur Seite 1 ans LLM. Sie wird als Deckblatt übersprungen, wenn sie
+kürzer als 1000 Zeichen ist und ein Fax-/Scan-Stichwort enthält, oder mindestens drei
+E-Mail-Header am Zeilenanfang hat. Ohne die Längengrenze fiel jede erste Briefseite mit
+„Fax" im Briefkopf raus, und dem LLM fehlten Geburts- und Briefdatum.
+
+Nach der LLM-Antwort leert `_drop_invented_dates()` Geburts- und Briefdatum, die nicht im
+Text stehen, den das LLM bekommen hat. Alle getesteten Modelle außer gemma4:12b haben bei
+fehlenden Angaben Daten erfunden; ein erfundenes Geburtsdatum ordnet den Brief in Medidok
+dem falschen Patienten zu. Diese Prüfung nicht entfernen, auch nicht bei besseren Modellen.
+
+### Kontextlänge (`num_ctx`)
+`send_to_ollama()` setzt `num_ctx` pro Anfrage aus der Prompt-Länge (4k-Schritte, max. 16k).
+Ist der Prompt länger als `num_ctx`, kürzt Ollama ihn **stillschweigend von vorne** – dann
+fehlt die Anweisung, und das Modell kommentiert nur den Brieftext. Nie wieder feste kleine
+Werte eintragen.
+
 ### Modell-Whitelist & gemma4-Sonderfall
 Im Frontend wählbare Modelle sind in `routes/admin_routes.py` (`ALLOWED_MODELS`) auf eine
-kuratierte Liste beschränkt (aktuell: `qwen3:8b` als Standard, `qwen3:14b`, `gemma4:12b`,
-`gemma4:e2b`). Auswahl und Ranking basieren auf `test_qualitaet.py`, Ergebnisse in
-[TESTERGEBNISSE.md](TESTERGEBNISSE.md).
+kuratierte Liste beschränkt (aktuell nur `gemma4:12b`). `/set_model` und der
+`before_request`-Hook in `app.py` verwerfen nicht freigegebene Modelle, auch aus alten
+Cookies. Auswahl und Ranking basieren auf `test_qualitaet.py` und `test_echte_briefe.py`,
+Ergebnisse in [TESTERGEBNISSE.md](TESTERGEBNISSE.md). Wichtigstes Kriterium: Das Modell
+darf fehlende Angaben nicht erfinden (Testfall T4) – ein erfundenes Geburtsdatum ordnet den
+Brief in Medidok dem falschen Patienten zu. qwen3 fiel genau daran durch.
 
 `gemma4:*`-Modelle verbrauchen ihr komplettes `num_predict`-Budget für unsichtbares
 Reasoning und liefern über `/api/generate` eine leere Antwort. `services/ollama_client.py`
 routet sie deshalb als einzige Modellfamilie über `/api/chat` mit `think: false` statt über
 `/api/generate` – bei neuen `gemma4:*`-Varianten in der Whitelist immer testen, ob das noch
 nötig ist.
+
+### Tests mit echten Briefen
+`testdateien/` enthält echte Arztbriefe, die mit Einwilligung der Patienten zu Test- und
+Trainingszwecken verwendet werden dürfen. Sie stehen in `.gitignore` und `.dockerignore`.
+Keine Namen, Geburtsdaten oder Adressen daraus in Code, Kommentare, Commits oder Doku
+übernehmen – in TESTERGEBNISSE.md heißen sie Brief A/B/C.
+
+```bash
+docker cp test_echte_briefe.py ocr-web:/app/
+docker cp testdateien ocr-web:/tmp/
+docker exec -w /app ocr-web python test_echte_briefe.py /tmp/testdateien   # alle Whitelist-Modelle
+docker exec ocr-web rm -rf /tmp/testdateien /app/test_echte_briefe.py      # danach aufräumen
+```
 
 ---
 
@@ -114,6 +162,7 @@ nötig ist.
 docker compose up --build
 ```
 Hot-Reload ist aktiv: Quelldateien sind per Volume in den Container gemountet.
+`prompt.txt` gehört **nicht** dazu – Prompt-Änderungen brauchen `docker compose up --build`.
 
 ### Direkt (ohne Docker, nur zum Testen)
 ```bash

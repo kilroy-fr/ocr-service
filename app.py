@@ -110,10 +110,12 @@ def after_request_hook(response):
 def before_request_hook():
     """Stellt sicher, dass Session-Defaults gesetzt sind, inkl. Modell aus Cookie."""
 
-    # Cookie-basierte Modellauswahl laden
-    if "selected_model" not in session:
+    # Cookie-basierte Modellauswahl laden. Nicht mehr freigegebene Modelle (Cookie lebt
+    # ein Jahr) verwerfen, sonst liefe die Verarbeitung weiter mit einem aussortierten Modell.
+    from routes.admin_routes import ALLOWED_MODELS
+    if session.get("selected_model") not in ALLOWED_MODELS:
         cookie_model = request.cookies.get("selected_model")
-        if cookie_model:
+        if cookie_model in ALLOWED_MODELS:
             session["selected_model"] = cookie_model
             log(f"📋 Modell aus Cookie geladen: {cookie_model}")
         else:

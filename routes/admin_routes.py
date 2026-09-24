@@ -13,30 +13,29 @@ from config import OLLAMA_URL, MODEL_LLM1, WORK_ROOT, OUTPUT_ROOT
 
 admin_bp = Blueprint('admin', __name__)
 
+# Whitelist der erlaubten Modelle (kuratiert nach Qualitaetstest, siehe TESTERGEBNISSE.md).
+# Frueher entfernt: qwen2.5:7b, qwen2.5:14b, gpt-oss:20b, gemma4:26b, deepseek-r1:14b.
+# gemma4:26b am 24.09.2026 nachgetestet: laeuft ueber /api/chat, schreibt bei fehlenden Daten
+# aber Platzhalter wie "01.01.1900" und ist nicht besser als gemma4:12b bei 18 statt 7.6 GB.
+# 24.09.2026 entfernt (Test mit echten Arztbriefen in testdateien/ und T1-T9):
+# - qwen3:8b, qwen3:14b: erfinden fehlende Geburts- und Briefdaten, bei jeder getesteten
+#   Prompt-Variante und Temperatur (0.0-0.7). Ein erfundenes Geburtsdatum ordnet den Brief
+#   in Medidok dem falschen Patienten zu - auch wenn die OCR das Datum nur nicht lesen konnte.
+# - gemma4:e2b: vertauscht Vor-/Nachname und Empfaenger/Absender, laesst Zeilen aus, sodass
+#   alle folgenden Felder verrutschen.
+ALLOWED_MODELS = [
+    "gemma4:12b",   #  7.6 GB - echte Briefe 100%, T1-T9 97%, laesst fehlende Daten leer
+]
+
+# Kurzbeschreibung je Modell fuers Frontend-Dropdown (siehe TESTERGEBNISSE.md)
+MODEL_DESCRIPTIONS = {
+    "gemma4:12b":  "Empfohlen - zuverlaessig, erfindet keine Daten",
+}
+
 
 @admin_bp.route("/available_models", methods=["GET"])
 def available_models():
     """Gibt Liste verfügbarer LLM-Modelle zurück."""
-    # Whitelist der erlaubten Modelle (kuratiert nach Qualitaetstest, siehe TESTERGEBNISSE.md).
-    # Entfernt: qwen2.5:7b, qwen2.5:14b, gpt-oss:20b (von gleich- oder kleinerem qwen3-Modell
-    # klar geschlagen), gemma4:26b (Reasoning sprengt jedes Token-Budget, keine Antwort) sowie
-    # deepseek-r1:14b (61% im 9-Dokumente-Test, unzuverlaessig: liefert bei laengerem Reasoning
-    # unfertige <think>-Bloecke statt der Extraktion, z.B. bei T6/T9 - siehe TESTERGEBNISSE.md).
-    ALLOWED_MODELS = [
-        "qwen3:8b",     #  5.2 GB - Standard, 90% Score, schnellste Inferenz (~4s)
-        "qwen3:14b",    #  9.3 GB - 86% Score
-        "gemma4:12b",   #  7.6 GB - 84% Score (Fix: laeuft ueber /api/chat + think:False)
-        "gemma4:e2b",   #  7.2 GB - 82% Score
-    ]
-
-    # Kurzbeschreibung je Modell fuers Frontend-Dropdown (siehe TESTERGEBNISSE.md)
-    MODEL_DESCRIPTIONS = {
-        "qwen3:8b":    "Empfohlen - schnell, beste Qualitaet (90%)",
-        "qwen3:14b":   "Solide Alternative (86%), etwas langsamer",
-        "gemma4:12b":  "Gut (84%), moderater Ressourcenbedarf",
-        "gemma4:e2b":  "Kompakt & schnell (82%)",
-    }
-
     try:
         response = requests.get(OLLAMA_URL.replace("/generate", "/tags"), timeout=5)
         response.raise_for_status()
@@ -77,6 +76,8 @@ def set_model():
     model = request.json.get("model")
     if not model:
         return jsonify(success=False, message="Kein Modell angegeben"), 400
+    if model not in ALLOWED_MODELS:
+        return jsonify(success=False, message=f"Modell nicht freigegeben: {model}"), 400
 
     # In Session speichern
     session["selected_model"] = model

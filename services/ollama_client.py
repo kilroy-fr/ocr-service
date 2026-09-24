@@ -59,6 +59,22 @@ def warmup_ollama():
         log(f"Ollama nicht erreichbar: {e}")
 
 
+# Kontext passend zur Prompt-Länge. Ist der Prompt länger als num_ctx, kürzt Ollama ihn
+# stillschweigend von vorne – dann fehlt die Anweisung und das Modell kommentiert nur den
+# Brieftext ("Deine Laborwerte sind ..."). Mit den früher festen 2048 Tokens wurde eine
+# Laborseite mit 5000 Zeichen auf 1026 von 2290 Tokens gekürzt. Gemessen ~2,4 Zeichen/Token
+# bei deutschem Fachtext; die Reserve deckt die 8 Antwortzeilen. 4k-Schritte, damit Ollama
+# das Modell nicht bei jeder Anfrage mit neuer Kontextgröße neu lädt.
+_CTX_RESERVE = 1024
+_CTX_STEP = 4096
+_CTX_MAX = 16384
+
+
+def _num_ctx(prompt: str) -> int:
+    need = len(prompt) * 2 // 5 + _CTX_RESERVE
+    return min(-(-need // _CTX_STEP) * _CTX_STEP, _CTX_MAX)
+
+
 def send_to_ollama(prompt, model, temperature=None):
     """
     Sendet einen Prompt an Ollama mit optimierten Parametern für strukturierte Datenextraktion.
@@ -93,7 +109,6 @@ def send_to_ollama(prompt, model, temperature=None):
             'top_k': 40,                    # Mehr Tokens für bessere Auswahl
             'repeat_penalty': 1.05,         # Schwächer, qwen3 braucht Wiederholungen für Format
             'num_predict': 400,             # Genug Tokens für 7 vollständige Zeilen
-            'num_ctx': 2048,                # Erhöhter Kontext für besseres Verständnis
             # KEINE stop-tokens! qwen3 stoppt sonst zu früh
         }
         timeout = 60  # Längerer Timeout
@@ -106,21 +121,19 @@ def send_to_ollama(prompt, model, temperature=None):
             'top_k': 40,
             'repeat_penalty': 1.05,
             'num_predict': 400,
-            'num_ctx': 2048,
         }
         timeout = 60
 
     elif is_gpt_oss:
         # gpt-oss:20b verbraucht ~450 Token für internes Reasoning bevor die Antwort kommt.
         # num_predict muss hoch genug sein, sonst endet Generierung mit done_reason=length
-        # und response bleibt leer. num_ctx erhöht für den längeren Reasoning-Kontext.
+        # und response bleibt leer.
         options = {
             'temperature': 0.2,
             'top_p': 0.95,
             'top_k': 50,
             'repeat_penalty': 1.05,
             'num_predict': 2000,
-            'num_ctx': 4096,
         }
         timeout = 120  # Mehr Zeit wegen längerem Reasoning
 
@@ -135,7 +148,6 @@ def send_to_ollama(prompt, model, temperature=None):
             'top_k': 40,
             'repeat_penalty': 1.05,
             'num_predict': 2000,
-            'num_ctx': 4096,
         }
         timeout = 120
 
@@ -150,6 +162,8 @@ def send_to_ollama(prompt, model, temperature=None):
             'stop': ['\n\n\n'],            # Stoppt bei 3 aufeinanderfolgenden Leerzeilen
         }
         timeout = 30
+
+    options['num_ctx'] = _num_ctx(prompt)
 
     try:
         if is_gemma4:

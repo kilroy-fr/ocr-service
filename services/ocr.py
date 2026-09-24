@@ -956,17 +956,67 @@ def _glm_ocr_fallback(input_pdf_path: str, staged_out: str) -> bool:
         return False
 
 
-def ocr_to_staging(input_pdf_path: str, output_rel: str):
-    output_basename = os.path.basename(output_rel)
-    staged_out = os.path.join(fs.work_dir, output_basename)
+# Seiten mit so viel eingebettetem Text gelten als digital erzeugt. Ein aufgedruckter
+# Fax-Kopf allein soll die OCR nicht verhindern (gleicher Wert wie in ki-atteste).
+_MIN_DIGITAL_CHARS = 200
+# Deckt ein Bild mehr als diesen Anteil der Seite ab, ist die Seite ein Scan – auch wenn
+# der Scanner schon eine eigene (meist schlechtere) Textebene mitliefert.
+_SCAN_IMAGE_AREA = 0.5
 
-    os.makedirs(os.path.dirname(staged_out), exist_ok=True)
 
+def _pages_needing_ocr(pdf_path: str):
+    """
+    Liefert die 1-basierten Seitennummern, die OCR brauchen, oder None, wenn die
+    Analyse scheitert (dann wird wie bisher jede Seite erkannt).
+
+    --force-ocr auf digitalen Briefen ersetzt fehlerfreien Text durch OCR-Text: Im Test
+    fehlte eine ganze Zeile, "L4" wurde zu "LA", und Briefkopf-Spalten wurden in den
+    Text gemischt (Briefdatum und Praxiszusatz in einer Zeile).
+    """
+    import pymupdf as fitz
+
+    try:
+        with fitz.open(pdf_path) as doc:
+            pages = []
+            for page in doc:
+                text = (page.get_text() or "").strip()
+                page_area = abs(page.rect) or 1
+                image_area = max((abs(fitz.Rect(img["bbox"]) & page.rect) for img in page.get_image_info()), default=0)
+                is_digital = (
+                    len(text) >= _MIN_DIGITAL_CHARS
+                    and "�" not in text  # Zeichen ohne Unicode-Zuordnung → Textebene kaputt
+                    and image_area / page_area < _SCAN_IMAGE_AREA
+                )
+                if not is_digital:
+                    pages.append(page.number + 1)
+            return pages
+    except Exception as e:
+        log(f"⚠️ Textebene nicht prüfbar, OCR auf allen Seiten: {e}", level="warning")
+        return None
+
+
+def ocr_pdf(input_pdf_path: str, output_path: str) -> bool:
+    """
+    Erzeugt output_path als durchsuchbares PDF. Digitale Seiten behalten ihren Text,
+    nur gescannte Seiten laufen durch Tesseract. Liefert unter OCR_FALLBACK_MIN_CHARS
+    Zeichen das Vision-Modell. Rückgabe: True bei Erfolg.
+    """
+    output_basename = os.path.basename(output_path)
     log(f"🔍 [DEBUG] OCR-Start: {os.path.basename(input_pdf_path)} → {output_basename}")
+
+    scan_pages = _pages_needing_ocr(input_pdf_path)
+    if scan_pages is None:
+        mode = ['--force-ocr']
+    elif not scan_pages:
+        log("📄 Digitales PDF – vorhandener Text wird übernommen, keine OCR")
+        mode = ['--skip-text']
+    else:
+        log(f"📄 OCR für Seite(n) {', '.join(map(str, scan_pages))}")
+        mode = ['--force-ocr', '--pages', ','.join(map(str, scan_pages))]
 
     try:
         result = subprocess.run(
-            ['ocrmypdf', '-l', 'deu', '--force-ocr', '--deskew', '--rotate-pages', '--clean', '-O', '0', '--invalidate-digital-signatures', input_pdf_path, staged_out],
+            ['ocrmypdf', '-l', 'deu', *mode, '--deskew', '--rotate-pages', '--clean', '-O', '0', '--invalidate-digital-signatures', input_pdf_path, output_path],
             check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=300
         )
         log(f"✅ [DEBUG] OCR erfolgreich: {output_basename}")
@@ -978,23 +1028,29 @@ def ocr_to_staging(input_pdf_path: str, output_rel: str):
             log(f"📝 [DEBUG] OCR stderr: {result.stderr.decode()[:200]}")
 
         # Prüfe Dateigröße
-        if os.path.exists(staged_out):
-            file_size = os.path.getsize(staged_out)
+        if os.path.exists(output_path):
+            file_size = os.path.getsize(output_path)
             log(f"📊 [DEBUG] OCR-Ausgabe: {file_size} Bytes")
     except subprocess.CalledProcessError as e:
         log(f"❌ OCR-Fehler bei {input_pdf_path}: {e.stderr.decode()}", level="error")
-        return None
+        return False
 
-    if not os.path.exists(staged_out):
-        log(f"❌ OCR-Zieldatei fehlt: {staged_out}", level="error")
-        return None
+    if not os.path.exists(output_path):
+        log(f"❌ OCR-Zieldatei fehlt: {output_path}", level="error")
+        return False
 
     # Qualitätsprüfung: bei zu wenig Text GLM-OCR als Fallback
-    text_chars = _count_pdf_text(staged_out)
+    text_chars = _count_pdf_text(output_path)
     log(f"📊 Tesseract-Ergebnis: {text_chars} Zeichen (Schwellwert: {OCR_FALLBACK_MIN_CHARS})")
     if text_chars < OCR_FALLBACK_MIN_CHARS:
         log(f"⚠️ Zu wenig Text – starte GLM-OCR Fallback ({OCR_FALLBACK_MODEL})")
-        if not _glm_ocr_fallback(input_pdf_path, staged_out):
+        if not _glm_ocr_fallback(input_pdf_path, output_path):
             log("⚠️ GLM-OCR Fallback fehlgeschlagen – Tesseract-Ergebnis bleibt erhalten", level="warning")
 
-    return staged_out
+    return True
+
+
+def ocr_to_staging(input_pdf_path: str, output_rel: str):
+    staged_out = os.path.join(fs.work_dir, os.path.basename(output_rel))
+    os.makedirs(os.path.dirname(staged_out), exist_ok=True)
+    return staged_out if ocr_pdf(input_pdf_path, staged_out) else None

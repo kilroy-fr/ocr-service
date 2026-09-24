@@ -19,7 +19,7 @@ LOGGING_FOLDER      = "/app/medidok/logs"      # Logs
 JSON_FOLDER         = "/app/processed/json"    # control_{session}.json
 
 # Modelle & LLM
-MODEL_LLM1          = "qwen3:8b"      # Beste Extraktionsqualität im Test (87%), schnell (~4s), 5.2 GB VRAM
+MODEL_LLM1          = "gemma4:12b"    # Einziges getestetes Modell, das fehlende Daten nicht erfindet (TESTERGEBNISSE.md), 7.6 GB VRAM
 OLLAMA_URL          = "http://host.docker.internal:11434/api/generate"
 
 # Default-Modell für neue Sessions

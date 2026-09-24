@@ -1,0 +1,22 @@
+# Patientendaten niemals ins Image kopieren
+testdateien/
+Test.pdf
+Test2.pdf
+uploads/
+processed/
+data/
+medidok/
+
+# Zugangsdaten und Schlüssel (TLS macht der Caddy-Proxy)
+.env
+certs/
+
+# Entwicklung
+.git/
+.claude/
+__pycache__/
+*.pyc
+*.pyo
+*.log
+log.txt
+*.backup

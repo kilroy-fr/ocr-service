@@ -30,6 +30,7 @@ wheels/
 # Echte Test-Patientendokumente (nie committen!)
 Test.pdf
 Test2.pdf
+testdateien/
 
 # Arbeitsverzeichnisse (nicht ins Repo!)
 uploads/

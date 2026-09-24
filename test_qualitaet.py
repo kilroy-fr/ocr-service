@@ -44,15 +44,16 @@ ALLOWED_MODELS = [
 ]
 
 def send_to_ollama(prompt, model):
+    # num_ctx wie services/ollama_client.py fuer kurze Briefe (_num_ctx ergibt hier 4096)
     is_qwen3 = model.startswith("qwen3:")
     is_deepseek_r1 = model.startswith("deepseek-r1")
     is_gpt_oss = model.startswith("gpt-oss")
     is_gemma4 = model.startswith("gemma4:")
     if is_qwen3:
-        options = {"temperature":0.1,"top_p":0.95,"top_k":40,"repeat_penalty":1.05,"num_predict":400,"num_ctx":2048}
+        options = {"temperature":0.1,"top_p":0.95,"top_k":40,"repeat_penalty":1.05,"num_predict":400,"num_ctx":4096}
         timeout = 60
     elif is_deepseek_r1:
-        options = {"temperature":0.1,"top_p":0.95,"top_k":40,"repeat_penalty":1.05,"num_predict":400,"num_ctx":2048}
+        options = {"temperature":0.1,"top_p":0.95,"top_k":40,"repeat_penalty":1.05,"num_predict":400,"num_ctx":4096}
         timeout = 60
     elif is_gpt_oss:
         options = {"temperature":0.2,"top_p":0.95,"top_k":50,"repeat_penalty":1.05,"num_predict":2000,"num_ctx":4096}
@@ -64,7 +65,7 @@ def send_to_ollama(prompt, model):
         options = {"temperature":0.1,"top_p":0.95,"top_k":40,"repeat_penalty":1.05,"num_predict":2000,"num_ctx":4096}
         timeout = 120
     else:
-        options = {"temperature":0.0,"top_p":0.9,"top_k":10,"repeat_penalty":1.1,"num_predict":200,"stop":["\n\n\n"]}
+        options = {"temperature":0.0,"top_p":0.9,"top_k":10,"repeat_penalty":1.1,"num_predict":200,"num_ctx":4096,"stop":["\n\n\n"]}
         timeout = 30
     t0 = time.time()
     try:
@@ -110,7 +111,9 @@ def score_field(idx, got, expected):
 def evaluate(raw, expected):
     if not raw:
         return [(0.0,"keine Antwort","")] * 8
-    lines = [l.strip() for l in raw.splitlines() if l.strip()]
+    # Leere Zeilen behalten wie in der Produktion (summarizer.py) - sonst verrutschen
+    # bei korrekt leer gelassenen Feldern alle folgenden Felder (T4 wurde so immer schlecht)
+    lines = [l.strip() for l in raw.splitlines()]
     while len(lines) < 8:
         lines.append("")
     return [(*score_field(i, lines[i], expected), lines[i]) for i in range(8)]
