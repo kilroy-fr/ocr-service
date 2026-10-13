@@ -200,7 +200,7 @@ curl http://localhost:5000/import_queue_status
 
 **Lösung:**
 - App neustarten
-- Log überprüfen: `cat /app/medidok/logs/ocr-app.log`
+- Log überprüfen: `cat /app/daten/pdf-tool/logs/ocr-app.log`
 
 ### Problem: Dateien bleiben hängen
 

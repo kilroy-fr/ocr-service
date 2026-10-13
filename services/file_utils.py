@@ -151,6 +151,22 @@ _os_rename_original = os.rename
 _os_unlink_original = os.unlink
 _os_rmdir_original = os.rmdir
 
+
+def _safe_move(src: str, dst: str):
+    """
+    Verschiebt eine Datei sicher – funktioniert auch auf CIFS/SMB-Shares.
+
+    os.rename scheitert auf CIFS häufig (cross-device / SMB-Eigenheiten).
+    Fallback: copy2 + unlink, nutzt jeweils die originalen (un-gepatchten)
+    os-Funktionen.
+    """
+    try:
+        _os_rename_original(src, dst)
+    except OSError as e:
+        log(f"⚠️ os.rename fehlgeschlagen ({e}) – fallback auf copy2+delete")
+        shutil.copy2(src, dst)
+        _os_remove_original(src)
+
 # ============================================================================
 # DATACLASSES
 # ============================================================================
@@ -252,8 +268,8 @@ def cleanup_orphaned_files(work_root: Path, output_root: Path,
     Bereinigt verwaiste Dateien aus Work- und Output-Verzeichnissen.
     
     Args:
-        work_root: Pfad zum Staging-Root (z.B. /app/medidok/staging)
-        output_root: Pfad zum Output-Root (z.B. /app/medidok/output)
+        work_root: Pfad zum Staging-Root (z.B. /app/daten/pdf-tool/staging)
+        output_root: Pfad zum Output-Root (z.B. /app/daten/pdf-tool/output)
         active_sessions: Set mit aktiven Session-IDs
     
     Returns:

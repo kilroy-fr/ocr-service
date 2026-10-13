@@ -136,45 +136,32 @@ register_routes(app)
 # Verzeichnisse sicherstellen
 def ensure_directories():
     """Stellt sicher, dass alle benötigten Verzeichnisse existieren."""
-    # Lokale Verzeichnisse, die wir erstellen UND testen können
-    local_dirs = [
+    # Lokale Verzeichnisse und Arbeitsverzeichnisse auf pdf-tool: erstellen + Schreibtest.
+    # In INPUT_ROOT (MDok) wird bewusst nichts angelegt.
+    work_dirs = [
         UPLOAD_FOLDER,
+        JSON_FOLDER,
         WORK_ROOT,
-        IMPORT_QUEUE_DIR,
-        ERRORS_DIR,
-        LOGGING_FOLDER,
-        JSON_FOLDER
-    ]
-
-    # Netzlaufwerk-Verzeichnisse: nur erstellen, KEIN Schreibtest
-    network_dirs = [
-        INPUT_ROOT,
         OUTPUT_ROOT,
-        TRASH_DIR
+        IMPORT_QUEUE_DIR,
+        TRASH_DIR,
+        ERRORS_DIR,
+        LOGGING_FOLDER
     ]
 
-    # Lokale Verzeichnisse: erstellen + Schreibtest
-    for dir_path in local_dirs:
+    for dir_path in work_dirs:
         try:
             os.makedirs(dir_path, exist_ok=True)
 
-            # Schreibtest
+            # Schreibtest – originale remove-Funktion, sonst bliebe die Datei liegen
             test_file = os.path.join(dir_path, ".write_test")
             with open(test_file, "w") as f:
                 f.write("test")
-            os.remove(test_file)
-            log(f"✅ Verzeichnis OK (lokal): {dir_path}")
+            _os_remove_real(test_file)
+            log(f"✅ Verzeichnis OK: {dir_path}")
 
         except Exception as e:
-            log(f"❌ Fehler bei lokalem Verzeichnis {dir_path}: {e}", level="error")
-
-    # Netzlaufwerk-Verzeichnisse: nur erstellen, kein Test
-    for dir_path in network_dirs:
-        try:
-            os.makedirs(dir_path, exist_ok=True)
-            log(f"✅ Verzeichnis erstellt (Netzlaufwerk): {dir_path}")
-        except Exception as e:
-            log(f"⚠️ Konnte Verzeichnis nicht erstellen: {dir_path} - {e}", level="warning")
+            log(f"❌ Fehler bei Verzeichnis {dir_path}: {e}", level="error")
 
     # INPUT_ROOT: Dateien zählen (nur lesen)
     if os.path.exists(INPUT_ROOT):
@@ -187,11 +174,17 @@ def ensure_directories():
                 log(f"   Beispiele: {', '.join(files[:5])}")
             else:
                 log(f"   ⚠️ Keine PDF/Bild-Dateien im Verzeichnis!", level="warning")
+
+            # Medidok durchläuft MDok rekursiv – Unterverzeichnisse würden mit importiert
+            subdirs = [d for d in all_items if os.path.isdir(os.path.join(INPUT_ROOT, d))]
+            if subdirs:
+                log(f"⚠️ INPUT_ROOT enthält Unterverzeichnisse (Medidok liest rekursiv!): "
+                    f"{', '.join(subdirs)}", level="warning")
         except Exception as e:
             log(f"❌ Fehler beim Lesen von INPUT_ROOT: {e}", level="error")
     else:
         log(f"❌ INPUT_ROOT existiert nicht: {INPUT_ROOT}", level="error")
-        log(f"   → Prüfen Sie das Docker-Volume: /mnt/m:/app/medidok", level="error")
+        log(f"   → Prüfen Sie das Docker-Volume daten_share (SMB_SHARE) und den Ordner MDok", level="error")
 
 
 def startup_cleanup():

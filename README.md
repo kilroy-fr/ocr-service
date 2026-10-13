@@ -64,8 +64,8 @@ cp .env.example .env
 Die `.env`-Datei anpassen:
 
 ```env
-# SMB/CIFS-Netzlaufwerk (Pfad zum Medidok-Share)
-SMB_SHARE=//server/Medidok
+# SMB/CIFS-Freigabe mit den Unterordnern MDok/ (Quelle) und pdf-tool/ (Arbeitsverzeichnisse)
+SMB_SHARE=//server/Daten
 SMB_USERNAME=dein_username
 SMB_PASSWORD=dein_passwort
 
@@ -112,12 +112,13 @@ Der Service ist danach unter `http://localhost:5000` erreichbar.
 
 | Verzeichnis            | Beschreibung                                    |
 |------------------------|-------------------------------------------------|
-| `/app/medidok/`        | Quelldateien vom Netzlaufwerk                   |
-| `/app/medidok/staging/`| Session-Arbeitsverzeichnisse                    |
-| `/app/medidok/output/` | Zwischenlager nach Commit, vor Import           |
-| `/app/medidok/import/` | Import-Warteschlange für externen Dienst        |
-| `/app/medidok/trash/`  | Papierkorb für verworfene Dateien               |
-| `/app/medidok/errors/` | Fehlerfälle bei der Verarbeitung                |
+| `/app/daten/MDok/`              | Quelldateien, ohne Unterverzeichnisse           |
+| `/app/daten/pdf-tool/staging/`  | Session-Arbeitsverzeichnisse                    |
+| `/app/daten/pdf-tool/output/`   | Zwischenlager nach Commit, vor Import           |
+| `/app/daten/pdf-tool/import/`   | Import-Warteschlange für externen Dienst        |
+| `/app/daten/pdf-tool/trash/`    | Papierkorb für verworfene Dateien               |
+| `/app/daten/pdf-tool/errors/`   | Fehlerfälle bei der Verarbeitung                |
+| `/app/daten/pdf-tool/logs/`     | App-Logs (`ocr-app.log`)                        |
 | `/app/uploads/`        | Temporäre Uploads                               |
 
 ## Konfiguration

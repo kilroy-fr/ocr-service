@@ -4,7 +4,8 @@
 
 Flask-basierter OCR-Dienst, der Dokumente (PDF, Bilder, DOCX) per Tesseract OCR verarbeitet,
 per LLM (Ollama) Metadaten extrahiert und die Ergebnisse in eine Medidok-Import-Warteschlange
-einreiht. Läuft als Docker-Container und bindet ein CIFS/SMB-Netzlaufwerk ein.
+einreiht. Läuft als Docker-Container und bindet die CIFS/SMB-Freigabe `Daten` ein: `MDok/` als Quelle,
+`pdf-tool/` für alle Arbeitsverzeichnisse.
 
 **Sprache:** Deutsch (UI, Logs, Kommentare, Commits)
 
@@ -78,14 +79,24 @@ innerhalb von `INPUT_ROOT` zunächst nur im **Staging-Manifest** geplant werden.
 ### Wichtige Pfade (aus `config.py`)
 | Variable | Pfad | Beschreibung |
 |---|---|---|
-| `INPUT_ROOT` | `/app/medidok` | CIFS-Share (Netzlaufwerk) |
-| `WORK_ROOT` | `/app/medidok/staging` | Staging pro Session |
-| `OUTPUT_ROOT` | `/app/medidok/output` | Nach Commit, vor Import |
-| `IMPORT_QUEUE_DIR` | `/app/medidok/import` | Für externen Import-Dienst |
-| `TRASH_DIR` | `/app/medidok/trash` | Papierkorb |
-| `ERRORS_DIR` | `/app/medidok/errors` | Fehlerfälle |
+| `DATEN_ROOT` | `/app/daten` | CIFS `//192.168.2.100/Daten` |
+| `INPUT_ROOT` | `/app/daten/MDok` | Quellordner (Medidok) |
+| `WORK_ROOT` | `/app/daten/pdf-tool/staging` | Staging pro Session |
+| `OUTPUT_ROOT` | `/app/daten/pdf-tool/output` | Nach Commit, vor Import |
+| `IMPORT_QUEUE_DIR` | `/app/daten/pdf-tool/import` | Für externen Import-Dienst |
+| `TRASH_DIR` | `/app/daten/pdf-tool/trash` | Papierkorb |
+| `ERRORS_DIR` | `/app/daten/pdf-tool/errors` | Fehlerfälle |
+| `LOGGING_FOLDER` | `/app/daten/pdf-tool/logs` | `ocr-app.log` |
 | `JSON_FOLDER` | `/app/processed/json` | `control_{session}.json` |
 | `UPLOAD_FOLDER` | `/app/uploads` | Temporäre Uploads |
+
+`INPUT_ROOT` darf **keine Unterverzeichnisse** enthalten: Medidok durchläuft MDok rekursiv
+und würde Staging-, Papierkorb- und Fehlerdateien mit einlesen. Alles, was der Dienst selbst
+anlegt, gehört nach `pdf-tool/`. Beim Start warnt `ensure_directories()`, falls doch
+Unterverzeichnisse in MDok liegen.
+
+MDok und pdf-tool liegen bewusst im **selben** CIFS-Mount (Volume `daten_share`). Nicht auf
+zwei Volumes aufteilen – `os.rename` zwischen getrennten Mounts scheitert mit `EXDEV`.
 
 ### Import-Queue (`services/import_queue.py`)
 Stellt sicher, dass Dateien **sequenziell** in `IMPORT_QUEUE_DIR` erscheinen – die nächste

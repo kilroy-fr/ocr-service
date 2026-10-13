@@ -11,7 +11,7 @@ from services.logger import log, ui_log_queue
 from services.session_manager import ensure_staging, registry
 from services.file_utils import fs, cleanup_orphaned_files
 from config import (
-    INPUT_ROOT, JSON_FOLDER, MODEL_LLM1
+    DATEN_ROOT, INPUT_ROOT, JSON_FOLDER, MODEL_LLM1
 )
 
 main_bp = Blueprint('main', __name__)
@@ -145,7 +145,8 @@ def index():
     else:
         log(f"❌ Verzeichnis nicht gefunden: {medidok_dir}", level="error")
 
-    public_src = "/M" + INPUT_ROOT[6:]
+    # Anzeigename für die Oberfläche, z.B. "Daten/MDok"
+    public_src = "Daten/" + os.path.relpath(INPUT_ROOT, DATEN_ROOT)
 
     # Verarbeitete Dateien an Template übergeben
     processed_files = session.get("processed_files", {})

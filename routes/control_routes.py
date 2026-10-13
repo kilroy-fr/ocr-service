@@ -13,7 +13,7 @@ from services.logger import log
 from services.session_manager import ensure_staging, cleanup_session, registry
 from services.file_utils import (
     fs, handle_successful_processing, sanitize_filename,
-    cleanup_orphaned_files, _os_rename_original, _os_remove_original
+    cleanup_orphaned_files, _safe_move, _os_remove_original
 )
 from services.ollama_client import warmup_ollama
 from services.import_queue import get_import_queue_service
@@ -395,8 +395,8 @@ def finalize_import():
             os.makedirs(os.path.dirname(trash_path), exist_ok=True)
 
             try:
-                # Verwende originale os.rename (umgeht Staging-Patch)
-                _os_rename_original(original_path, trash_path)
+                # Umgeht den Staging-Patch, CIFS-robust
+                _safe_move(original_path, trash_path)
                 trashed += 1
                 log(f"🗑️ Original in TRASH: {original_filename}")
             except Exception as e:

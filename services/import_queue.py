@@ -14,26 +14,8 @@ from typing import Dict, List, Optional
 from dataclasses import dataclass
 from datetime import datetime
 
-import shutil
-
 from services.logger import log
-from services.file_utils import _os_rename_original, _os_remove_original
-
-
-def _safe_move(src: str, dst: str):
-    """
-    Verschiebt eine Datei sicher – funktioniert auch auf CIFS/SMB-Shares.
-
-    os.rename scheitert auf CIFS häufig (cross-device / SMB-Eigenheiten).
-    Fallback: copy2 + unlink, nutzt jeweils die originalen (un-gepatchten)
-    os-Funktionen.
-    """
-    try:
-        _os_rename_original(src, dst)
-    except OSError as e:
-        log(f"⚠️ os.rename fehlgeschlagen ({e}) – fallback auf copy2+delete")
-        shutil.copy2(src, dst)
-        _os_remove_original(src)
+from services.file_utils import _safe_move
 
 
 @dataclass

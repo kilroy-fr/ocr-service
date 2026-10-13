@@ -6,14 +6,20 @@ BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 UPLOAD_FOLDER       = "/app/uploads"           # Temporäre Uploads
 PROMPT_TEMPLATE     = os.path.join(BASE_DIR, "prompt.txt")
 
-# Medidok – Hauptverzeichnisse
-INPUT_ROOT          = "/app/medidok"           # Originale (Netzlaufwerk M:)
-WORK_ROOT           = "/app/medidok/staging"   # Staging pro Session
-OUTPUT_ROOT         = "/app/medidok/output"    # Zwischenlager nach Commit, vor Import
-IMPORT_QUEUE_DIR    = "/app/medidok/import"    # Import-Warteschlange für externen Dienst
-TRASH_DIR           = "/app/medidok/trash"     # Papierkorb
-ERRORS_DIR          = "/app/medidok/errors"    # Fehlerfälle
-LOGGING_FOLDER      = "/app/medidok/logs"      # Logs
+# Netzlaufwerk //192.168.2.100/Daten – ein Mount, damit rename zwischen
+# Quellordner und Arbeitsverzeichnissen funktioniert
+DATEN_ROOT          = "/app/daten"
+
+# Medidok – Quellordner. Darf keine Unterverzeichnisse enthalten: Medidok durchläuft ihn rekursiv.
+INPUT_ROOT          = "/app/daten/MDok"                # Originale
+
+# Arbeitsverzeichnisse
+WORK_ROOT           = "/app/daten/pdf-tool/staging"    # Staging pro Session
+OUTPUT_ROOT         = "/app/daten/pdf-tool/output"     # Zwischenlager nach Commit, vor Import
+IMPORT_QUEUE_DIR    = "/app/daten/pdf-tool/import"     # Import-Warteschlange für externen Dienst
+TRASH_DIR           = "/app/daten/pdf-tool/trash"      # Papierkorb
+ERRORS_DIR          = "/app/daten/pdf-tool/errors"     # Fehlerfälle
+LOGGING_FOLDER      = "/app/daten/pdf-tool/logs"       # Logs
 
 # Metadaten
 JSON_FOLDER         = "/app/processed/json"    # control_{session}.json
@@ -31,4 +37,4 @@ OCR_FALLBACK_MODEL     = "glm-ocr:latest"
 OCR_FALLBACK_MIN_CHARS = 100  # Gesamtzeichen unterhalb dieses Schwellwerts → Fallback
 
 # Frontend-URLs
-HOME_URL            = os.environ.get("HOME_URL", "/")  # Startseite für Weiterleitung (relative URL bevorzugt)
+HOME_URL            = os.environ.get("HOME_URL", "/")  # Startseite für Weiterleitung (relative URL bevorzugt)

@@ -10,7 +10,7 @@ services:
     volumes:
       - ./uploads:/app/uploads
       - ./processed:/app/processed
-      - medidok_share:/app/medidok
+      - daten_share:/app/daten
       # Development: Mount source code for hot-reload
       - ./app.py:/app/app.py
       - ./config.py:/app/config.py
@@ -33,7 +33,8 @@ networks:
     name: ${DOCKER_NETWORK}
 
 volumes:
-  medidok_share:
+  # Freigabe Daten: MDok/ (Quelle, ohne Unterverzeichnisse) und pdf-tool/ (Arbeitsverzeichnisse)
+  daten_share:
     driver: local
     driver_opts:
       type: cifs
